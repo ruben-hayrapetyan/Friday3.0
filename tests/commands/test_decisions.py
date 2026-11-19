@@ -8,6 +8,7 @@ import pytest
 
 from friday.commands.decisions import answered, spoken
 from friday.core.items import FieldError
+from friday.planner.store import kv_get
 from tests.commands.helpers import App, new_app
 
 
@@ -43,7 +44,7 @@ def test_work_that_will_be_late_is_one_decision_naming_each_thing(app: App) -> N
     assert late[0]["hours"] > 0
 
 
-def test_leaving_work_late_isnt_asked_again_until_it_gets_an_hour_later(app: App) -> None:
+def test_leaving_work_late_isnt_asked_again_that_day_then_only_if_an_hour_later(app: App) -> None:
     wall(app, "2026-10-19T09:00", "2026-10-19T23:30")
     essay = app.do("add", text="essay due mon 18:00 ~2h")["item"]["id"]
     app.do("replan")
@@ -52,7 +53,57 @@ def test_leaving_work_late_isnt_asked_again_until_it_gets_an_hour_later(app: App
     assert asked(app, "late") == []
     wall(app, "2026-10-20T07:30", "2026-10-20T12:00")  # the morning after goes too: hours later
     app.do("replan")
+    assert asked(app, "late") == []  # not again the same day, however much later (19 Nov, H: a day, then if later)
+    app.at("2026-10-20T08:59")
+    assert asked(app, "late") == []
+    app.at("2026-10-20T09:00")  # a day on, and it's hours later than when you answered: asked again
+    app.do("replan")
     assert [i["item_id"] for i in asked(app, "late")[0]["items"]] == [essay]
+
+
+# 19 Nov, a user (IMG_3435): "this message from friday has shown up in the inbox multiple times, lowkey anywhere from
+# 3-5 times in the last few hours alone, essentially every time I add something to the plan". Each add made the late
+# work an hour later, which asked again; and leaving one thing late forgot the answers for things not late just then.
+
+
+def test_adding_things_after_leaving_it_late_doesnt_ask_again_that_day(app: App) -> None:
+    wall(app, "2026-10-19T09:00", "2026-10-19T23:30")
+    draft = app.do("add", text="edit article draft due mon 18:00 ~2h")["item"]["id"]
+    app.do("replan")
+    app.do("late_accept", item_ids=[draft])
+    for hour, title in enumerate(["read ch 4 ~2h", "problem set due tue 9:00 ~2h", "email TA ~1h", "slides ~2h"]):
+        app.at(f"2026-10-19T{10 + hour}:00")
+        app.do("add", text=title)
+        app.do("replan")
+        assert draft not in {i["item_id"] for d in asked(app, "late") for i in d["items"]}, title
+
+
+def test_leaving_one_thing_late_keeps_your_answer_for_another_not_late_just_then(app: App) -> None:
+    wall(app, "2026-10-19T09:00", "2026-10-19T23:30")
+    essay = app.do("add", text="essay due mon 18:00 ~2h")["item"]["id"]
+    app.do("replan")
+    app.do("late_accept", item_ids=[essay])
+    app.do("edit", id=essay, due="2026-10-22T18:00")  # not late for now
+    lab = app.do("add", text="lab due mon 20:00 ~1h")["item"]["id"]
+    app.do("replan")
+    app.do("late_accept", item_ids=[lab])
+    app.do("edit", id=essay, due="2026-10-19T18:00")  # late again, the same day
+    app.do("replan")
+    assert essay not in {i["item_id"] for d in asked(app, "late") for i in d["items"]}
+
+
+def test_an_answer_goes_when_its_work_is_done_or_dropped(app: App) -> None:
+    wall(app, "2026-10-19T09:00", "2026-10-19T23:30")
+    essay = app.do("add", text="essay due mon 18:00 ~2h")["item"]["id"]
+    lab = app.do("add", text="lab due mon 20:00 ~1h")["item"]["id"]
+    app.do("replan")
+    app.do("late_accept", item_ids=[essay, lab])
+    app.do("done", id=essay)
+    app.do("drop", id=lab)
+    other = app.do("add", text="notes due mon 19:00 ~1h")["item"]["id"]
+    app.do("replan")
+    app.do("late_accept", item_ids=[other])
+    assert set(kv_get(app.conn, "late_accepted", {})) == {str(other)}
 
 
 def test_only_late_work_can_be_left_late(app: App) -> None:
@@ -124,3 +175,12 @@ def test_an_answer_stands_until_it_costs_an_hour_more(answers: dict, key: int, h
 @pytest.mark.parametrize(("hours", "said"), [(0.02, "1 min"), (0.25, "15 min"), (1, "1h"), (1.17, "1h 10m"), (8, "8h")])
 def test_how_much_later_is_said(hours: float, said: str) -> None:
     assert spoken(hours) == said
+
+
+def test_leaving_it_late_stands_a_day_then_until_an_hour_later() -> None:
+    """19 Nov (a user's note, your choice "A day, then only if later"): each answer keeps when it was given."""
+    answers = {"7": {"hours": 5.0, "at": 1000}}
+    assert answered(answers, 7, 30.0, 1000 + 1439)  # within the day, however much later
+    assert not answered(answers, 7, 6.0, 1000 + 1440)  # a day on and an hour later: asked again
+    assert answered(answers, 7, 5.5, 1000 + 1440)  # a day on, not an hour later: still stands
+    assert not answered(answers, 8, 1.0, 1000)  # never answered

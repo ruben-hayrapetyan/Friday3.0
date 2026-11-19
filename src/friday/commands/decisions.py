@@ -6,8 +6,10 @@ decisions but in the inbox with a notification symbol and a way to let the user 
   (`planner.service.ASK_FROM_HOURS`).
 - Work that will be late: the options (skip an event, a later night, …), or leave it late (`late_accept`).
 
-An answer stands until it costs an hour more: a lock you kept, or lateness you accepted, is asked about again only
-when the work it's about gets an hour later than when you answered."""
+An answer stands until it costs an hour more: a lock you kept is asked about again only when the work it's about gets
+an hour later than when you answered. Leaving work late stands a day, whatever you add, and after that until it's an
+hour later than when you answered (19 Nov, a user: asked "3-5 times in the last few hours", every add making it an
+hour later; your choice "A day, then only if later"). It's kept until the work is done or dropped."""
 
 import json
 
@@ -20,6 +22,7 @@ from friday.planner.service import ASK_FROM_HOURS
 from friday.planner.store import current_plan, kv_get
 
 AGAIN_HOURS = 1.0  # an answer is asked again once the work it's about is this much later
+QUIET_MIN = 24 * 60  # leaving work late isn't asked about again for a day, however much later it gets
 
 
 def decisions(ctx: Ctx, report: dict, late: list[LateItem]) -> list[Decision]:
@@ -27,7 +30,7 @@ def decisions(ctx: Ctx, report: dict, late: list[LateItem]) -> list[Decision]:
     learned disagrees with what you said (commands/conflicts.py)."""
     out = []
     accepted = kv_get(ctx.conn, "late_accepted", {}, ctx.user_id) or {}
-    asked = [i for i in late if not answered(accepted, i.item_id, i.hours)]
+    asked = [i for i in late if not answered(accepted, i.item_id, i.hours, ctx.now_utc)]
     if asked:
         out.append(
             Decision(
@@ -75,10 +78,17 @@ def decisions(ctx: Ctx, report: dict, late: list[LateItem]) -> list[Decision]:
     return out
 
 
-def answered(answers: dict, key: int, hours: float) -> bool:
-    """Whether an answer about `key` still stands: given, and the work it's about isn't an hour later since."""
+def answered(answers: dict, key: int, hours: float, now_utc: int | None = None) -> bool:
+    """Whether an answer about `key` still stands: given, and the work it's about isn't an hour later since. Leaving
+    work late (an answer that keeps when it was given) also stands for a day after it, however much later."""
     was = answers.get(str(key))
-    return was is not None and hours < was + AGAIN_HOURS
+    if was is None:
+        return False
+    if isinstance(was, dict):
+        if now_utc is not None and now_utc - was["at"] < QUIET_MIN:
+            return True
+        was = was["hours"]
+    return hours < was + AGAIN_HOURS
 
 
 def lock_cost(conflict: dict) -> str:
@@ -130,11 +140,15 @@ def late_accept(ctx: Ctx, inp: LateAcceptInput) -> Changed:
     """Leave work late: not asked about again unless it gets an hour later."""
     late = {int(k): hours for k, hours in report_of(ctx).get("late_hours", {}).items()}
     accepted = kv_get(ctx.conn, "late_accepted", {}, ctx.user_id) or {}
-    # What's no longer late is forgotten: late again, it's asked again.
-    kept = {k: v for k, v in accepted.items() if int(k) in late}
+    # Kept until the work is done or dropped (19 Nov: answers for work not late just then were forgotten, and asked
+    # again as soon as it was late again).
+    open_ids = {
+        r[0] for r in ctx.conn.execute("SELECT id FROM items WHERE user_id = ? AND status = 'todo'", [ctx.user_id])
+    }
+    kept = {k: v for k, v in accepted.items() if int(k) in open_ids}
     for item_id in inp.item_ids:
         if item_id not in late:
             raise FieldError("item_ids", f"item {item_id} isn't late")
-        kept[str(item_id)] = late[item_id]
+        kept[str(item_id)] = {"hours": late[item_id], "at": ctx.now_utc}
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "late_accepted"}, {"value": json.dumps(kept)})
     return Changed(message="Left late" if len(inp.item_ids) != 1 else "Left it late")
