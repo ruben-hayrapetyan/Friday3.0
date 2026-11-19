@@ -325,6 +325,13 @@ function NewRule({ editing, start, onDone }: { editing: Editing; start: string; 
                   {r.sentence}
                 </H>
               ))}
+              {!yours && preview.replaces && (
+                // 19 Nov: a new exam focus took the place of the one you had without a word; it says so first now
+                <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: "var(--fr-warn)", textWrap: "pretty" }}>
+                  <Icon name="warning" size={13} style={{ flexShrink: 0, alignSelf: "center" }} />
+                  <span>This takes the place of “{preview.replaces}”: there's one rule like it.</span>
+                </span>
+              )}
               {yours && preview.starts_over && (
                 // 14 Nov: an edit that says another kind of rule is a new rule, and saying so before Save
                 <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: "var(--fr-warn)", textWrap: "pretty" }}>
@@ -579,19 +586,24 @@ function Fields(props: { reading: Reading; overrides: Record<string, unknown>; o
   )
 }
 
-/** Exam focus's days, 1 to 14: what you type shows as typed, and counts once it's a whole number in range. */
+/** Exam focus's days, 0 to 14 (0: the exam's own day, until it starts; 19 Nov): what you type shows as typed, and
+ * counts once it's a whole number in range. */
 function DaysBefore({ value, onSet }: { value: number; onSet: (n: number) => void }) {
   const [typed, setTyped] = useState(String(value))
   useEffect(() => setTyped((was) => (Number(was) === value ? was : String(value))), [value])
   const n = Number(typed)
-  const fits = typed !== "" && Number.isInteger(n) && n >= 1 && n <= 14
+  const fits = typed !== "" && Number.isInteger(n) && n >= 0 && n <= 14
+  const counts = (t: string) => t !== "" && Number.isInteger(Number(t)) && Number(t) >= 0 && Number(t) <= 14
   return (
     <>
-      <input type="number" min={1} max={14} step={1} className="input" aria-label="Days before" value={typed} onChange={(e) => (setTyped(e.target.value), Number.isInteger(Number(e.target.value)) && Number(e.target.value) >= 1 && Number(e.target.value) <= 14 && onSet(Number(e.target.value)))} style={{ width: 90, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
-      <span className="fr-kicker" style={{ color: fits ? undefined : "var(--fr-warn)" }}>{fits ? (n === 1 ? "day" : "days") : "days: from 1 to 14"}</span>
+      <input type="number" min={0} max={14} step={1} className="input" aria-label="Days before" value={typed} onChange={(e) => (setTyped(e.target.value), counts(e.target.value) && onSet(Number(e.target.value)))} style={{ width: 90, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
+      <span className="fr-kicker" style={{ color: fits ? undefined : "var(--fr-warn)" }}>{fits ? (n === 0 ? "its own day, until it starts" : n === 1 ? "day" : "days") : "days: from 0 (its own day) to 14"}</span>
     </>
   )
 }
+
+/** Words as a reader compares them: no case, punctuation or extra spaces. */
+const same = (words: string) => words.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
 
 function RuleRow(props: { rule: RuleOut; locked: boolean; byName: Map<string, RuleOut>; editing: boolean; onEdit: () => void }) {
   const { rule, locked, byName, editing, onEdit } = props
@@ -611,6 +623,11 @@ function RuleRow(props: { rule: RuleOut; locked: boolean; byName: Map<string, Ru
       <Switch on={rule.enabled} onToggle={() => !locked && set({ name: rule.name, enabled: !rule.enabled })} label={`${rule.enabled ? "Switch off" : "Switch on"} ${rule.sentence}`} />
       <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
         <span style={{ fontWeight: 500 }}>{rule.sentence}</span>
+        {/* your words, when Friday's reading says them otherwise (19 Nov: "i added a rule but i can't see it in my
+            rules": it was listed only as Friday read it) */}
+        {rule.words && same(rule.words) !== same(rule.sentence) && (
+          <span style={{ fontSize: 12, color: "var(--color-neutral-400)", overflowWrap: "anywhere" }}>You wrote: “{rule.words}”</span>
+        )}
         <span style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12, color: "var(--color-neutral-500)" }}>
           <span style={{ display: "inline-flex", gap: 5, alignItems: "center" }}>
             <Icon name={icon} size={12} />

@@ -53,3 +53,22 @@ describe("exam focus, a rule", () => {
     expect(((await screen.findByRole("spinbutton", { name: "Days before" })) as HTMLInputElement).value).toBe("5")
   })
 })
+
+// 19 Nov: "On the day of a prelim, spend the time until the prelim studying for it" was read as "the day before",
+// took the place of a 5-day rule while saying "Added", and couldn't be found in Rules ("i added a rule but i cna't see
+// it in my rules - is this a bug?"); your answer "yes fix"
+describe("an exam's own day", () => {
+  const said = "On the day of a prelim, spend the time until the prelim studying for it"
+
+  it("reads as its own day, says which rule it takes the place of, and lists your words with it", async () => {
+    await friday.c("rule_add", { text: "focus on exams 5 days before", overrides: {}, strength: "Always" })
+    const { user } = await openFriday("/rules")
+    await user.type(await screen.findByRole("textbox", { name: "New rule" }), said)
+    expect(await screen.findByText("Focus on an exam's course on its day, until it starts")).toBeTruthy()
+    expect(((await screen.findByRole("spinbutton", { name: "Days before" })) as HTMLInputElement).value).toBe("0")
+    expect(screen.getByText("This takes the place of “Focus on an exam's course 5 days before it”: there's one rule like it.")).toBeTruthy()
+    await user.click(screen.getByRole("button", { name: "Add rule" }))
+    expect(await screen.findByText(`You wrote: “${said}”`, {}, { timeout: 10_000 })).toBeTruthy()
+    await waitFor(async () => expect((await friday.q<Rule[]>("rules")).filter((r) => r.type === "exam_focus").map((r) => r.sentence)).toEqual(["Focus on an exam's course on its day, until it starts"]))
+  })
+})

@@ -31,10 +31,14 @@ def waits(app: App, item: int) -> bool:
     return found is not None and found > app.now_utc
 
 
-def own(app: App, exam_id: int, days: int | None) -> None:
+UNSET = object()
+
+
+def own(app: App, exam_id: int, days: object) -> None:
+    """The exam's own days; None is none for it, UNSET follows the rule."""
     each = dict(app.do("settings")["exam_focus_each"])
     each.pop(str(exam_id), None)
-    app.do("settings_set", key="exam_focus_each", value=each | ({str(exam_id): days} if days is not None else {}))
+    app.do("settings_set", key="exam_focus_each", value=each | ({} if days is UNSET else {str(exam_id): days}))
 
 
 def focus_of(app: App, exam_id: int) -> tuple[str | None, int | None, bool]:
@@ -58,8 +62,8 @@ def test_each_exam_has_its_own_days(app: App) -> None:
     assert focus_of(app, final) == ("2026-10-18T19:30", 5, True)
     essay = app.do("add", title="HIST 1200 essay", preset="Assignment", due="2026-10-27T12:00", duration_min=60)
     assert waits(app, essay["item"]["id"])  # the final's five days have begun
-    own(app, final, 0)  # off for the final alone
-    assert focus_of(app, final) == (None, 0, True)
+    own(app, final, None)  # off for the final alone (null; 0 is the exam's own day, 19 Nov)
+    assert focus_of(app, final) == (None, None, True)
     assert not waits(app, essay["item"]["id"])  # the quiz's one day hasn't begun
 
 
@@ -69,5 +73,5 @@ def test_an_exam_without_its_own_follows_the_rule_and_one_of_its_own_wins(app: A
     assert focus_of(app, prelim) == ("2026-10-21T19:30", 2, False)
     own(app, prelim, 5)
     assert focus_of(app, prelim) == ("2026-10-18T19:30", 5, True)
-    own(app, prelim, None)  # back to the rule
+    own(app, prelim, UNSET)  # back to the rule
     assert focus_of(app, prelim) == ("2026-10-21T19:30", 2, False)

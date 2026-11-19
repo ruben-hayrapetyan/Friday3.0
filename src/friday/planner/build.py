@@ -14,7 +14,7 @@ from friday.core.guess import EXAM, same_course, subject_of, subjects
 from friday.core.items import Firmness, Item
 from friday.core.pace import DayScales, budget_factor
 from friday.core.quickadd import MEAL
-from friday.core.settings import SleepDay, bedtime_minutes, exam_focus_days, minutes_of
+from friday.core.settings import SleepDay, bedtime_minutes, exam_focus_days, exam_focus_start, minutes_of
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import (
     UNIT_MIN,
@@ -413,7 +413,7 @@ def focus_exams(fixed: Mapping[int, Item], settings: Mapping[str, Any]) -> list[
         if not (exam.start_utc and exam.end_utc and exam.status == "todo"):
             continue
         days = exam_focus_days(settings, exam.id, exam.title)
-        if days:
+        if days is not None:
             out.append((parse_utc(exam.start_utc), parse_utc(exam.end_utc), exam.title, days))
     return out
 
@@ -428,7 +428,7 @@ def focused_release(
         return release
     length = (item.duration_units or 0) * UNIT_MIN
     for start, end, title, days in exams:
-        focusing = start - days * 1440 <= now < start
+        focusing = exam_focus_start(start, days, settings) <= now < start
         room_after = due - end >= 1440 + 1.5 * length
         if focusing and not same_course(item.title, title) and due > end and room_after:
             release = max(release if release is not None else now, end)

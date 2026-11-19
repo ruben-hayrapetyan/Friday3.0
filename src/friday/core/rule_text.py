@@ -867,6 +867,10 @@ def read_one(text: str) -> tuple[Reading | None, Strength]:
         strength = "Always"
     elif re.search(r"\b(really|strongly|definitely)\b", t):
         strength = "Strongly"
+    # an exam's own day has no clock time to read, and "the time until the prelim" isn't one (19 Nov: it never got
+    # past `spoken`, so the AI read it as the day before)
+    if re.search(ON_ITS_DAY, t) and not re.search(r"\b(no|never|don't|not|avoid)\b", t):
+        return Reading("exam_focus", amount=0.0), strength
     said = spoken(t)
     if said is None:
         return None, strength
@@ -1441,12 +1445,19 @@ FROM_DAYS_FOCUS = (
 )
 
 
+# "on the day of a prelim, spend the time until the prelim studying for it": the exam's own day, until it starts
+# (19 Nov: read only as "the day before" by the AI, and that took the place of a 5-day rule)
+ON_ITS_DAY = rf"\bon (?:the )?day of {EXAMS}\b.*\b(?:study|studying|only|focus|prep|prepping|review|reviewing)\b"
+
+
 def read_exam_focus(t: str, negated: bool) -> Reading | None:
     """Exam focus (14 Nov: a rule, not a setting found only on the Projects page): in the days before an exam, other
     courses' work due after it waits. `focus on exams 5 days before`, `focus on an exam's course 3 days before it`,
     `the 2 days before a final are only for that class`, `the day before a midterm, drop everything else`."""
     if negated:
         return None
+    if re.search(ON_ITS_DAY, t):
+        return Reading("exam_focus", amount=0.0)
     m = re.search(FOCUS_ON, t) or re.search(DAYS_ONLY_FOR, t) or re.search(FROM_DAYS_FOCUS, t)
     if m is None:
         return None
@@ -1901,7 +1912,9 @@ def said(r: Reading) -> str:
     if r.kind == "spacing":
         return f"{titled(r.subject)} at least {r.amount:g} {'day' if r.amount == 1 else 'days'} apart"
     if r.kind == "exam_focus":
-        days = int(r.amount or 3)
+        days = 3 if r.amount is None else int(r.amount)
+        if days == 0:
+            return "Focus on an exam's course on its day, until it starts"
         return f"Focus on an exam's course {'the day' if days == 1 else f'{days} days'} before it"
     if r.kind == "spread":
         return f"Spread {r.subject} over several days"
@@ -2151,7 +2164,7 @@ def spec(
     if r.kind == "exam_focus":  # not a priced rule: the build holds other courses' work back (planner.build)
         from friday.core.settings import ExamFocus
 
-        params = {"days_before": int(r.amount or 3), "words": list(ExamFocus().words)}
+        params = {"days_before": 3 if r.amount is None else int(r.amount), "words": list(ExamFocus().words)}
         return {"name": name, "type": "exam_focus", "weight": 0.0, "scope": None, "reason": sentence(r),
                 "params": params}  # fmt: skip
     if r.kind in ("spread", "cluster"):  # the engine's measures for the work named, per task (engine/rules/measures)
