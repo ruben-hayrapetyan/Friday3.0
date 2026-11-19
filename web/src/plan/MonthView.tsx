@@ -72,7 +72,8 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
               <div
                 key={date}
                 data-drop-day={date}
-                className={`fr-hover-accent fr-month-day${away ? " fr-break-day" : ""}`}
+                className="fr-hover-accent fr-month-day"
+                data-break={away ? "" : undefined}
                 onClick={() => onDay(date)}
                 style={{
                   outline: drag?.moved && drag.over === "day" && drag.day === date ? "2px solid var(--color-accent)" : undefined,

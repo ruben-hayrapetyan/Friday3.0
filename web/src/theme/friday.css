@@ -707,7 +707,8 @@ kbd.fr-kbd {
   height: 100%;
   background: var(--fr-break);
 }
-.fr-break-day {
+.fr-break-day,
+.fr-month-day[data-break] {
   background-color: color-mix(in srgb, var(--fr-break) 5%, transparent);
 }
 .fr-whole-more {
