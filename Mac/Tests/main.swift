@@ -617,6 +617,17 @@ test("the plan's calendar holds exactly the plan: made, moved, renamed, gone, a 
     let read = PlanCalendar.wanted([["key": "1@a", "title": "essay", "start": "2026-10-19T14:00:00Z", "end": "2026-10-19T15:30:00Z"],
                                     ["key": "bad", "title": "x", "start": "2026-10-19T15:00:00Z", "end": "2026-10-19T14:00:00Z"]])
     check(read.count == 1 && read[0].end.timeIntervalSince(read[0].start) == 5400, "the server's blocks read; a backwards one left out")
+    check(read[0].allDay == false, "a block of the plan is timed")
+}
+
+test("a break is one all-day event on the plan's calendar, changed when it turns timed or back (19 Nov)") {
+    let read = PlanCalendar.wanted([["key": "break:3", "title": "Fall break", "start": "2026-10-21T00:00:00-04:00",
+                                     "end": "2026-10-24T00:00:00-04:00", "all_day": true]])
+    check(read.count == 1 && read[0].allDay && read[0].end.timeIntervalSince(read[0].start) == 3 * 86400, "read as three whole days")
+    let timed = PlanCalendar.Have(key: "break:3", title: "Fall break", start: read[0].start, end: read[0].end, id: "e9")
+    check(PlanCalendar.changes(have: [timed], wanted: read).change.count == 1, "an event that isn't all-day yet is changed to one")
+    let same = PlanCalendar.Have(key: "break:3", title: "Fall break", start: read[0].start, end: read[0].end, id: "e9", allDay: true)
+    check(PlanCalendar.changes(have: [same], wanted: read).change.isEmpty, "as it is: nothing touched")
 }
 
 test("Friday's links: add a to-do, open a page or a new box; anything else is ignored (C114)") {

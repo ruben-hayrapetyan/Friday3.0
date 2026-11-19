@@ -7176,6 +7176,11 @@ export interface components {
             end: string;
             /** Tentative */
             tentative: boolean;
+            /**
+             * All Day
+             * @default false
+             */
+            all_day?: boolean;
         };
         /**
          * MacPlanOut

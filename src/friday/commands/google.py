@@ -8,11 +8,14 @@ made in another that's still there) and what was published last.
 import json
 import sqlite3
 from collections.abc import Callable
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+from friday.core import vacations as breaks
 from friday.core.db import rows
-from friday.core.time import format_utc, parse_utc
+from friday.core.settings import minutes_of
+from friday.core.time import format_utc, parse_utc, planning_date
 from friday.core.vacations import on_a_break
 from friday.planner.prepare import block_key
 from friday.planner.store import current_plan, kv_get, load_settings
@@ -43,7 +46,8 @@ def publish_plan(
     gcal.publish(
         service,
         calendar,
-        blocks(conn, saved["id"], now_utc, until, settings["notify"].app_url, on_a_break(conn, user_id, settings)),
+        blocks(conn, saved["id"], now_utc, until, settings["notify"].app_url, on_a_break(conn, user_id, settings))
+        + break_blocks(conn, user_id, settings, now_utc, until),
         gcal.rfc3339(now_utc),
     )
     state = {"calendar": calendar, "account": account, "plan": saved["id"], "at": format_utc(now_utc)}
@@ -53,6 +57,31 @@ def publish_plan(
         [user_id, json.dumps(state)],
     )
     return True
+
+
+def mode_said(v: breaks.Vacation) -> str:
+    """ "Off: nothing to do." or "Light: about 2h of work a day.", as the break's event says it."""
+    if v.mode == "off":
+        return "Off: nothing to do."
+    hours, minutes = divmod(v.work_min, 60)
+    amount = f"{hours}h {minutes}m" if hours and minutes else f"{hours}h" if hours else f"{minutes}m"
+    return f"Light: about {amount} of work a day."
+
+
+def break_blocks(conn: sqlite3.Connection, user_id: int, settings: Any, now_utc: int, until: int) -> list[gcal.Block]:
+    """Each break from today to the end of the horizon as one all-day event on Friday's calendar (19 Nov, your choice
+    "One event on Friday's calendar"): from today if it's under way, through its last day (the end is the day after,
+    as calendars count it). Its key is the break's, so a break changed is its event changed."""
+    tz, day_start = settings["time"].timezone, minutes_of(settings["time"].day_start)
+    if tz is None:
+        return []
+    today, last = planning_date(now_utc, tz, day_start), planning_date(until, tz, day_start)
+    return [
+        gcal.Block(key=f"break:{v.id}", title=v.name, start=max(v.first, today).isoformat(),
+                   end=(v.last + timedelta(days=1)).isoformat(), tentative=False, link=mode_said(v), all_day=True)
+        for v in breaks.load(conn, user_id, settings["breaks"])
+        if v.last >= today and v.first <= last
+    ]  # fmt: skip
 
 
 def blocks(

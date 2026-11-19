@@ -5,9 +5,12 @@ keeps a "Friday" calendar in your iCloud account equal to the plan, from now to 
 removes the calendar it made. Friday never reads that calendar back (the Mac app leaves it out of `mac_sync`), so the
 plan never becomes busy time."""
 
+from datetime import date, datetime, time
+from zoneinfo import ZoneInfo
+
 from friday.api.commands import MacPlanBlock, MacPlanOut
 from friday.api.types import Empty
-from friday.commands.google import blocks
+from friday.commands.google import blocks, break_blocks
 from friday.commands.registry import Ctx, query
 from friday.core.vacations import on_a_break
 from friday.planner.store import current_plan
@@ -23,8 +26,24 @@ def mac_plan(ctx: Ctx, inp: Empty) -> MacPlanOut:
         return MacPlanOut(wanted=True)
     until = ctx.now_utc + ctx.settings["time"].horizon_days * 24 * 60
     found = blocks(ctx.conn, saved["id"], ctx.now_utc, until, None, on_a_break(ctx.conn, ctx.user_id, ctx.settings))
+    found += break_blocks(ctx.conn, ctx.user_id, ctx.settings, ctx.now_utc, until)
+    zone = ZoneInfo(ctx.tz)
+
+    def midnight(day: str) -> str:  # a break's day as the Mac's all-day event takes it: that day's midnight, here
+        return datetime.combine(date.fromisoformat(day), time(0), zone).isoformat()
+
     return MacPlanOut(
         wanted=True,
         plan=saved["id"],
-        blocks=[MacPlanBlock(key=b.key, title=b.title, start=b.start, end=b.end, tentative=b.tentative) for b in found],
+        blocks=[
+            MacPlanBlock(
+                key=b.key,
+                title=b.title,
+                tentative=b.tentative,
+                all_day=b.all_day,
+                start=midnight(b.start) if b.all_day else b.start,
+                end=midnight(b.end) if b.all_day else b.end,
+            )
+            for b in found
+        ],  # fmt: skip
     )

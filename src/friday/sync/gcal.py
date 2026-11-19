@@ -141,7 +141,8 @@ class Block:
     start: str  # RFC 3339
     end: str
     tentative: bool
-    link: str | None = None
+    link: str | None = None  # the event's description
+    all_day: bool = False  # a break (19 Nov): `start` and `end` are dates, the end the day after the last
 
 
 def own_calendar(service: Any, calendar_id: str | None, tz: str) -> str:
@@ -183,10 +184,11 @@ def publish(service: Any, calendar_id: str, blocks: list[Block], time_min: str) 
 
 
 def event_body(block: Block) -> dict[str, Any]:
+    at = "date" if block.all_day else "dateTime"
     return {
         "summary": block.title,
-        "start": {"dateTime": block.start},
-        "end": {"dateTime": block.end},
+        "start": {at: block.start},
+        "end": {at: block.end},
         "status": "tentative" if block.tentative else "confirmed",
         "description": block.link or "",
         "extendedProperties": {"private": {KEY: block.key}},
@@ -204,4 +206,6 @@ def same(event: dict[str, Any], body: dict[str, Any]) -> bool:
         and (event.get("description") or "") == body["description"]
         and moment(event.get("start", {})) == moment(body["start"])
         and moment(event.get("end", {})) == moment(body["end"])
+        and event.get("start", {}).get("date") == body["start"].get("date")  # an all-day event's days (a break)
+        and event.get("end", {}).get("date") == body["end"].get("date")
     )

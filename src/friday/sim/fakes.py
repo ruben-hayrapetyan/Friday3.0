@@ -120,7 +120,8 @@ class Events:
     def update(self, calendarId: str, eventId: str, body: dict[str, Any]) -> Call:  # noqa: N803
         def change() -> dict[str, Any]:
             events = self.google.calendars_by_id[calendarId]
-            events[:] = [local(body) | {"id": eventId} if e["id"] == eventId else e for e in events]
+            # whole days stay dates, as Google keeps them (19 Nov: a break's all-day event came back as times)
+            events[:] = [local_times(body) | {"id": eventId} if e["id"] == eventId else e for e in events]
             return self.write("update", body)
 
         return Call(change)
@@ -200,12 +201,6 @@ def repeated(master: dict[str, Any], rule: str, times: int = 12) -> list[dict[st
             }
         )
     return out
-
-
-def local(body: dict[str, Any]) -> dict[str, Any]:
-    """Times as Google gives them back: in the calendar's offset, not UTC."""
-    moved = {k: {"dateTime": instant(body[k]).astimezone(EASTERN).isoformat()} for k in ("start", "end")}
-    return body | moved
 
 
 def local_times(body: dict[str, Any]) -> dict[str, Any]:

@@ -23466,6 +23466,11 @@
      "tentative": {
       "type": "boolean",
       "title": "Tentative"
+     },
+     "all_day": {
+      "type": "boolean",
+      "title": "All Day",
+      "default": false
      }
     },
     "additionalProperties": false,

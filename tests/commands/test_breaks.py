@@ -445,7 +445,8 @@ class TestExports:
         app.do("settings_set", key="mac_plan", value=True)
         add_break(app)
         replan(app.conn, app.now_utc)
-        exported = {int(b["key"].split("@")[0].removeprefix("T")) for b in app.do("mac_plan")["blocks"]}
+        timed = [b for b in app.do("mac_plan")["blocks"] if not b["all_day"]]  # the break's own event aside
+        exported = {int(b["key"].split("@")[0].removeprefix("T")) for b in timed}
         assert reading in exported and essay not in exported
 
     def test_whats_on_now_names_no_planned_time_on_a_break(self, app: App) -> None:
@@ -461,6 +462,52 @@ class TestExports:
                 assert not said or said["item_id"] != essay or said["start"][:10] != WED, (hour, said)
         app.at(f"{WED}T10:00").do("start", id=essay)
         assert app.do("now")["current"]["item_id"] == essay  # what you time is on
+
+    # 19 Nov, your choice "One event on Friday's calendar": a break is a single all-day event spanning it on Friday's
+    # own exported calendar (Google's "Friday", the Mac's), never on yours.
+
+    def test_a_break_is_one_all_day_event_on_the_macs_friday_calendar(self, app: App) -> None:
+        app.do("settings_set", key="mac_plan", value=True)
+        made = add_break(app)
+        replan(app.conn, app.now_utc)
+        (one,) = [b for b in app.do("mac_plan")["blocks"] if b["key"].startswith("break:")]
+        assert one["key"] == f"break:{made['id']}" and one["title"] == "Fall break" and one["all_day"] is True
+        assert (one["start"], one["end"]) == (f"{WED}T00:00:00-04:00", "2026-10-24T00:00:00-04:00")  # through Friday
+        assert all(b["all_day"] is False for b in app.do("mac_plan")["blocks"] if b is not one and b != one)
+
+    def test_on_google_the_break_is_one_all_day_event_that_follows_it(self, app: App) -> None:
+        from friday.commands.google import publish_plan
+        from friday.sim.fakes import FakeGoogle
+
+        app.do("settings_set", key="gcal", value={"publish": True, "publish_debounce_s": 0})
+        google = FakeGoogle()
+        made = add_break(app)
+        replan(app.conn, app.now_utc)
+        assert publish_plan(app.conn, app.now_utc, google=google)
+
+        def all_day() -> list[dict]:
+            own = next(c for c, name in google.names.items() if name == "Friday")
+            return [e for e in google.calendars_by_id[own] if "date" in e["start"]]
+
+        (event,) = all_day()
+        assert event["summary"] == "Fall break"
+        assert (event["start"], event["end"]) == ({"date": WED}, {"date": "2026-10-24"})  # Google's end: the day after
+        app.do("vacation_edit", id=made["id"], end=THU, mode="off")
+        replan(app.conn, app.now_utc + 1)
+        assert publish_plan(app.conn, app.now_utc + 1, google=google)
+        (moved,) = all_day()
+        assert moved["end"] == {"date": FRI} and "Off" in moved["description"]
+        app.do("vacation_delete", id=made["id"])
+        replan(app.conn, app.now_utc + 2)
+        assert publish_plan(app.conn, app.now_utc + 2, google=google)
+        assert all_day() == []
+
+    def test_a_break_already_under_way_starts_on_the_calendar_today(self, app: App) -> None:
+        app.do("settings_set", key="mac_plan", value=True)
+        add_break(app, start="2026-10-17", end=WED)  # began Saturday
+        replan(app.conn, app.now_utc)
+        (one,) = [b for b in app.do("mac_plan")["blocks"] if b["key"].startswith("break:")]
+        assert one["start"] == "2026-10-19T00:00:00-04:00"
 
 
 class TestPassedBlocks:

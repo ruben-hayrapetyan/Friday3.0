@@ -1108,9 +1108,10 @@ class DisconnectInput(Model):
 class MacPlanBlock(Model):
     key: str  # the block's own key: the same block keeps its event
     title: str
-    start: str  # RFC 3339, UTC
+    start: str  # RFC 3339, UTC; a break's: its first day's midnight, in your zone
     end: str
     tentative: bool
+    all_day: bool = False  # a break, one all-day event over its days (19 Nov)
 
 
 class MacPlanOut(Model):

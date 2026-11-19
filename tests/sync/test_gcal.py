@@ -114,3 +114,15 @@ def test_google_calendars_lists_each_accounts_names_for_the_config(
         < shown.index("student@school.edu:")
         < shown.index("'DSA'")
     )
+
+
+def test_an_all_day_block_is_a_dated_event_and_compares_by_its_dates() -> None:
+    """19 Nov: a break is one all-day event on Friday's calendar; Google's end is the day after the last."""
+    from friday.sync.gcal import Block, event_body, same
+
+    block = Block(key="break:3", title="Fall break", start="2026-10-21", end="2026-10-24", tentative=False,
+                  link="Light, about 2h of work a day", all_day=True)  # fmt: skip
+    body = event_body(block)
+    assert (body["start"], body["end"]) == ({"date": "2026-10-21"}, {"date": "2026-10-24"})
+    assert same(dict(body), body)
+    assert not same(dict(body, end={"date": "2026-10-23"}), body)  # a day shorter is a change

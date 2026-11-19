@@ -41,11 +41,13 @@ enum PlanCalendar {
         UserDefaults.standard.removeObject(forKey: defaultsKey)
     }
 
+    /// A block of the plan; a break is one all-day event over its days (19 Nov), its end the midnight after.
     struct Wanted: Equatable {
         let key: String
         let title: String
         let start: Date
         let end: Date
+        var allDay = false
     }
 
     struct Have: Equatable {
@@ -54,6 +56,7 @@ enum PlanCalendar {
         let start: Date
         let end: Date
         let id: String
+        var allDay = false
     }
 
     /// What to make, change and remove so the calendar holds exactly the wanted blocks.
@@ -64,7 +67,7 @@ enum PlanCalendar {
         var change: [(Have, Wanted)] = []
         for w in wanted {
             guard let h = byKey[w.key] else { make.append(w); continue }
-            if h.title != w.title || abs(h.start.timeIntervalSince(w.start)) >= 60 || abs(h.end.timeIntervalSince(w.end)) >= 60 {
+            if h.title != w.title || h.allDay != w.allDay || abs(h.start.timeIntervalSince(w.start)) >= 60 || abs(h.end.timeIntervalSince(w.end)) >= 60 {
                 change.append((h, w))
             }
         }
@@ -81,7 +84,7 @@ enum PlanCalendar {
             guard let key = b["key"] as? String, let title = b["title"] as? String,
                   let start = (b["start"] as? String).flatMap(format.date), let end = (b["end"] as? String).flatMap(format.date),
                   end > start else { return nil }
-            return Wanted(key: key, title: title, start: start, end: end)
+            return Wanted(key: key, title: title, start: start, end: end, allDay: b["all_day"] as? Bool ?? false)
         }
     }
 
@@ -93,7 +96,9 @@ enum PlanCalendar {
             let events = store.events(matching: store.predicateForEvents(withStart: from, end: to, calendars: [calendar]))
             let have = events.compactMap { e -> Have? in
                 guard let url = e.url?.absoluteString, url.hasPrefix(scheme), let id = e.eventIdentifier else { return nil }
-                return Have(key: String(url.dropFirst(scheme.count)), title: e.title ?? "", start: e.startDate, end: e.endDate, id: id)
+                // an all-day event ends at its last day's last second here: the midnight after, as wanted says it
+                let end: Date = e.isAllDay ? e.endDate.addingTimeInterval(1) : e.endDate
+                return Have(key: String(url.dropFirst(scheme.count)), title: e.title ?? "", start: e.startDate, end: end, id: id, allDay: e.isAllDay)
             }
             let (make, change, remove) = changes(have: have, wanted: wanted(blocks))
             for h in remove {
@@ -102,16 +107,18 @@ enum PlanCalendar {
             for (h, w) in change {
                 guard let e = store.event(withIdentifier: h.id) else { continue }
                 e.title = w.title
+                e.isAllDay = w.allDay
                 e.startDate = w.start
-                e.endDate = w.end
+                e.endDate = w.allDay ? w.end.addingTimeInterval(-1) : w.end
                 try store.save(e, span: .thisEvent, commit: false)
             }
             for w in make {
                 let e = EKEvent(eventStore: store)
                 e.calendar = calendar
                 e.title = w.title
+                e.isAllDay = w.allDay
                 e.startDate = w.start
-                e.endDate = w.end
+                e.endDate = w.allDay ? w.end.addingTimeInterval(-1) : w.end
                 e.url = URL(string: scheme + w.key)
                 e.availability = .free  // your plan isn't someone else's meeting
                 try store.save(e, span: .thisEvent, commit: false)
