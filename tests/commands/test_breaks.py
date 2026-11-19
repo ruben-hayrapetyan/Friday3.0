@@ -490,3 +490,14 @@ class TestWithOtherSettings:
         )
         add_break(app, per_day=6)
         assert all(minutes_on(app, day) <= 60 for day in (WED, THU, FRI))
+
+
+def test_a_new_friday_answers_its_status_before_setup(tmp_path: Path) -> None:
+    """Found in Friday Test, 18 Nov ("it said that its server isn't running"): before Setup there's no timezone, and the
+    suggested breaks asked for today, so `status` answered 422 and the Mac app took the server for down."""
+    from friday.commands.registry import run
+    from friday.core.db import connect
+
+    conn = connect(tmp_path / "new.db")
+    out = run(conn, "status", {}, now_utc=29_870_000, actor="you", provisional=False).result
+    assert out["decisions"] == []

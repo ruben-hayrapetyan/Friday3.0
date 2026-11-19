@@ -329,6 +329,8 @@ def break_choices(ctx: Ctx, inp: Empty) -> BreakChoicesOut:
 
 
 def suggested(ctx: Ctx) -> list[breaks.Suggested]:
+    if ctx.settings["time"].timezone is None:
+        return []  # before Setup there's no today to suggest from (18 Nov: `status` failed, "server isn't running")
     declined = kv_get(ctx.conn, breaks.DECLINED, [], ctx.user_id) or []
     return breaks.suggest(ctx.conn, ctx.user_id, ctx.settings, ctx.today, declined)
 
