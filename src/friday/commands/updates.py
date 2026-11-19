@@ -1,14 +1,14 @@
 """Friday's own updater.
 
-The Mac app starts its server with its version and the update feed's address (FRIDAY_APP_VERSION,
-FRIDAY_UPDATE_FEED): every build but Friday Test (Mac/build.sh). It looks at launch, once a day after (the `updates`
-job), whenever Friday's window opens, and when you press Check now in Settings → Updates (H208: it looked once a
-month, and Friday's server runs for weeks, so a new version went unseen). A newer version shows as a popup with every
-newer version's notes (H124, H139); Later puts that version off until the same time tomorrow, and a newer one than it
-asks at once (H209). Update downloads it in the background, checks it and unpacks it beside the app, then the Mac app
-swaps it in, right away or when you quit (H146). The first time the new version opens, what changed is shown once
-(H118). Yours looks as a downloaded copy does (H169); a server without a feed (Friday Test, fridayd run from the
-code) never looks, and Settings says so.
+The Mac app starts its server with its version and the update feed's address (FRIDAY_APP_VERSION, FRIDAY_UPDATE_FEED):
+every build but Friday Test (Mac/build.sh). It looks at launch, once a day after (the `updates` job), when Friday's
+window opens or comes back after six hours or more (19 Nov), and when you press Check now in Settings → Updates (H208:
+it looked once a month, and Friday's server runs for weeks, so a new version went unseen). A newer version shows as a
+popup with every newer version's notes (H124, H139); Later puts that version off until the same time tomorrow, and a
+newer one than it asks at once (H209). Update downloads it in the background, checks it and unpacks it beside the app,
+then the Mac app swaps it in, right away or when you quit (H146). The first time the new version opens, what changed is
+shown once (H118). Yours looks as a downloaded copy does (H169); a server without a feed (Friday Test, fridayd run from
+the code) never looks, and Settings says so.
 
 Test users (H224–H227): a code the hub made, typed in Settings → Updates, is kept with your data and sent with
 every look and download from then on; the site answers with the test users' feed (their version on top) and whose code
