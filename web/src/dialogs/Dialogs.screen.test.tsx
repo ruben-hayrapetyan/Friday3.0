@@ -143,6 +143,17 @@ describe("what gives when it can't all fit", () => {
     expect(await screen.findByText("Undone")).toBeTruthy()
     await waitFor(async () => expect((await friday.q<{ id: number; due: string }[]>("items")).find((i) => i.id === id)?.due).toBe(due), { timeout: 10_000 })
   }, 120_000)
+
+  // 20 Nov, a user's notes: "2.0 h of work won't make it ... Pick what gives" with nothing to pick
+  it("says so when nothing it tried would help, and where to go from there", async () => {
+    const { client } = await openFriday("/?triage")
+    await screen.findByText(/h of work won’t make it|Everything fits/, {}, { timeout: 20_000 })
+    client.setQueryData(["triage"], { late: { "brain dump study": 2 }, options: [] }) // the answer the notes saw
+    expect(await screen.findByText("2.0 h of work won’t make it")).toBeTruthy()
+    expect(screen.queryByText("Pick what gives")).toBeNull()
+    expect(screen.getByText("Nothing to pick")).toBeTruthy()
+    expect(screen.getAllByRole("status").find((e) => e.textContent?.startsWith("Nothing Friday tried"))?.textContent).toMatch(/^Nothing Friday tried gets this done in time: .* In the Inbox, leave it late, move its due or drop it\.$/)
+  })
 })
 
 // The AI's answer, given in the stand-in's place: the request still goes to Friday, and its answer is replaced.

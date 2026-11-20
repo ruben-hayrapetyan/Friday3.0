@@ -200,7 +200,9 @@ def test_every_triage_option_runs_as_ordinary_commands(app: App) -> None:
     chore = app.do("add", text="tidy ~1h")["item"]["id"]
     app.do("pin", id=chore, start="2026-10-19T10:00", kind="locked")
     options = app.do("triage")["options"]
-    assert {o["action"].split()[0] for o in options} == {"Move", "Drop", "Make"}
+    kinds = {o["action"].split()[0] for o in options}
+    assert {"Move", "Drop", "Make"} <= kinds  # the new ones (20 Nov) didn't push these out
+    assert kinds <= {"Move", "Drop", "Make", "Give", "Stay", "Get", "Use", "Shorten", "Skip"}
     for option in options:
         for step in option["steps"]:
             assert app.full(step["command"], payload=step["input"], preview=True).preview

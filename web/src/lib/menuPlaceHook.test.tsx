@@ -30,6 +30,9 @@ describe("a dropdown's list over the page", () => {
       const list = getByRole("listbox")
       expect(list.style.position).toBe("fixed")
       expect(list.style.minWidth).toBe("140px")
+      // 20 Nov, a user's notes: a list longer than its height ran out of it (the Breaks panel): it scrolls instead
+      expect(list.style.overflowY).toBe("auto")
+      expect(list.style.maxHeight).toBe("280px")
     } finally {
       HTMLElement.prototype.getBoundingClientRect = real
     }

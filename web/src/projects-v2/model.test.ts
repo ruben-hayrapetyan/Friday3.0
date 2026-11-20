@@ -1,7 +1,7 @@
 // Glass box: the new Projects & exams page's rows and words (model.ts).
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
-import { againstPlan, aimFor, at, behindRhythm, deadlineRows, gridDays, milestones, nextOf, rhythmWords, share, sinceTouched, touchedWords, weekStarts, type Exam, type Project } from "./model"
+import { againstPlan, aimFor, at, behindRhythm, deadlineRows, gridDays, milestones, nextOf, reached, rhythmWords, share, sinceTouched, touchedWords, weekStarts, type Exam, type Project } from "./model"
 
 const NOW = "2026-11-16T09:00"
 const TODAY = "2026-11-16"
@@ -141,6 +141,23 @@ describe("a project's milestones and aim", () => {
       { id: 4, title: "Hand in", done: false, minutes: 10, due: "2026-11-27T17:00" }, // the project's own due: no milestone
     ]
     expect(milestones({ steps, due: "2026-11-27T17:00" }).map((m) => m.title)).toEqual(["Outline", "Draft"])
+  })
+
+  // 20 Nov, a user's notes: "if you complete one of the due dates, the progress bar should fill until the diamond
+  // regardless of how long it took to be completed (in this case the task was finished in 10 mins compared to a
+  // projected 30)"
+  it("fills its bar at least to the diamond of each step done, however quickly it was done", () => {
+    const steps = [
+      { id: 1, title: "Preliminary Thesis", done: true, minutes: 30, due: "2026-11-20T17:00" },
+      { id: 2, title: "Partial first draft", done: false, minutes: 240, due: "2026-11-26T17:00" },
+      { id: 3, title: "Final Draft", done: false, minutes: 300, due: null },
+    ]
+    const row = { steps, due: "2026-12-14T17:00", doneMin: 10, totalMin: 10 + 540 }
+    const diamond = at("2026-11-20T17:00", TODAY) / at("2026-12-14T17:00", TODAY)
+    expect(share(row)).toBeLessThan(diamond) // 10 minutes of 550 alone falls short of it
+    expect(reached(row, TODAY)).toBeCloseTo(diamond)
+    expect(reached({ ...row, doneMin: 500 }, TODAY)).toBeCloseTo(500 / 550) // past it, by what's done
+    expect(reached({ ...row, steps: steps.map((x) => ({ ...x, done: false })) }, TODAY)).toBeCloseTo(10 / 550) // none done
   })
 
   it("aims for its due less the days early, at the same time of day", () => {

@@ -117,7 +117,10 @@ def project_out(ctx: Ctx, project: ItemOut, tree: list[ItemOut], finish: dict[in
     return ProjectOut(
         item=project,
         children=tree,
-        done_min=sum(c.done_min for c in leaves),
+        # a step ticked off counts its whole length however quickly it went, as an exam's prep does (20 Nov, a user's
+        # notes: "if you complete one of the due dates, the progress bar should fill until the diamond regardless of
+        # how long it took ... finished in 10 mins compared to a projected 30")
+        done_min=sum(max(c.done_min, c.duration_min or 0) if c.status == "done" else c.done_min for c in leaves),
         remaining_min=sum(c.remaining_min or 0 for c in open_leaves),
         planned_finish=max(planned) if planned and len(planned) == len(open_leaves) else None,
         status=status,  # type: ignore[arg-type]

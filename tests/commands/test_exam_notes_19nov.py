@@ -83,3 +83,14 @@ def test_an_exam_says_what_the_rule_gives_it_by_its_name(tmp_path: Path) -> None
     assert app.do("exam_focus_for", title="MATH 2940 Prelim 2")["days"] == 5
     assert app.do("exam_focus_for", title="MATH 2940 Quiz 2")["days"] is None
     assert app.do("exam_focus_for", title="")["days"] is None
+
+
+def test_a_projects_step_ticked_off_counts_its_whole_length_however_quick(tmp_path: Path) -> None:
+    """20 Nov, a user's notes: a step finished in 10 minutes of a projected 30 should fill the bar to its diamond."""
+    app = new_app(tmp_path)
+    project = app.do("add", title="LING Final Essay", preset="Project", due="2026-12-14T17:00", duration_min=600)
+    project_id = project["item"]["id"]
+    thesis = app.do("add", title="Preliminary Thesis", parent_id=project_id, due="2026-10-20T17:00", duration_min=30)
+    app.do("done", id=thesis["item"]["id"], actual_min=10)
+    [found] = [p for p in app.do("projects") if p["item"]["id"] == project_id]
+    assert found["done_min"] >= 30

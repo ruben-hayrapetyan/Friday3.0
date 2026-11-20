@@ -70,3 +70,25 @@ def test_the_same_hour_in_different_weeks_adds_up(app: App) -> None:
     for monday in ("2026-10-19", "2026-10-26"):
         app.do("log", id=item, start=f"{monday}T09:00", end=f"{monday}T09:45")
     assert app.do("insights", weeks=4)["heat"][0][1] == 90
+
+
+def test_hours_worked_before_8am_or_past_midnight_show_on_the_evening_they_belong_to(app: App) -> None:
+    """20 Nov, a user's notes: "if your work typically starts before 8 or ends after midnight I feel like it should show
+    up" (only 8am to 11pm did). Monday 6am and Monday night's 11:30pm to 1:30am (Tuesday 1am, before the day's 4am
+    start, is Monday night's)."""
+    item = app.do("add", title="Essay", preset="Assignment", duration_min=240, due="2026-10-23T17:00")["item"]["id"]
+    app.at("2026-10-20T12:00").do("log", id=item, start="2026-10-19T06:00", end="2026-10-19T07:00")
+    app.do("log", id=item, start="2026-10-19T23:30", end="2026-10-20T01:30")
+    out = app.do("insights", weeks=4)
+    hours = out["heat_hours"]
+    assert hours == [6, 7, *range(8, 24), 0, 1]  # 6am first, past midnight last
+    monday = dict(zip(hours, out["heat"][0], strict=True))
+    assert (monday[6], monday[23], monday[0], monday[1]) == (60, 30, 60, 30)
+    assert sum(out["heat"][1]) == 0  # nothing on Tuesday's row
+
+
+def test_without_early_or_late_work_the_hours_are_8am_to_11pm(app: App) -> None:
+    item = app.do("add", title="PS1", preset="Assignment", duration_min=60, due="2026-10-23T17:00")["item"]["id"]
+    app.at("2026-10-19T12:00").do("log", id=item, start="2026-10-19T09:00", end="2026-10-19T10:00")
+    out = app.do("insights", weeks=4)
+    assert out["heat_hours"] == list(range(8, 24)) and all(len(row) == 16 for row in out["heat"])

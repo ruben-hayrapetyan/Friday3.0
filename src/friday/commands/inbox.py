@@ -559,7 +559,10 @@ def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
         "daily_tokens": budget.daily_tokens,
         "model": budget.model,
     }
+    from friday.commands.pointless import archived  # noqa: PLC0415 (pointless runs commands through the registry)
+
     return InboxOut(
+        archived=archived(ctx.conn, ctx.now_utc, ctx.user_id),
         set_aside=set_aside,
         suggestions=suggestions,
         sources=sources,

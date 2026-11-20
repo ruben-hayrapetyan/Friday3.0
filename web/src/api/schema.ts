@@ -38,6 +38,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/archived_ok": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Let the Inbox's note about work archived at its due go; the work stays archived. */
+        post: operations["archived_ok"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/archived_restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bring back work archived at its due: open again, and still worth doing after its due, so it isn't archived */
+        post: operations["archived_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/area_add": {
         parameters: {
             query?: never;
@@ -4367,6 +4401,62 @@ export interface components {
             /** Latest Start */
             latest_start: string;
         };
+        /** ArchivedOkResult */
+        ArchivedOkResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * ArchivedOut
+         * @description Work archived when its due passed, pointless after it (commands/pointless.py): in the Inbox for two weeks.
+         */
+        ArchivedOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Why */
+            why: string;
+            /** At */
+            at: string;
+        };
+        /** ArchivedRestoreResult */
+        ArchivedRestoreResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
         /** AreaAddResult */
         AreaAddResult: {
             /** Command Id */
@@ -6322,6 +6412,11 @@ export interface components {
              * @default []
              */
             set_aside?: components["schemas"]["SetAsideOut"][];
+            /**
+             * Archived
+             * @default []
+             */
+            archived?: components["schemas"]["ArchivedOut"][];
         };
         /** InsightsOut */
         InsightsOut: {
@@ -6337,6 +6432,28 @@ export interface components {
             by_kind: components["schemas"]["KindAccuracy"][];
             /** Heat */
             heat: number[][];
+            /**
+             * Heat Hours
+             * @default [
+             *       8,
+             *       9,
+             *       10,
+             *       11,
+             *       12,
+             *       13,
+             *       14,
+             *       15,
+             *       16,
+             *       17,
+             *       18,
+             *       19,
+             *       20,
+             *       21,
+             *       22,
+             *       23
+             *     ]
+             */
+            heat_hours?: number[];
             /** Best Hours */
             best_hours: string | null;
         };
@@ -12822,6 +12939,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AiKeySetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archived_ok: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemRef"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArchivedOkResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archived_restore: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemRef"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArchivedRestoreResult"];
                 };
             };
             /** @description Validation Error */

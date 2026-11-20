@@ -109,10 +109,34 @@ def assemble(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
         return assembled(snapshot, solved)
 
 
+def held_back(problem: Problem, over_units: dict[str, int]) -> tuple[set[str], set[str]]:
+    """Work with no room before its due, and the work waiting for it. Stuck: never planned after its due (pointless once
+    late: an exam's prep, a step marked so) and part of it doesn't fit before. Waiting: what depends on stuck work, a
+    project's steps after it, and what waits for those in turn. 20 Nov, a user's notes: "'no room before it's due'
+    however other sub-tasks that are dependent on it are scheduled, which makes no sense"; your answer: "Later steps
+    wait". It's done or archived once its due passes (commands/pointless.py), and the rest go on."""
+    stuck = {
+        key
+        for key, item in problem.items.items()
+        if item.window_is_hard and item.amount == "fixed" and item.due_utc is not None and over_units.get(key, 0) > 0
+    }
+    waiting: set[str] = set()
+    grew = True
+    while grew:
+        grew = False
+        for key, item in problem.items.items():
+            if key not in waiting and key not in stuck and any(d.key in stuck | waiting for d in item.depends_on):
+                waiting.add(key)
+                grew = True
+    return stuck, waiting
+
+
 def assembled(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
     problem, result = solved.problem, solved.result
     blocks, other = planned_blocks(problem, result.plan)
     evaluation = result.evaluation
+    stuck, waiting = held_back(problem, evaluation.over_units)
+    blocks = [b for b in blocks if key_of(b.item_id) not in waiting]  # they wait: no time of theirs in the plan
     kept_closer = spaced_closer(snapshot, blocks)
     report = {
         "stage_values": evaluation.stage_values,
@@ -143,7 +167,8 @@ def assembled(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
         ],
         "allocation_capacity_hours": [round(units * UNIT_MIN / 60, 2) for units in solved.allocation.room],
         "allocation_start": problem.grid.slots[0].date.isoformat(),
-        "allocation_finish": allocation_finish(solved),
+        # neither a later day for what has no room before its due, nor for what waits for it
+        "allocation_finish": {k: v for k, v in allocation_finish(solved).items() if key_of(k) not in stuck | waiting},
         "slack_minutes": {id_of(k): s.minutes for k, s in slack(solved.executor).items()},
         "pace": pace_days(snapshot, problem),
         "pace_notices": pace_notices(snapshot, problem, blocks),

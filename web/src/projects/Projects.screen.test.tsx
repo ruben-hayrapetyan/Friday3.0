@@ -167,6 +167,12 @@ describe("projects", () => {
     const link = screen.getByRole("button", { name: /^Rehearse waits: after .+\. Make it not wait$/ })
     const above = /^Rehearse waits: after (.+)\. Make it not wait$/.exec(link.getAttribute("aria-label") ?? "")?.[1] as string
     expect(link.textContent).toBe(`after ${above}`)
+    // 20 Nov, a user's notes: "dependence relationship between sub-tasks is placed directly on the separating line":
+    // the line is drawn above the link, and its step's row draws none of its own under it
+    expect(link.classList.contains("fr-row")).toBe(true)
+    const row = link.nextElementSibling as HTMLElement
+    expect(row.hasAttribute("data-step-row") && row.style.boxShadow).toBe("none")
+    expect(link.style.marginBottom).not.toBe("-8px")
     await user.click(link)
     // at once, before the server answers
     expect(screen.getByRole("button", { name: `Rehearse doesn't wait for ${above}. Make it wait` }).textContent).toBe("doesn't wait")

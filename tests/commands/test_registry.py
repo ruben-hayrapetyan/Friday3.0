@@ -22,6 +22,8 @@ from tests.commands.helpers import MONDAY_9, TZ, App, new_app
 DERIVED = {"command_log", "kv", "plans", "blocks", "users", "sqlite_sequence"}
 KV_STATE = {
     "sleep_skip",
+    "archived_ok",  # the Inbox's notes of work archived at its due are kept in kv
+    "archived_restore",
     "step_any_time",  # a project's steps done any time are kept in kv
     "ongoing_add",  # an ongoing project's options are kept in kv
     "ongoing_set",
@@ -155,6 +157,15 @@ def reopen_sample(app: App) -> dict[str, Any]:
     item_id = essay(app)
     app.do("done", id=item_id)
     return {"id": item_id}
+
+
+def archived_sample(app: App) -> dict[str, Any]:
+    """Exam prep archived once its due passed (commands/pointless.py), its note in the Inbox."""
+    from friday.commands.pointless import archive_pointless  # noqa: PLC0415
+
+    prep = app.do("add", title="Old prep", preset="Exam prep", due="2026-10-18T19:00", duration_min=60)["item"]["id"]
+    archive_pointless(app.conn, app.now_utc)
+    return {"id": prep}
 
 
 def undepend_sample(app: App) -> dict[str, Any]:
@@ -478,6 +489,8 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "edit": lambda app: {"id": essay(app), "title": "long essay", "duration_min": 180},
     "drop": lambda app: {"id": essay(app)},
     "reopen": reopen_sample,
+    "archived_ok": archived_sample,
+    "archived_restore": archived_sample,
     "done": lambda app: {"id": essay(app), "actual_min": 100},
     "stuck": lambda app: {"id": essay(app), "note": "can't find the reading"},
     "rule_win": lambda app: {"winner": "deep_run", "loser": "chunk_cost"},

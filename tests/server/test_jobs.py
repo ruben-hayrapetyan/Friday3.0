@@ -60,6 +60,7 @@ def test_nightly_closes_yesterday_backs_up_and_asks_for_a_cold_replan(app: App, 
         "event_writes",
         "ratings",
         "meals",
+        "pointless",
         "updates",
     ]
     assert [r["last_error"] for r in app.table("job_runs") if r["last_error"]] == []
@@ -104,6 +105,7 @@ def test_tick_replans_when_a_block_boundary_passed_and_not_for_a_timer(app: App,
             "event_writes",
             "ratings",
             "meals",
+            "pointless",
             "updates",
         ]  # fmt: skip
         and worker.requests == []

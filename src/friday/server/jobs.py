@@ -30,6 +30,7 @@ from friday.commands.eventwrites import failed_writes, write_events
 from friday.commands.fetching import failing_sources, sync
 from friday.commands.google import publish_plan
 from friday.commands.learned import learn_nightly
+from friday.commands.pointless import archive_pointless
 from friday.commands.rating import rate_upcoming
 from friday.commands.refit import prepare_questions
 from friday.commands.registry import run
@@ -107,6 +108,7 @@ def run_due(
         ("event_writes", every_minute, send_event_writes),
         ("ratings", every_minute, rate_events),
         ("meals", every_minute, decide_meals),
+        ("pointless", every_minute, archive_pointless_work),
         ("updates", every_minute, look_for_updates),
     )
     for name, is_due, job in jobs:
@@ -337,6 +339,22 @@ def decide_meals(
         hub.publish("items.changed")
         if supervisor is not None:
             supervisor.request(0, reason="meals")
+
+
+def archive_pointless_work(
+    conn: sqlite3.Connection,
+    now_utc: int,
+    settings: dict[str, Any],
+    hub: Hub,
+    supervisor: Supervisor | None,
+    backups: Path,
+    user_id: int,
+) -> None:
+    """Work that's pointless once late, archived once its due has passed, and said in the Inbox (commands/pointless)."""
+    if archive_pointless(conn, now_utc, user_id):
+        hub.publish("items.changed")
+        if supervisor is not None:
+            supervisor.request(0, reason="pointless")
 
 
 def questions_due(last: int | None, now_utc: int, settings: dict[str, Any]) -> bool:

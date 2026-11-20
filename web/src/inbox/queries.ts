@@ -57,5 +57,6 @@ export function useInboxMessages(answered: Schemas["SuggestionOut"][] = NONE): M
 
 /** How many things wait in the Inbox: its badge in the sidebar, the window's title and the Plan's tray. */
 export function useInboxCount(): number {
-  return waitingCount(useInboxMessages())
+  // and work archived at its due, until you've seen it (20 Nov, H232: "Archive it, say so")
+  return waitingCount(useInboxMessages()) + (useInbox().data?.archived?.length ?? 0)
 }
