@@ -254,7 +254,7 @@ describe("the Projects & exams page", () => {
     const sent = await waitForSent("settings_set")
     expect(sent.body).toEqual({ key: "exam_focus_each", value: { [id]: 3 } })
     // at once, before the server answers
-    expect(within(first.panel).getByRole("button", { name: "Before this exam: Only its class's work, 3 days before" })).toBeTruthy()
+    expect(within(first.panel).getByRole("button", { name: "Before this exam: Only this class's work, 3 days before" })).toBeTruthy()
     await waitFor(async () => expect((await settings()).exam_focus_each[id]).toBe(3))
     expect((await rules()).some((r) => r.type === "exam_focus" && r.enabled)).toBe(false) // no rule for every exam
     await first.user.click(within(first.panel).getByRole("button", { name: /^Before this exam:/ }))
@@ -282,7 +282,7 @@ describe("the Projects & exams page", () => {
       expect(rule.textContent).not.toContain("5 days before")
       unmount()
       const prelim = await examPanel()
-      expect(within(prelim.panel).getByRole("button", { name: "Before this exam: Only its class's work, 5 days before" })).toBeTruthy()
+      expect(within(prelim.panel).getByRole("button", { name: "Before this exam: Only this class's work, 5 days before" })).toBeTruthy()
       expect(within(prelim.panel).getByText(/now as your other exams \(Rules\)/)).toBeTruthy()
       prelim.unmount()
     } finally {

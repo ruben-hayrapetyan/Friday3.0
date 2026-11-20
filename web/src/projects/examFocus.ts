@@ -6,6 +6,9 @@ const daysWord = (d: number) => (d === 1 ? "the day" : `${d} days`)
 /** "on its day, until it starts", "the day before", "3 days before" (19 Nov: an exam's own day). */
 export const focusWords = (d: number) => (d === 0 ? "on its day, until it starts" : `${daysWord(d)} before`)
 export const capital = (s: string) => s.replace(/^./, (c) => c.toUpperCase())
+/** What happens before an exam, as its row says it, in New exam and its popup (20 Nov, the user, of "Focus on its
+ * class": "not sure what that means"). */
+export const focusValue = (d: number | null | undefined) => (d != null ? `Only this class's work, ${focusWords(d)}` : "Other classes' work goes on as usual")
 
 export type FocusPick = number | "none" | "rule"
 
@@ -20,7 +23,7 @@ export function focusChoices(ruleDays: number | null | undefined, ruleOn: boolea
   return [
     { value: "rule" as FocusPick, label: "As your other exams", desc: rule },
     { value: "none" as FocusPick, label: "Off", desc: "Other classes go on as usual" },
-    ...FOCUS.map((d) => ({ value: d as FocusPick, label: capital(focusWords(d)), desc: "Only the exam's class is planned then" })),
+    ...FOCUS.map((d) => ({ value: d as FocusPick, label: capital(focusWords(d)), desc: "Only this class's work is planned then" })),
   ]
 }
 
