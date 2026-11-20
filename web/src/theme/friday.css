@@ -152,6 +152,16 @@ body {
   white-space: nowrap;
   cursor: pointer;
 }
+.fr-menu-option {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.fr-menu-hint {
+  font-size: 11px;
+  color: var(--color-neutral-400);
+}
 .fr-menu-list button:hover,
 .fr-menu-list button[aria-selected="true"] {
   background: color-mix(in srgb, var(--color-accent) 14%, transparent);

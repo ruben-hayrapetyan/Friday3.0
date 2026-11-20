@@ -272,13 +272,17 @@ describe("Tags/Kinds", () => {
 describe("Schedule", () => {
   it("sets when the day starts and bedtime for every day", async () => {
     const { user } = await openFriday("/settings/schedule")
-    const wake = within(await waitFor(() => field("Day starts"))).getByRole("combobox")
-    expect((wake as HTMLSelectElement).value).toBe("07:30")
-    await user.selectOptions(wake, "08:00")
+    // Friday's own menu, not the system's (20 Nov), opened at the time set now
+    const wake = within(await waitFor(() => field("Day starts"))).getByRole("button", { name: "Day starts" })
+    expect(wake.querySelector("[data-chosen]")?.textContent).toBe("7:30am")
+    await user.click(wake)
+    expect(screen.getByRole("option", { name: "7:30am" }).getAttribute("aria-selected")).toBe("true")
+    await user.click(screen.getByRole("option", { name: "8am" }))
     const sleep = (await waitForSent("settings_set")).body as { key: string; value: Record<string, { wake: string }> }
     expect(sleep.key).toBe("sleep")
     expect(Object.values(sleep.value).map((n) => n.wake)).toEqual(Array(7).fill("08:00"))
-    await user.selectOptions(within(field("Bedtime")).getByRole("combobox"), "00:00")
+    await user.click(within(field("Bedtime")).getByRole("button", { name: "Bedtime" }))
+    await user.click(screen.getByRole("option", { name: "12am" }))
     const bed = (await waitForSent("settings_set")).body as { value: Record<string, { bedtime: string }> }
     expect(bed.value.sun.bedtime).toBe("00:00")
   })

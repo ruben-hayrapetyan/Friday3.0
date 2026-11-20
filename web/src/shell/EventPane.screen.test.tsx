@@ -45,7 +45,7 @@ describe("a new event", () => {
     await waitFor(() => expect(document.activeElement).toBe(field("Title")))
     expect(screen.getByText(/· 1 h$/)).toBeTruthy()
     expect(screen.getByRole("button", { name: "Add" }).hasAttribute("disabled")).toBe(true)
-    expect(screen.getByRole("combobox", { name: "Calendar" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Calendar" }).getAttribute("aria-haspopup")).toBe("listbox") // Friday's menu (20 Nov)
     expect(screen.getByRole("radio", { name: "Automatic" }).getAttribute("aria-checked")).toBe("true")
     expect(screen.getByText("⌘↩ saves · Esc closes")).toBeTruthy()
   })

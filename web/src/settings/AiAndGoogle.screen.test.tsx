@@ -76,8 +76,8 @@ describe("the AI box", () => {
     await user.tab()
     expect((await waitForSent("settings_set")).body).toEqual({ key: "llm", value: { base_url: "http://127.0.0.1:9/v1" } })
     await answered(client)
-    const model = (await within(dialog).findByRole("combobox", { name: "Model" })) as HTMLSelectElement
-    await user.selectOptions(model, "qwen-2.5-32b")
+    await user.click(await within(dialog).findByRole("button", { name: "Model" }))
+    await user.click(screen.getByRole("option", { name: "qwen-2.5-32b" }))
     expect((await waitForSent("settings_set")).body).toEqual({ key: "llm", value: { model: "qwen-2.5-32b", small_model: "qwen-2.5-32b" } })
     await user.type(within(dialog).getByPlaceholderText("Or type its name"), "mixtral-8x7b{Enter}")
     expect((await waitForSent("settings_set")).body).toEqual({ key: "llm", value: { model: "mixtral-8x7b", small_model: "mixtral-8x7b" } })

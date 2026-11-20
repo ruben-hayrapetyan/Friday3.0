@@ -36,7 +36,8 @@ describe("the clock", () => {
     // Schedule's times, and a time box: "07:30", and a typed 9 is 09:00, with no am or pm filled in
     await user.click(screen.getByRole("link", { name: "Schedule" }))
     await screen.findByText("The shape of a normal day. Friday plans inside these limits.")
-    const options = screen.getAllByRole("option").map((o) => o.textContent ?? "")
+    await user.click(screen.getByRole("button", { name: "Day starts" }))
+    const options = within(screen.getByRole("listbox", { name: "Day starts" })).getAllByRole("option").map((o) => o.textContent ?? "")
     expect(options.length).toBeGreaterThan(5)
     expect(options.every((t) => TWENTY_FOUR.test(t))).toBe(true)
     await user.click(screen.getByRole("button", { name: "Set each day" }))

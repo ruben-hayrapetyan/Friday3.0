@@ -13,7 +13,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { errorWords, query, type Schemas } from "@/api/client"
-import { Icon } from "@/components/fr/controls"
+import { Icon, Menu } from "@/components/fr/controls"
 import { Card } from "@/dialogs/SetupParts"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings, useStatus } from "@/hooks/queries"
@@ -397,14 +397,14 @@ function ModelPicker({ llm, free = false }: { llm: Llm; free?: boolean }) {
       {listed.isLoading && <span className="fr-kicker">Asking the service for its models…</span>}
       {listed.data?.error && <span style={{ fontSize: 12, color: "var(--fr-due)" }}>Couldn't list its models: {listed.data.error}</span>}
       {models.length > 0 && (
-        <select id="ai-model" className="input" value={models.includes(llm.model) ? llm.model : ""} onChange={(e) => pick(e.target.value)} aria-label="Model" style={{ maxWidth: 520, padding: "5px 8px", minHeight: 0, fontSize: 13 }}>
-          <option value="">Choose a model…</option>
-          {models.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
+        <span style={{ alignSelf: "flex-start", maxWidth: "100%" }}>
+          <Menu
+            label="Model"
+            value={models.includes(llm.model) ? llm.model : ""}
+            onPick={pick}
+            options={[...(models.includes(llm.model) ? [] : [{ value: "", label: "Choose a model…" }]), ...models.map((m) => ({ value: m, label: m }))]}
+          />
+        </span>
       )}
       {(free || models.length === 0) && (
         <span style={{ display: "flex", gap: 8, maxWidth: 520 }}>

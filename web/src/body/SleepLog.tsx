@@ -4,7 +4,7 @@
 
 import { useState } from "react"
 import type { Schemas } from "@/api/client"
-import { Icon, Switch } from "@/components/fr/controls"
+import { Icon, Menu, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings, useSleep } from "@/hooks/queries"
 import { clock, dayLabel, dur, weekday } from "@/lib/format"
@@ -188,16 +188,10 @@ function NapCard({ nap, onClose }: { nap?: Schemas["NapOut"]; onClose: () => voi
       }
     >
       {!nap && (
-        <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--color-neutral-400)" }}>
+        <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, fontSize: 11, color: "var(--color-neutral-400)" }}>
           Day
-          <select className="input" value={day} onChange={(e) => setDay(e.target.value)} style={{ width: 140, padding: "4px 8px", minHeight: 0, fontSize: 13 }}>
-            {days.map((d, n) => (
-              <option key={d} value={d}>
-                {n === 0 ? "Today" : n === 1 ? "Yesterday" : dayLabel(d)}
-              </option>
-            ))}
-          </select>
-        </label>
+          <Menu label="Day" value={day} onPick={setDay} options={days.map((d, n) => ({ value: d, label: n === 0 ? "Today" : n === 1 ? "Yesterday" : dayLabel(d) }))} />
+        </span>
       )}
       <TimeField label="Lay down" value={from} onChange={setFrom} expect={{ hours: NAP_HOURS }} />
       <TimeField label="Got up" value={to} onChange={setTo} expect={{ after: from }} />

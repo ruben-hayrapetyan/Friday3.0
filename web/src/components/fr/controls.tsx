@@ -11,6 +11,7 @@ export function Icon({ name, size, fill, style }: { name: string; size?: number;
 export interface Option<T> {
   value: T
   label: ReactNode
+  hint?: ReactNode // under its label, in the open list only (a calendar's account)
 }
 
 /** A segmented control: one of a few options. */
@@ -37,7 +38,9 @@ export function Seg<T extends string | number>(props: {
   )
 }
 
-/** A dropdown: the value on a button, the options in a floating list; Escape or a click elsewhere closes it. */
+/** A dropdown: the value on a button, the options in a floating list; Escape or a click elsewhere closes it. Every
+ * dropdown in Friday is one (20 Nov: the system's own, in Settings and an event's pane, were "default dropdown menus"
+ * the user didn't love). Opened, the chosen option is in view: a long list (times, a service's models) opens at it. */
 export function Menu<T extends string>(props: { options: readonly Option<T>[]; value: T; onPick: (value: T) => void; label: string; disabled?: boolean }) {
   const { options, value, onPick, label, disabled } = props
   const [open, setOpen] = useState(false)
@@ -46,6 +49,9 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
   const escape = useMenuClose(open, setOpen, box, button)
   const list = useRef<HTMLDivElement>(null)
   useMenuPlace(open, button, list) // over the page beside its button: nothing clips it, and it stays on the screen
+  useEffect(() => {
+    if (open) list.current?.querySelector<HTMLElement>("[aria-selected='true']")?.scrollIntoView?.({ block: "nearest" })
+  }, [open])
   return (
     <div ref={box} className="fr-menu" onKeyDown={escape}>
       <button ref={button} className="fr-menu-button" aria-haspopup="listbox" aria-expanded={open} aria-label={label} disabled={disabled} onClick={() => setOpen(!open)}>
@@ -65,7 +71,14 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
                 button.current?.focus()
               }}
             >
-              <span>{o.label}</span>
+              {o.hint ? (
+                <span className="fr-menu-option">
+                  <span>{o.label}</span>
+                  <span className="fr-menu-hint">{o.hint}</span>
+                </span>
+              ) : (
+                <span>{o.label}</span>
+              )}
               {o.value === value && <Icon name="check" size={13} />}
             </button>
           ))}
