@@ -11,10 +11,14 @@ import pytest
 
 from tests.system.test_beat_plan_system import SLEEP, TZ, Friday
 
+START = (datetime.now(ZoneInfo(TZ)) - timedelta(hours=6)).replace(minute=0, second=0, microsecond=0)
+DAY_START = f"{START:%H:%M}"  # Friday's day starts six hours before the test runs: it never ends while it does
+
 
 def friday_day() -> date:
-    """Friday's day, 4am to 4am: between midnight and 4am it is still yesterday's date (5 Nov, 12:30am)."""
-    return (datetime.now(ZoneInfo(TZ)) - timedelta(hours=4)).date()
+    """Friday's day as the test sets it: from DAY_START. It was 4am to 4am, and the test failed between 3:30 and 4am,
+    when today's Lunch was due or had no room left (20 Nov, 3:54am, in 0.6.3's gate; and 5 Nov, at 12:30am)."""
+    return (datetime.now(ZoneInfo(TZ)) - timedelta(hours=START.hour, minutes=START.minute)).date()
 
 
 @pytest.fixture(scope="module")
@@ -29,16 +33,17 @@ def friday(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Friday]:
     }
     server.c("settings_set", key="sleep", value=dict.fromkeys(SLEEP, away))
     server.c("settings_set", key="meal_tracking", value={"on": True})
-    # open all day (4am to 3:30am), so today's Lunch is still to do whenever the test runs
+    server.c("settings_set", key="time", value=server.q("settings")["time"] | {"day_start": DAY_START})
+    # open all day, so today's Lunch is still to do whenever the test runs
     server.c("series_add", title="Lunch", preset="Routine", every="day", release_offset_min=0,
-             due_offset_min=23 * 60 + 30, min_min=15, ideal_min=30, max_min=30)  # fmt: skip
+             due_offset_min=24 * 60 - 1, min_min=15, ideal_min=30, max_min=30)  # fmt: skip
     yield server
     server.stop()
 
 
 def test_a_meal_eaten_names_the_routine_the_plan_holds_for_it(friday: Friday) -> None:
     today = friday_day()
-    window = {"start": f"{today}T04:00", "end": f"{today + timedelta(days=1)}T04:00"}  # Friday's day
+    window = {"start": f"{today}T{DAY_START}", "end": f"{today + timedelta(days=1)}T{DAY_START}"}  # Friday's day
     friday.c("meal_start", kind="lunch")
     eating = friday.q("meals")["eating"]
     assert eating["kind"] == "lunch" and eating["item_id"] is not None
