@@ -78,7 +78,10 @@ function NowRule() {
 export function agendaOf(day: string, plan: Schemas["PlanOut"] | undefined, calendar: Schemas["CalendarOut"] | undefined): Entry[] {
   const out: Entry[] = []
   for (const f of plan?.fixed ?? []) {
-    if (!f.start || !f.end || f.event_kind === "shove") continue
+    // not one you said you're not going to: the calendar draws it faint behind, to change your mind there; here it
+    // read as on your day (20 Nov, you: "the sidebar of 'today' shows deleted events even when they don't show up in
+    // the main calendar")
+    if (!f.start || !f.end || f.event_kind === "shove" || f.left_out === "skipped") continue
     const allDay = f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start
     if (allDay ? !(f.start.slice(0, 10) <= day && day < f.end.slice(0, 10)) : !f.start.startsWith(day)) continue
     out.push({ key: `F${f.id}`, start: f.start, end: f.end, title: f.title, sort: allDay ? "allday" : "event", area: f.area, block: fixedBlock(f as Item & { start: string; end: string }), event: f })
