@@ -149,6 +149,31 @@ describe("the sidebar's agenda", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }))
     await waitFor(() => expect(screen.queryByRole("textbox", { name: "Title" })).toBeNull())
   })
+
+  it("leaves out an event you said you're not going to, as the calendar does", async () => {
+    // 20 Nov, you: "the sidebar of 'today' shows deleted events even when they don't show up in the main calendar"
+    // (Climbing Club, Cornell Poker, Chess Club, Salsa: each "not going", drawn faint behind in the calendar)
+    const plan = await friday.q<{ fixed: (Fixed & { left_out?: string | null; hidden_calendar?: string | null })[] }>("plan")
+    const plain = plan.fixed.filter((f) => f.start && f.end && !f.start.endsWith("T00:00") && f.event_kind !== "shove" && !f.left_out && !f.hidden_calendar)
+    const event = plain.find((f) => plain.some((o) => o.title !== f.title && o.start!.slice(0, 10) === f.start!.slice(0, 10)))!
+    const other = plain.find((o) => o.title !== event.title && o.start!.slice(0, 10) === event.start!.slice(0, 10))!
+    const listed = async () => {
+      const { user, unmount } = await openFriday("/")
+      await todayInMonth()
+      await user.click(sidebar().getByRole("button", { name: event.start!.slice(0, 10) }))
+      await waitFor(() => expect(sidebar().getAllByTitle(other.title).length).toBeGreaterThan(0)) // the day's list is in
+      const found = sidebar().queryAllByTitle(event.title).length
+      unmount()
+      return found
+    }
+    expect(await listed()).toBeGreaterThan(0)
+    await friday.c("event_choice", { id: event.id, choice: "skip" })
+    try {
+      expect(await listed()).toBe(0)
+    } finally {
+      await friday.c("event_choice", { id: event.id, choice: "going" })
+    }
+  })
 })
 
 describe("the keys that work on every page", () => {
