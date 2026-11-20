@@ -3,8 +3,9 @@ much is done and left, when the last of it is planned, and whether that is befor
 
 import json
 
+from friday.api.commands import ExamFocusForInput
 from friday.api.types import Empty
-from friday.api.views import ExamFocusFor, ExamFocusForInput, ExamOut, ExamPrepOut
+from friday.api.views import ExamFocusFor, ExamOut, ExamPrepOut
 from friday.commands.fields import item_out
 from friday.commands.horizon import finishes
 from friday.commands.registry import Ctx, query

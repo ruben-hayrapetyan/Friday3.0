@@ -1283,3 +1283,9 @@ class ProjectSetInput(Model):
     id: int  # the project's item id
     pacing: Literal["front", "linear", "back", "kind"] | None = None  # "kind": as its kind is paced
     early_days: float | None = Field(None, ge=0, le=30)  # aim to finish this many days before its due; 0 for none
+
+
+class ExamFocusForInput(Model):
+    """An exam's name, to say what your exam focus rule gives an exam so named (query exam_focus_for)."""
+
+    title: str

@@ -291,9 +291,6 @@ class ExamFocusFor(Model):
     days: int | None  # None: the rule is off, or isn't for an exam so named
 
 
-class ExamFocusForInput(Model):
-    title: str
-
 
 class WeekLoad(Model):
     start: str  # the week's first day
