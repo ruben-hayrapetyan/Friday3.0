@@ -134,3 +134,63 @@ def test_work_due_as_a_day_begins_is_done_by_the_day_before() -> None:
     item = EngineItem(key="a", need=8, due_utc=at(3, "04:00"), firmness="hard")
     alloc = run([item])
     assert sum(alloc.units["a"][3:]) == pytest.approx(0) and sum(alloc.units["a"][:3]) == pytest.approx(8)
+
+
+def chain(n: int = 8, days: int = 84) -> tuple[list[EngineItem], AllocatorInput]:
+    """A project of `n` steps, each waiting on every step before it, as a user's projects and exam prep do."""
+    items: list[EngineItem] = []
+    for s in range(n):
+        waits = tuple(DepSpec(f"s{k}", 1.0, 0, 8, 0) for k in range(s))
+        items.append(work(f"s{s}", 4 + s % 5, 20 + 6 * s, depends_on=waits))
+    return items, AllocatorInput(make_days(days), items, [], NOW, 14, at(14, "04:00"))
+
+
+def test_waits_cost_a_few_terms_a_day_not_every_day_before() -> None:
+    """20 Nov: a user's plans took three minutes. Each "waits for" link, each day, summed every day before for both
+    tasks: 492 links over 84 days were 41 million terms, built again each of 12 rounds. Running totals say the same in
+    a few terms a link a day."""
+    from ortools.linear_solver import linear_solver_pb2  # noqa: PLC0415
+
+    from friday.engine.allocator import AllocatorLP, DayIndex  # noqa: PLC0415
+
+    items, inp = chain()
+    caps = day_capacities(inp)
+    lp = AllocatorLP(inp, caps, DayIndex(inp.days), items, {})
+    proto = linear_solver_pb2.MPModelProto()
+    lp.lp.ExportModelToProto(proto)
+    terms = sum(len(c.var_index) for c in proto.constraint)
+    links = sum(len(i.depends_on) for i in items)
+    assert terms <= 4 * links * len(caps)  # summed afresh it was some 80 a link a day
+
+
+def test_the_running_totals_find_the_same_best_allocation_as_the_sums() -> None:
+    """The same rules written sparsely: the same lateness and the same shape score as summing every day before."""
+    from friday.engine import allocator  # noqa: PLC0415
+
+    class Summed(allocator.AllocatorLP):
+        def keep_behind_sources(self) -> None:
+            needs = {it.key: it.need for it in self.todo}
+            for one in self.todo:
+                for dep in one.depends_on:
+                    if dep.key not in needs or dep.required == 0 or needs[dep.key] <= 0 or dep.lag_min > 0:
+                        continue
+                    for d in range(self.A):
+                        mine, theirs = self.days_of(one.key, before=d + 1), self.days_of(dep.key, before=d + 1)
+                        if mine:
+                            self.lp.Add(self.lp.Sum(mine) * needs[dep.key] <= self.lp.Sum(theirs) * one.need
+                                        if theirs else self.lp.Sum(mine) <= 0)  # fmt: skip
+
+    def scores(kind: type) -> list[float]:
+        got: list[float] = []
+        real = kind.minimize
+        kind.minimize = lambda self, terms: got.append(real(self, terms)) or got[-1]  # type: ignore[method-assign]
+        try:
+            items, inp = chain(7, 42)
+            items.append(work("late", 30, 3, depends_on=(DepSpec("s2", 1.0, 0, 8, 0),)))
+            caps = day_capacities(inp)
+            kind(inp, caps, allocator.DayIndex(inp.days), items, {}).solve()
+        finally:
+            kind.minimize = real  # type: ignore[method-assign]
+        return got
+
+    assert scores(Summed) == pytest.approx(scores(allocator.AllocatorLP), abs=1e-6)  # the solver's 1e-12s aside

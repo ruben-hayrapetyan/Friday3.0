@@ -220,10 +220,11 @@ class AllocatorLP:
         for item in todo:
             self.add_item(item, ready.get(item.key, 0))
         self.keep_behind_sources()
-        for d in range(self.A):
-            today = [v for (_, dd), v in self.y.items() if dd == d]
-            if today:
-                self.lp.Add(self.lp.Sum(today) <= caps[d])
+        by_day: dict[int, list[pywraplp.Variable]] = {}
+        for (_, d), v in self.y.items():  # once, not the whole table again for each day
+            by_day.setdefault(d, []).append(v)
+        for d, today in sorted(by_day.items()):
+            self.lp.Add(self.lp.Sum(today) <= caps[d])
 
     def aimed_for(self, due: dict[str, int | None]) -> dict[str, int | None]:
         """Work you aim to finish some days early (a project's Finish early) aims for that day here, so the days are
@@ -240,17 +241,43 @@ class AllocatorLP:
     def keep_behind_sources(self) -> None:
         """A dependent is never further along, as a share of its work, than what it waits on, day by day. The ready
         days only ever move later, so without this a source first placed on its due day pinned its dependents after
-        the due, with weeks of room before it (17 Nov: a chain due after a busy weekend came out late)."""
+        the due, with weeks of room before it (17 Nov: a chain due after a busy weekend came out late).
+
+        Said with each item's running total, one variable a day, so a link compares two of them: summed afresh for
+        every link and every day, a user's 492 links over 84 days were 40,000 rows and 41 million terms, rebuilt each
+        of 12 rounds, and a plan took three minutes (20 Nov). A day neither total moves would repeat the day before."""
         needs = {it.key: it.need for it in self.todo}
+        totals: dict[str, list[pywraplp.Variable | None]] = {}
         for item in self.todo:
             for dep in item.depends_on:
                 if dep.key not in needs or dep.required == 0 or needs[dep.key] <= 0 or dep.lag_min > 0:
                     continue  # a wait with a lag (spacing) is held by its ready day instead
+                mine = totals.get(item.key) or totals.setdefault(item.key, self.running_total(item.key))
+                theirs = totals.get(dep.key) or totals.setdefault(dep.key, self.running_total(dep.key))
+                said: tuple[object, object] = (None, None)  # identity: == on a variable makes a constraint
                 for d in range(self.A):
-                    mine, theirs = self.days_of(item.key, before=d + 1), self.days_of(dep.key, before=d + 1)
-                    if mine:
-                        self.lp.Add(self.lp.Sum(mine) * needs[dep.key] <= self.lp.Sum(theirs) * item.need if theirs else
-                                    self.lp.Sum(mine) <= 0)  # fmt: skip
+                    if mine[d] is None or (mine[d] is said[0] and theirs[d] is said[1]):
+                        continue
+                    said = (mine[d], theirs[d])
+                    self.lp.Add(mine[d] * needs[dep.key] <= theirs[d] * item.need if theirs[d] is not None else
+                                mine[d] <= 0)  # fmt: skip
+
+    def running_total(self, key: str) -> list[pywraplp.Variable | None]:
+        """An item's work up to and including each day: None before its first day, its first day's own variable,
+        then a new one each day it can have work, the day before's on a day it can't."""
+        out: list[pywraplp.Variable | None] = []
+        total = None
+        for d in range(self.A):
+            today = self.y.get((key, d))
+            if today is not None:
+                if total is None:
+                    total = today
+                else:
+                    summed = self.lp.NumVar(0, self.lp.infinity(), "")
+                    self.lp.Add(summed == total + today)
+                    total = summed
+            out.append(total)
+        return out
 
     def whole_day_prices(self) -> dict[str, list[float]]:
         """Per item, the summed points per unit on each day from rules with a whole-day price (inf = forbidden)."""
