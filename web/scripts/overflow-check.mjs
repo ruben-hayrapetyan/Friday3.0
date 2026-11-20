@@ -35,6 +35,11 @@ const widths = (option("--widths") ?? "1440,390").split(",").map(Number)
 // `open` presses every folded row's button (in the page's column, or in the one a selector names); `each` opens every
 // match of a selector in turn (pressing Escape between, or its own button again with `keep`), pressing `after` in each; `keys` are pressed as a person would; `click` is a button's name (its words or aria-label), and one
 // ending in "?" is pressed only if it's there.
+/** Friday working out a new plan, held: the server's status with a plan one generation behind. */
+const replanningNow = async (base) => {
+  const status = await (await fetch(`${base}/api/q/status`)).json()
+  return { status: { ...status, plan_generation: status.generation - 1 } }
+}
 const SETTINGS = ["appearance", "calendars", "tags", "schedule", "repeating", "integrations", "phone", "tokens", "shortcuts", "updates", "advanced"]
 const STATES = [
   { name: "plan day", path: "/", keys: ["d"] },
@@ -47,6 +52,10 @@ const STATES = [
   { name: "plan to-do drawer", path: "/", click: ["To-do list"] },
   { name: "plan menu", path: "/", click: ["Plan…"] },
   { name: "what if", path: "/", click: ["Plan…", "What if"] },
+  // 20 Nov, the user's screenshot: with What if on and a lateness note, "Replanning…" was drawn over Day and 3 days
+  { name: "what if, replanning", path: "/", answer: replanningNow, click: ["Plan…", "What if"] },
+  { name: "what if tried, replanning", path: "/", answer: replanningNow, click: ["Plan…", "What if", "Show the changes?", "dinner with Sam", "Try"] },
+  { name: "plan week, replanning", path: "/", answer: replanningNow, keys: ["w"] },
   { name: "search", path: "/", keys: ["Meta+k"] },
   { name: "what's on this page", path: "/", click: ["Menu?", "What's on this page"] },
   { name: "tour", path: "/", click: ["Menu?", "What's on this page", "Take the tour"], then: ["Next", "Next", "Next"] },
