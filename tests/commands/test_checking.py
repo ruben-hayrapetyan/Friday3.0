@@ -113,3 +113,22 @@ def test_a_removed_copys_ties_move_to_the_kept_one_once_and_its_pins_go(app: App
     assert [p for p in app.table("pins") if p["item_id"] == copy] == []  # its pin goes with it
     ties = sorted((d["item_id"], d["depends_on_id"]) for d in app.table("dependencies"))
     assert ties == sorted([(kept, outline), (kept, reading), (final, kept), (review, kept)])
+
+
+def test_the_same_name_for_two_courses_or_two_days_isnt_a_copy(app: App) -> None:
+    """20 Nov, a user's notes: "HW 12" (CHEM 2090, due Mon) and "hw 12" (MATH 1920, due Tue) were offered as copies:
+    "different tags and due dates would generally imply these are different". One without a tag, or without a due,
+    can still be the other's copy (a calendar's copy of a Canvas assignment often has neither)."""
+
+    def task(title: str, **fields: object) -> int:
+        return int(app.do("add", title=title, preset="Assignment", duration_min=120, **fields)["item"]["id"])
+
+    chem = task("HW 12", area="CHEM 2090", due="2026-11-23T23:59")
+    task("hw 12", area="MATH 1920", due="2026-11-24T23:59")
+    assert app.do("duplicates")["groups"] == []
+    task("HW 12", area="CHEM 2090", due="2026-11-26T23:59")  # its tag, three days later: the next one
+    assert app.do("duplicates")["groups"] == []
+    untagged = task("HW 12", due="2026-11-23T00:00")  # a calendar's copy: no tag, its date
+    undated = task("Hw 12", area="CHEM 2090")
+    groups = app.do("duplicates")["groups"]
+    assert [[i["id"] for i in g["items"]] for g in groups] == [[chem, untagged, undated]]

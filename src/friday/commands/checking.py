@@ -1,11 +1,11 @@
 """Checking your tasks: copies of the same task, and going over what Friday brought in again.
 
 The same deadline on two of your calendars at once (the Mac's iCloud copy of a Google calendar, say) made two tasks
-from one event. `duplicates` finds open tasks with the same words (a repeat's occurrences aren't copies of each
-other); `duplicates_merge` keeps one of each and moves the others' time logged onto it; `not_duplicates` remembers
-that some aren't the same. `review_again` lists every open task Friday brought in from a calendar or mail for you
-to go over once more; `reviewed` ticks them off, keeping them or taking them off your list. Taking a task off never
-touches the calendar it came from.
+from one event. `duplicates` finds open tasks with the same words, tags that don't differ and dues within a day (a
+repeat's occurrences aren't copies of each other); `duplicates_merge` keeps one of each and moves the others' time
+logged onto it; `not_duplicates` remembers that some aren't the same. `review_again` lists every open task Friday
+brought in from a calendar or mail for you to go over once more; `reviewed` ticks them off, keeping them or taking
+them off your list. Taking a task off never touches the calendar it came from.
 """
 
 import json
@@ -22,8 +22,11 @@ from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.rows import item_from_row
 from friday.core.textnorm import identity_text, norm
+from friday.core.time import parse_utc
 from friday.planner.progress import minutes_by_item
 from friday.planner.store import kv_get
+
+SAME_DUE_MIN = 24 * 60  # copies of one task are due within a day of each other (Canvas's 11:59pm, a calendar's date)
 
 
 @query("duplicates")
@@ -48,15 +51,40 @@ def duplicates(ctx: Ctx, inp: Empty) -> DuplicatesOut:
     sources = made_from(ctx)
     read = reading(ctx)
     groups = []
-    for words, copies in by_words.items():
-        ids = tuple(sorted(r["id"] for r in copies))
-        if len(copies) < 2 or ids in apart:
-            continue
-        keep = max(copies, key=lambda r: (done.get(r["id"], 0), sources.get(r["id"]) in read, -r["id"]))["id"]
-        items = [item_out(ctx, item_from_row(r), done.get(r["id"], 0)) for r in copies]
-        groups.append(DuplicateGroup(key=words, keep=keep, items=items))
+    for words, named in by_words.items():
+        for copies in alike(named):
+            ids = tuple(sorted(r["id"] for r in copies))
+            if len(copies) < 2 or ids in apart:
+                continue
+            keep = max(copies, key=lambda r: (done.get(r["id"], 0), sources.get(r["id"]) in read, -r["id"]))["id"]
+            items = [item_out(ctx, item_from_row(r), done.get(r["id"], 0)) for r in copies]
+            groups.append(DuplicateGroup(key=words, keep=keep, items=items))
     groups.sort(key=lambda g: g.key)
     return DuplicatesOut(groups=groups, sources={i.id: sources.get(i.id, "you") for g in groups for i in g.items})
+
+
+def same_one(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """Whether two tasks of the same words can be one task: their tags don't differ (one without a tag can be either:
+    a calendar's copy often has none) and they're due within a day of each other, or one has no due. "HW 12" for
+    CHEM 2090 due Monday and for MATH 1920 due Tuesday are two (20 Nov, a user's notes: "different tags and due dates
+    would generally imply these are different")."""
+    if a["area_id"] is not None and b["area_id"] is not None and a["area_id"] != b["area_id"]:
+        return False
+    if a["due_utc"] and b["due_utc"]:
+        return abs(parse_utc(a["due_utc"]) - parse_utc(b["due_utc"])) < SAME_DUE_MIN
+    return True
+
+
+def alike(named: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    """Tasks of the same words, in sets that can each be one task (`same_one` between every two), oldest first."""
+    sets: list[list[dict[str, Any]]] = []
+    for r in named:
+        home = next((group for group in sets if all(same_one(r, other) for other in group)), None)
+        if home is None:
+            sets.append([r])
+        else:
+            home.append(r)
+    return sets
 
 
 @command("duplicates_merge", affects_plan=True)
