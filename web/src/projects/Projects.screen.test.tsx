@@ -342,7 +342,10 @@ describe("exams", () => {
     const opened = await page()
     await opened.user.click(screen.getByRole("button", { name: "New exam" }))
     const before = await screen.findByRole("dialog", { name: "New exam" })
-    expect(await within(before).findByRole("button", { name: "Focus on its class: Off" }, { timeout: 10_000 })).toBeTruthy() // no rule: plain Off
+    expect(await within(before).findByRole("button", { name: "Before this exam: Other classes' work goes on as usual" }, { timeout: 10_000 })).toBeTruthy() // no rule
+    // 20 Nov, the user, of "Focus on its class": "not sure what that means". Said as the exam's popup says it, with what it does
+    expect(within(before).queryByText(/focus on its class/i)).toBeNull()
+    expect(within(before).getByText("Work for other classes due after it can wait until it's over.")).toBeTruthy()
     opened.unmount()
     await friday.c("rule_add", { text: "focus on exams 5 days before" })
     try {
@@ -351,15 +354,15 @@ describe("exams", () => {
       const dialog = await screen.findByRole("dialog", { name: "New exam" })
       const name = within(dialog).getByPlaceholderText("Name, e.g. MATH 2940 Prelim 2")
       await user.type(name, "CHEM 2090 Prelim 3")
-      expect(await within(dialog).findByRole("button", { name: "Focus on its class: 5 days before (your rule)" }, { timeout: 10_000 })).toBeTruthy()
+      expect(await within(dialog).findByRole("button", { name: "Before this exam: Only this class's work, 5 days before (your rule)" }, { timeout: 10_000 })).toBeTruthy()
       await user.clear(name)
       await user.type(name, "CHEM 2090 Quiz 4") // the rule is for exams by their name: not a quiz's
-      const focus = await within(dialog).findByRole("button", { name: "Focus on its class: Off (your rule)" }, { timeout: 10_000 })
+      const focus = await within(dialog).findByRole("button", { name: "Before this exam: Other classes' work goes on as usual (your rule)" }, { timeout: 10_000 })
       await user.click(focus)
       expect(within(dialog).getByRole("radio", { name: /^As your other exams.*isn't for exams named so/ })).toBeTruthy()
-      expect(within(dialog).getByRole("dialog", { name: "Focus on its class" }).style.overflowY).toBe("auto") // its 9 choices scroll in its height
+      expect(within(dialog).getByRole("dialog", { name: "Before this exam" }).style.overflowY).toBe("auto") // its 9 choices scroll in its height
       await user.click(within(dialog).getByRole("radio", { name: /^3 days before/ }))
-      expect(within(dialog).getByRole("button", { name: "Focus on its class: 3 days before" })).toBeTruthy()
+      expect(within(dialog).getByRole("button", { name: "Before this exam: Only this class's work, 3 days before" })).toBeTruthy()
       sent.length = 0
       await user.click(within(dialog).getByRole("button", { name: "Add exam" }))
       const set = (await waitForSent("settings_set")).body as { key: string; value: Record<string, number | null> }

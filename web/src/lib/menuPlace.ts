@@ -38,12 +38,18 @@ export function useMenuPlace(open: boolean, button: RefObject<HTMLElement | null
     const el = list.current
     const at = button.current
     if (!open || !el || !at) return
-    const place = () => {
+    // Its own scroll isn't the page's: placing it again clears its height to measure it, and the browser put a
+    // scrolled list back at its top, so a long list never scrolled (20 Nov, the user: "the scroll for the dropdown is
+    // bad", New exam's focus list). When the page scrolls, it's placed again where it was scrolled to.
+    const place = (event?: Event) => {
+      if (event?.target instanceof Node && el.contains(event.target)) return
+      const scrolled = el.scrollTop
       const b = at.getBoundingClientRect()
       Object.assign(el.style, { position: "fixed", right: "auto", bottom: "auto", top: "0px", left: "0px", maxHeight: "", minWidth: `${b.width}px` })
       const origin = el.getBoundingClientRect() // where (0, 0) lands: the window's corner, or a transformed parent's
       const spot = placeList(b, el.offsetWidth, el.scrollHeight, window.innerWidth, window.innerHeight)
       Object.assign(el.style, { top: `${spot.top - origin.top}px`, left: `${spot.left - origin.left}px`, maxHeight: `${spot.maxHeight}px`, overflowY: "auto", overscrollBehavior: "contain" })
+      el.scrollTop = scrolled
     }
     place()
     window.addEventListener("scroll", place, true)

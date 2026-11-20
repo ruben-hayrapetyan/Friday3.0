@@ -11,7 +11,7 @@ import { useAreas, useHorizon, useSettings } from "@/hooks/queries"
 import { useClock } from "@/hooks/useClock"
 import { useCommand } from "@/hooks/useCommand"
 import { dur, when } from "@/lib/format"
-import { type FocusPick, focusChoices, focusWords } from "@/projects/examFocus"
+import { type FocusPick, focusChoices, focusValue } from "@/projects/examFocus"
 import { countdown, course, prepState, sitting, summary } from "@/projects/exams"
 import { TONE, useTag } from "@/projects/parts"
 import { useRules } from "@/rules/RulesPage"
@@ -101,7 +101,7 @@ export function ExamPanel({ exam }: { exam: Exam }) {
         </SettingRow>
         {/* what "exam focus" does, said as what you'd see (17 Nov: "what does exam focus even mean, its very confusing"),
             set for this exam alone (19 Nov); the rule in Rules is what an exam without its own follows */}
-        <SettingRow label="Before this exam" value={focusDays != null ? `Only its class's work, ${focusWords(focusDays)}` : "Other classes' work goes on as usual"} open={open === "focus"} onToggle={() => setOpen(open === "focus" ? null : "focus")} note={`For this exam only. Work for other classes due after it waits until it's over${exam.focus_own || ruleDays == null ? "" : `; now as your other exams (Rules)`}`}>
+        <SettingRow label="Before this exam" value={focusValue(focusDays)} open={open === "focus"} onToggle={() => setOpen(open === "focus" ? null : "focus")} note={`For this exam only. Work for other classes due after it waits until it's over${exam.focus_own || ruleDays == null ? "" : `; now as your other exams (Rules)`}`}>
           <Choices
             label="Before this exam"
             value={!exam.focus_own ? "rule" : focusDays == null ? "none" : focusDays}

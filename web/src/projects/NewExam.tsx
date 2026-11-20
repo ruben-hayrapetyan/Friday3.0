@@ -1,5 +1,5 @@
 // A new exam: its name, day, start and length, its course's tag, about how much prep it needs, and how many days
-// before it only its class's work is planned (its exam focus, as its popup sets it after). The exam goes on the
+// before it only this class's work is planned (its exam focus, as its popup sets it after). The exam goes on the
 // calendar; the prep is a task due when it starts, which Friday never plans after it. Escape or a click outside closes
 // it.
 
@@ -12,7 +12,7 @@ import { undoAll } from "@/hooks/useCommand"
 import { useAreas, useSettings } from "@/hooks/queries"
 import { Choices, DropField } from "@/projects-v2/Rows"
 import { useRules } from "@/rules/RulesPage"
-import { capital, type FocusPick, focusChoices, focusOf, focusWords } from "./examFocus"
+import { type FocusPick, focusChoices, focusOf, focusValue } from "./examFocus"
 import { dur } from "@/lib/format"
 import { addDays, fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
@@ -43,7 +43,7 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
   const ruleOn = (useRules().data ?? []).some((r) => r.type === "exam_focus" && r.enabled)
   const each = ((useSettings().data as Record<string, unknown> | undefined)?.exam_focus_each ?? {}) as Record<string, number | null>
   const days = focusOf(focus, ruleDays)
-  const focusShown = `${days == null ? "Off" : capital(focusWords(days))}${focus === "rule" && ruleOn ? " (your rule)" : ""}` // no rule: plain Off
+  const focusShown = `${focusValue(days)}${focus === "rule" && ruleOn ? " (your rule)" : ""}`
   useEffect(() => {
     const escape = (e: KeyboardEvent) => e.key === "Escape" && onClose()
     window.addEventListener("keydown", escape, true)
@@ -136,15 +136,20 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
             Friday plans it in the days before, never after. Add study guides or practice exams on the card after.
           </span>
         </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 8, marginRight: "auto", flexWrap: "wrap" }}>
-            <span className="fr-kicker">Focus on its class</span>
-            <DropField label="Focus on its class" value={focusShown}>
-              {(close) => (
-                <Choices label="Focus on its class" value={focus} onPick={(d: FocusPick) => (setFocus(d), close())} options={focusChoices(ruleDays, ruleOn)} />
-              )}
-            </DropField>
+        {/* said as the exam's popup says it, on a row of its own with what it does (20 Nov, the user, of "Focus on its
+            class": "not sure what that means") */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span className="fr-kicker" style={{ width: 120 }}>
+            Before this exam
           </span>
+          <DropField label="Before this exam" value={focusShown}>
+            {(close) => <Choices label="Before this exam" value={focus} onPick={(d: FocusPick) => (setFocus(d), close())} options={focusChoices(ruleDays, ruleOn)} />}
+          </DropField>
+          <span className="fr-kicker" style={{ flexBasis: "100%" }}>
+            Work for other classes due after it can wait until it's over.
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => onClose()}>
             Cancel
           </button>
