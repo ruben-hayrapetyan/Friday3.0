@@ -1363,3 +1363,9 @@ class BreakSuggestionInput(Model):
 
 class VacationDayInput(Model):
     date: calendar_date
+
+
+class ExamFocusForInput(Model):
+    """An exam's name, to say what your exam focus rule gives an exam so named (query exam_focus_for)."""
+
+    title: str
