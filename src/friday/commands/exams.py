@@ -4,7 +4,7 @@ much is done and left, when the last of it is planned, and whether that is befor
 import json
 
 from friday.api.types import Empty
-from friday.api.views import ExamOut, ExamPrepOut
+from friday.api.views import ExamFocusFor, ExamFocusForInput, ExamOut, ExamPrepOut
 from friday.commands.fields import item_out
 from friday.commands.horizon import finishes
 from friday.commands.registry import Ctx, query
@@ -12,7 +12,7 @@ from friday.core.db import rows
 from friday.core.guess import EXAM, course_word
 from friday.core.items import Item
 from friday.core.rows import item_from_row
-from friday.core.settings import exam_focus_days, exam_focus_start
+from friday.core.settings import exam_focus_days, exam_focus_of, exam_focus_start
 from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.progress import minutes_by_item, remaining_minutes
 from friday.planner.store import current_plan
@@ -32,8 +32,45 @@ def exams(ctx: Ctx, inp: Empty) -> list[ExamOut]:
     left = {i: remaining_minutes(it, done.get(i, 0)) or 0 for i, it in work.items() if it.status == "todo"}
     finish = finishes(ctx, left)
     saved = current_plan(ctx.conn, ctx.user_id)
-    late = {int(k) for k in (json.loads(saved["report"]).get("late_hours", {}) if saved else {})}
-    return [exam_out(ctx, e, [work[i] for i in prep.get(e.id or 0, [])], done, left, finish, late) for e in found]
+    late = {int(k): float(v) for k, v in (json.loads(saved["report"]).get("late_hours", {}) if saved else {}).items()}
+    ends = last_ends(ctx)
+    return [exam_out(ctx, e, [work[i] for i in prep.get(e.id or 0, [])], done, left, finish, late, ends) for e in found]
+
+
+@query("exam_focus_for")
+def exam_focus_for(ctx: Ctx, inp: ExamFocusForInput) -> ExamFocusFor:
+    """What your exam focus rule gives an exam of this name: its days, or None."""
+    return ExamFocusFor(days=rule_days(ctx, inp.title))
+
+
+def rule_days(ctx: Ctx, title: str) -> int | None:
+    """The rule's days for an exam of this name, its own days aside (core/settings.exam_focus_days without them)."""
+    focus = exam_focus_of(ctx.settings)
+    return focus.days_before if focus.on and focus.finds(title) else None
+
+
+def last_ends(ctx: Ctx) -> dict[int, int]:
+    """Each item's last planned minute in the saved plan (UTC minutes)."""
+    plan = current_plan(ctx.conn, ctx.user_id)
+    if not plan:
+        return {}
+    found = rows(
+        ctx.conn, "SELECT item_id, max(end_utc) AS last FROM blocks WHERE plan_id = ? GROUP BY item_id", [plan["id"]]
+    )
+    return {r["item_id"]: parse_utc(r["last"]) for r in found}
+
+
+def unfit_minutes(prep: list[Item], late: dict[int, float], ends: dict[int, int]) -> int:
+    """Prep minutes the plan has no room for: each late prep's late hours, less the part that's only late because its
+    last block ends after its own due (that part is planned, just after)."""
+    out = 0.0
+    for p in prep:
+        hours = late.get(p.id or 0, 0.0)
+        if not hours:
+            continue
+        after_due = max(0, ends[p.id or 0] - parse_utc(p.due_utc)) if p.due_utc and (p.id or 0) in ends else 0
+        out += max(0.0, hours * 60 - after_due)
+    return round(out)
 
 
 def prep_of(ctx: Ctx, exam: Item) -> list[Item]:
@@ -112,8 +149,10 @@ def exam_out(
     done: dict[int, int],
     left: dict[int, int],
     finish: dict[int, str],
-    late: set[int] = frozenset(),  # type: ignore[assignment]
+    late: dict[int, float] | None = None,
+    ends: dict[int, int] | None = None,
 ) -> ExamOut:
+    late = late or {}
     prep = sorted(prep, key=lambda p: (p.due_utc or "9999", p.id or 0))
     open_prep = [p for p in prep if p.status == "todo" and left.get(p.id or 0, 0) > 0]
     planned = [finish[p.id or 0] for p in open_prep if (p.id or 0) in finish]
@@ -143,6 +182,8 @@ def exam_out(
         focus_from=focus_from(ctx, exam),
         focus_days=each.get(str(exam.id), exam_focus_days(ctx.settings, exam.id, exam.title)),
         focus_own=str(exam.id) in each,
+        rule_days=rule_days(ctx, exam.title),
+        unfit_min=unfit_minutes(open_prep, late, ends or {}) if status == "late" else 0,
     )
 
 

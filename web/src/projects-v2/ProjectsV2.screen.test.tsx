@@ -6,6 +6,7 @@
 import { configure, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
+import { addDays } from "@/lib/time"
 import { friday, openFriday, sent, waitForSent } from "@/test/friday"
 
 configure({ asyncUtilTimeout: 8000 })
@@ -261,6 +262,33 @@ describe("the Projects & exams page", () => {
     await waitFor(async () => expect((await settings()).exam_focus_each[id]).toBeUndefined())
     expect(await within(first.panel).findByRole("button", { name: "Before this exam: Other classes' work goes on as usual" }, { timeout: 10_000 })).toBeTruthy()
     first.unmount()
+  })
+
+  // 19 Nov, a user's notes: the button said "Other classes' work goes on as usual" while "As your other exams: 5 days
+  // before, from your rule in Rules" was chosen: the rule is for exams by their name, and a quiz's isn't one
+  it("says what your rule gives this exam, by its name, the same in its button, its choices and its note", async () => {
+    const { today } = await friday.q<{ today: string }>("calendar", { start: "2026-01-01", days: "1" })
+    const on = addDays(today, 3)
+    const quiz = (await friday.c<{ result: { item: { id: number } } }>("add", { title: "PHYS 1112 Quiz 6", preset: "Exam", start: `${on}T10:00`, end: `${on}T11:00` })).result
+    await friday.c("rule_add", { text: "focus on exams 5 days before" })
+    try {
+      const { user, panel, unmount } = await examPanel("PHYS 1112 Quiz 6")
+      const row = within(panel).getByRole("button", { name: "Before this exam: Other classes' work goes on as usual" })
+      expect(within(panel).queryByText(/now as your other exams/)).toBeNull()
+      await user.click(row)
+      const rule = within(panel).getByRole("radio", { name: /^As your other exams/ })
+      expect(rule.getAttribute("aria-checked")).toBe("true")
+      expect(rule.textContent).toContain("isn't for exams named so")
+      expect(rule.textContent).not.toContain("5 days before")
+      unmount()
+      const prelim = await examPanel()
+      expect(within(prelim.panel).getByRole("button", { name: "Before this exam: Only its class's work, 5 days before" })).toBeTruthy()
+      expect(within(prelim.panel).getByText(/now as your other exams \(Rules\)/)).toBeTruthy()
+      prelim.unmount()
+    } finally {
+      await friday.c("rule_remove", { name: "you:exam-focus" })
+      await friday.c("drop", { id: quiz.item.id })
+    }
   })
 
   it("makes an ongoing project, opens it, and says each option's value", async () => {

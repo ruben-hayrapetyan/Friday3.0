@@ -11,6 +11,7 @@ import { useAreas, useHorizon, useSettings } from "@/hooks/queries"
 import { useClock } from "@/hooks/useClock"
 import { useCommand } from "@/hooks/useCommand"
 import { dur, when } from "@/lib/format"
+import { type FocusPick, focusChoices, focusWords } from "@/projects/examFocus"
 import { countdown, course, prepState, sitting, summary } from "@/projects/exams"
 import { TONE, useTag } from "@/projects/parts"
 import { useRules } from "@/rules/RulesPage"
@@ -27,10 +28,6 @@ function changedPrep(client: QueryClient, prepId: number, change: Partial<Item> 
   )
 }
 
-const FOCUS = [0, 1, 2, 3, 5, 7] // days before an exam its class has to itself; 0 its own day, until it starts
-const daysWord = (d: number) => (d === 1 ? "the day" : `${d} days`)
-/** "On its day, until it starts", "The day before", "3 days before" (19 Nov: an exam's own day). */
-const focusWords = (d: number) => (d === 0 ? "on its day, until it starts" : `${daysWord(d)} before`)
 
 export function ExamPanel({ exam }: { exam: Exam }) {
   const { today, setPlace } = useShell()
@@ -51,8 +48,10 @@ export function ExamPanel({ exam }: { exam: Exam }) {
   // this exam's own days of focus, else the rule's (19 Nov, a user's notes: "what is the point of this dropdown if it
   // affects all classes' exams and not just this one?"; your answer: "do each exam"); someone without exams never
   // sees it, as it's only in an exam's popup
-  const focus = (useRules().data ?? []).find((r) => r.type === "exam_focus")
-  const ruleDays = Number((focus?.reading as { amount?: number } | null)?.amount ?? focus?.number?.value ?? 3)
+  const focus = (useRules().data ?? []).find((r) => r.type === "exam_focus" && r.enabled) // the one the server reads: the first switched on
+  // what the rule gives this exam, as the server and the planner read it (by its name): the popup's own reading of the
+  // rule had said "5 days before" of an exam the rule isn't for (19 Nov, a user's notes)
+  const ruleDays = exam.rule_days ?? null
   const focusDays = exam.focus_days // null: none for this exam
   const each = ((useSettings().data as Record<string, unknown> | undefined)?.exam_focus_each ?? {}) as Record<string, number>
   const save = useCommand("settings_set", {
@@ -60,11 +59,11 @@ export function ExamPanel({ exam }: { exam: Exam }) {
     optimistic: (client, input) => {
       const days = (input.value as Record<string, number>)[String(e.id)]
       const own = String(e.id) in (input.value as Record<string, number | null>)
-      client.setQueryData<Exam[]>(["exams"], (list) => list?.map((x) => (x.item.id !== e.id ? x : { ...x, focus_days: own ? days : focus?.enabled ? ruleDays : null, focus_own: own })))
+      client.setQueryData<Exam[]>(["exams"], (list) => list?.map((x) => (x.item.id !== e.id ? x : { ...x, focus_days: own ? days : ruleDays, focus_own: own })))
     },
   })
   // a number of days (0 its own day), or none, for this exam alone; "As your other exams" follows the rule again
-  const pickFocus = (pick: number | "none" | "rule") => {
+  const pickFocus = (pick: FocusPick) => {
     const rest = Object.fromEntries(Object.entries(each).filter(([k]) => k !== String(e.id)))
     save({ key: "exam_focus_each", value: pick === "rule" ? rest : { ...rest, [String(e.id)]: pick === "none" ? null : pick } })
   }
@@ -102,16 +101,12 @@ export function ExamPanel({ exam }: { exam: Exam }) {
         </SettingRow>
         {/* what "exam focus" does, said as what you'd see (17 Nov: "what does exam focus even mean, its very confusing"),
             set for this exam alone (19 Nov); the rule in Rules is what an exam without its own follows */}
-        <SettingRow label="Before this exam" value={focusDays != null ? `Only its class's work, ${focusWords(focusDays)}` : "Other classes' work goes on as usual"} open={open === "focus"} onToggle={() => setOpen(open === "focus" ? null : "focus")} note={`For this exam only. Work for other classes due after it waits until it's over${exam.focus_own ? "" : focus?.enabled ? `; now as your other exams (Rules)` : ""}`}>
+        <SettingRow label="Before this exam" value={focusDays != null ? `Only its class's work, ${focusWords(focusDays)}` : "Other classes' work goes on as usual"} open={open === "focus"} onToggle={() => setOpen(open === "focus" ? null : "focus")} note={`For this exam only. Work for other classes due after it waits until it's over${exam.focus_own || ruleDays == null ? "" : `; now as your other exams (Rules)`}`}>
           <Choices
             label="Before this exam"
             value={!exam.focus_own ? "rule" : focusDays == null ? "none" : focusDays}
-            onPick={(d: number | "none" | "rule") => (pickFocus(d), setOpen(null))}
-            options={[
-              { value: "rule" as number | "none" | "rule", label: "As your other exams", desc: focus?.enabled ? `${focusWords(ruleDays)}, from your rule in Rules`.replace(/^./, (c) => c.toUpperCase()) : "Other classes go on as usual (no rule in Rules)" },
-              { value: "none" as number | "none" | "rule", label: "Off", desc: "Other classes go on as usual" },
-              ...FOCUS.map((d) => ({ value: d as number | "none" | "rule", label: focusWords(d).replace(/^./, (c) => c.toUpperCase()), desc: "Only the exam's class is planned then" })),
-            ]}
+            onPick={(d: FocusPick) => (pickFocus(d), setOpen(null))}
+            options={focusChoices(ruleDays, !!focus?.enabled)}
           />
         </SettingRow>
       </Rows>

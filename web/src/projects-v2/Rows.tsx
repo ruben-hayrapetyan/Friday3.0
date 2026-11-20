@@ -137,6 +137,8 @@ export function DropField({ label, value, children }: { label: string; value: st
   const escape = useMenuClose(open, setOpen, box, button)
   useMenuPlace(open, button, panel)
   const close = () => (setOpen(false), button.current?.focus())
+  // its panel scrolls inside its own height: placed menus are held to 280px (lib/menuPlace), and a long list (New
+  // exam's exam focus, 19 Nov) ran out of it, over the window
   return (
     <div ref={box} className="fr-menu" onKeyDown={escape}>
       <button ref={button} className="fr-menu-button tnum" aria-haspopup="dialog" aria-expanded={open} aria-label={`${label}: ${value}`} onClick={() => setOpen(!open)}>
@@ -144,7 +146,7 @@ export function DropField({ label, value, children }: { label: string; value: st
         <Icon name="caret-down" size={12} />
       </button>
       {open && (
-        <div ref={panel} className="fr-float" role="dialog" aria-label={label} style={{ position: "absolute", zIndex: 40, top: "calc(100% + 4px)", right: 0, width: "min(300px, calc(100vw - 24px))", padding: 10, borderRadius: "var(--radius-md)" }}>
+        <div ref={panel} className="fr-float" role="dialog" aria-label={label} style={{ position: "absolute", zIndex: 40, top: "calc(100% + 4px)", right: 0, width: "min(300px, calc(100vw - 24px))", padding: 10, borderRadius: "var(--radius-md)", overflowY: "auto", overscrollBehavior: "contain" }}>
           {children(close)}
         </div>
       )}

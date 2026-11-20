@@ -1,14 +1,18 @@
-// A new exam: its name, day, start and length, its course's tag, and about how much prep it needs. The exam goes on
-// the calendar; the prep is a task due when it starts, which Friday never plans after it. Escape or a click outside
-// closes it.
+// A new exam: its name, day, start and length, its course's tag, about how much prep it needs, and how many days
+// before it only its class's work is planned (its exam focus, as its popup sets it after). The exam goes on the
+// calendar; the prep is a task due when it starts, which Friday never plans after it. Escape or a click outside closes
+// it.
 
-import { useQueryClient } from "@tanstack/react-query"
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
-import { command, errorWords } from "@/api/client"
+import { command, errorWords, query } from "@/api/client"
 import { useToast } from "@/components/Toasts"
 import { Chip, H } from "@/components/fr/controls"
 import { undoAll } from "@/hooks/useCommand"
-import { useAreas } from "@/hooks/queries"
+import { useAreas, useSettings } from "@/hooks/queries"
+import { Choices, DropField } from "@/projects-v2/Rows"
+import { useRules } from "@/rules/RulesPage"
+import { capital, type FocusPick, focusChoices, focusOf, focusWords } from "./examFocus"
 import { dur } from "@/lib/format"
 import { addDays, fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
@@ -31,6 +35,15 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
   const [length, setLength] = useState(90)
   const [area, setArea] = useState<string | null>(null)
   const [prep, setPrep] = useState(240) // minutes; typed or a step of an hour at a time
+  // its exam focus (19 Nov, a user's notes: "add dropdown for customizing the exam focus ... e.g. start focusing on
+  // that class's work 3 days before"): as your rule gives an exam of this name, unless you pick its own
+  const [focus, setFocus] = useState<FocusPick>("rule")
+  const named = title.trim()
+  const ruleDays = useQuery({ queryKey: ["exam_focus_for", named], queryFn: () => query("exam_focus_for", { title: named }), placeholderData: keepPreviousData }).data?.days ?? null
+  const ruleOn = (useRules().data ?? []).some((r) => r.type === "exam_focus" && r.enabled)
+  const each = ((useSettings().data as Record<string, unknown> | undefined)?.exam_focus_each ?? {}) as Record<string, number | null>
+  const days = focusOf(focus, ruleDays)
+  const focusShown = `${days == null ? "Off" : capital(focusWords(days))}${focus === "rule" && ruleOn ? " (your rule)" : ""}` // no rule: plain Off
   useEffect(() => {
     const escape = (e: KeyboardEvent) => e.key === "Escape" && onClose()
     window.addEventListener("keydown", escape, true)
@@ -55,6 +68,10 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
       if (id && prep) {
         const prepped = await command("add", { title: `Prep: ${title}`, preset: "Exam prep", due: start, duration_min: prep, area, before: [id] })
         if (prepped.command_id !== null) ids.push(prepped.command_id)
+      }
+      if (id && focus !== "rule") {
+        const set = await command("settings_set", { key: "exam_focus_each", value: { ...each, [String(id)]: focus === "none" ? null : focus } })
+        if (set.command_id !== null) ids.push(set.command_id)
       }
       toast({ message: prep ? "Exam and its prep added" : "Exam added", action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
       onClose(true)
@@ -90,7 +107,9 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
                   {dur(m)}
                 </Chip>
               ))}
-              <LengthInput value={length} onPick={(m) => m && setLength(m)} width={96} />
+              {/* on the buttons' row, as narrow as a length needs (19 Nov, a user's notes: "move text box for length of
+                  the exam to the same line as the others ... make it less wide"): its placeholder had widened it */}
+              <LengthInput value={length} onPick={(m) => m && setLength(m)} width={84} placeholder="e.g. 2h 15m" />
             </div>
           </div>
         </div>
@@ -117,7 +136,15 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
             Friday plans it in the days before, never after. Add study guides or practice exams on the card after.
           </span>
         </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8, marginRight: "auto", flexWrap: "wrap" }}>
+            <span className="fr-kicker">Focus on its class</span>
+            <DropField label="Focus on its class" value={focusShown}>
+              {(close) => (
+                <Choices label="Focus on its class" value={focus} onPick={(d: FocusPick) => (setFocus(d), close())} options={focusChoices(ruleDays, ruleOn)} />
+              )}
+            </DropField>
+          </span>
           <button className="btn btn-ghost" onClick={() => onClose()}>
             Cancel
           </button>

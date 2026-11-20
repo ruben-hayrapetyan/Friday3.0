@@ -293,8 +293,24 @@ class ExamOut(Model):
     planned_finish: str | None  # when the last prep is planned to end, once all of it is planned
     status: Literal["no_prep", "ready", "on_track", "late", "unplanned"]
     focus_from: str | None  # when exam focus starts for it (other courses wait): its own days, else the rule's
-    focus_days: int | None = None  # its days of focus: its own (0 for none), else the rule's, else None (19 Nov)
+    focus_days: int | None = None  # its days of focus (0: its own day): its own, else the rule's; None: none (19 Nov)
     focus_own: bool = False  # it has days of its own, not the rule's
+    # what your exam focus rule gives it, by its name: what "As your other exams" means for it; None: the rule is off,
+    # or isn't for an exam so named (19 Nov, a user's notes: the popup said the rule's 5 days while the exam had none)
+    rule_days: int | None = None
+    # prep the plan has no room for before it (the learned cushion included): said when the rest finishes in time
+    # (19 Nov, a user's notes: "Prep runs past the exam: it's planned to finish 18:30" of an exam at 19:00)
+    unfit_min: int = 0
+
+
+class ExamFocusFor(Model):
+    """What your exam focus rule gives an exam of this name (New exam's "As your other exams")."""
+
+    days: int | None  # None: the rule is off, or isn't for an exam so named
+
+
+class ExamFocusForInput(Model):
+    title: str
 
 
 class WeekLoad(Model):

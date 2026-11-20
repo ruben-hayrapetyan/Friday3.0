@@ -76,8 +76,17 @@ export function summary(exam: Exam, states: PrepState[], today: string): { text:
       return { text: "Nothing to prepare yet. Add a study guide or a practice exam.", tone: "quiet" }
     case "ready":
       return { text: "All prep done.", tone: "good" }
-    case "late":
-      return { text: `Prep runs past the exam: it's planned to finish ${when(exam.planned_finish as string, today)}.`, tone: "due" }
+    case "late": {
+      // late, yet the planned part finishes in time: some has no room before the exam (the learned cushion, say), or
+      // some is after its own earlier due (19 Nov, a user's notes: "Prep runs past the exam: it's planned to finish
+      // 18:30" of an exam at 19:00: "this is technically not running past the exam")
+      const finish = exam.planned_finish as string
+      const past = finish.length > 10 ? finish > start : finish > start.slice(0, 10)
+      const unfit = exam.unfit_min ?? 0
+      if (!past && unfit > 0) return { text: `${dur(unfit)} of prep doesn't fit before the exam; the rest is planned to finish ${when(finish, today)}.`, tone: "due" }
+      if (!past) return { text: `Some prep is planned after its own due; all of it finishes ${when(finish, today)}, before the exam.`, tone: "warn" }
+      return { text: `Prep runs past the exam: it's planned to finish ${when(finish, today)}.`, tone: "due" }
+    }
     case "unplanned":
       return { text: `${dur(unplaced || exam.remaining_min)} of prep isn't planned yet.`, tone: "warn" }
     default: {
