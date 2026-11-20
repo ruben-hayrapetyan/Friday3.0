@@ -3,6 +3,7 @@
 // dealing with one sends its command, and the list moves on.
 import { screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
+import { fromMin, toMin } from "@/lib/time"
 import { friday, openFriday, waitForSent } from "@/test/friday"
 
 type Suggestion = { id: number; command: string; input: Record<string, unknown> }
@@ -317,5 +318,31 @@ describe("the Inbox in a narrow window", () => {
     expect(screen.queryByRole("list", { name: "Waiting for you" })).toBeNull()
     await user.click(back)
     expect(await screen.findByRole("list", { name: "Waiting for you" })).toBeTruthy()
+  })
+})
+
+// 20 Nov, a user's notes: an exam's "brain dump study" stayed "2h late" after the exam; your answer: "Archive it, say
+// so" (H232). Whole system: the test Friday's own background jobs archive it once its due has passed.
+describe("work archived when its due passed", () => {
+  it("says it in the Inbox, counted, and brings it back or lets the note go", { timeout: 120_000 }, async () => {
+    const { now } = await friday.q<{ now: string }>("calendar", { start: "2026-01-01", days: "1" }) // its clock, local
+    const past = fromMin(toMin(now) - 60) // an hour ago: its due has passed
+    const add = (title: string) => friday.c<{ result: { item: { id: number } } }>("add", { title, preset: "Exam prep", due: past, duration_min: 60 })
+    const [kept, gone] = [(await add("CHEM 2090 brain dump study")).result.item.id, (await add("CHEM 2090 formula sheet")).result.item.id]
+    // within a minute, as the jobs run
+    await waitFor(async () => expect((await friday.q<{ archived: { id: number }[] }>("inbox")).archived.map((a) => a.id)).toEqual(expect.arrayContaining([kept, gone])), { timeout: 90_000, interval: 2000 })
+    const { user } = await openInbox()
+    const box = await screen.findByRole("region", { name: "Archived at its due" }, { timeout: 10_000 })
+    const one = within(box).getByRole("group", { name: "CHEM 2090 brain dump study" })
+    expect(within(one).getByText("Its exam is over")).toBeTruthy()
+    await user.click(within(one).getByRole("button", { name: "Bring back" }))
+    expect((await waitForSent("archived_restore")).body).toEqual({ id: kept })
+    await waitFor(async () => expect((await friday.q<{ item: { status: string; expires: boolean | null } }>("item", { id: String(kept) })).item).toMatchObject({ status: "todo", expires: false }))
+    const other = await within(box).findByRole("group", { name: "CHEM 2090 formula sheet" })
+    await user.click(within(other).getByRole("button", { name: "OK" }))
+    expect((await waitForSent("archived_ok")).body).toEqual({ id: gone })
+    await waitFor(() => expect(screen.queryByRole("group", { name: "CHEM 2090 formula sheet" })).toBeNull()) // at once
+    expect((await friday.q<{ item: { status: string } }>("item", { id: String(gone) })).item.status).toBe("dropped")
+    await friday.c("drop", { id: kept })
   })
 })

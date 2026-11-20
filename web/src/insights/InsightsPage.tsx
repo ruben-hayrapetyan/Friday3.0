@@ -40,7 +40,6 @@ const TABS = [
   { value: "week", label: "This week" },
 ] as const
 type Tab = (typeof TABS)[number]["value"]
-const HOURS = Array.from({ length: 16 }, (_, i) => String(i + 8).padStart(2, "0"))
 
 export function InsightsPage() {
   const { today } = useShell()
@@ -94,7 +93,7 @@ export function InsightsPage() {
               <Accuracy kinds={data.by_kind} />
             </Section>
             <Section title="When you get things done" note={`Time worked in each hour, the last ${data.weeks} weeks together`} right={<Legend />}>
-              <Heat heat={data.heat} weeks={data.weeks} />
+              <Heat heat={data.heat} hours={data.heat_hours ?? Array.from({ length: 16 }, (_, i) => i + 8)} weeks={data.weeks} />
               <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>{data.best_hours ?? "Not enough recorded work yet to see a pattern."}</span>
             </Section>
             <Section title="What Friday learned" note="Suggestions from how you actually work. Nothing changes until you approve.">
@@ -185,32 +184,33 @@ function Legend() {
   )
 }
 
-function Heat({ heat, weeks }: { heat: number[][]; weeks: number }) {
+// the hours you work, 8am to 11pm at least: earlier, or past midnight, when you work then (20 Nov, a user's notes)
+function Heat({ heat, hours, weeks }: { heat: number[][]; hours: number[]; weeks: number }) {
   const top = Math.max(1, ...heat.flat())
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "40px repeat(16, minmax(0,1fr))", gap: 3, alignItems: "center" }}>
+    <div style={{ display: "grid", gridTemplateColumns: `40px repeat(${hours.length}, minmax(0,1fr))`, gap: 3, alignItems: "center" }}>
       <span />
-      {HOURS.map((h, i) => (
+      {hours.map((h, i) => (
         <span key={h} className="tnum fr-heat-hour" data-between={i % 2 ? "" : undefined} style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
-          {shortHour(Number(h))}
+          {shortHour(h)}
         </span>
       ))}
       {heat.map((row, d) => (
-        <Row key={DAYS[d]} day={DAYS[d]} row={row} top={top} weeks={weeks} />
+        <Row key={DAYS[d]} day={DAYS[d]} row={row} hours={hours} top={top} weeks={weeks} />
       ))}
     </div>
   )
 }
 
 /** An hour's cell says its weeks (16 Nov: "Mon 11pm, 357 min" was three Mondays added up, read as one hour). */
-function Row({ day, row, top, weeks }: { day: string; row: number[]; top: number; weeks: number }) {
+function Row({ day, row, hours, top, weeks }: { day: string; row: number[]; hours: number[]; top: number; weeks: number }) {
   return (
     <>
       <span style={{ fontSize: 11, color: "var(--color-neutral-400)" }}>{day}</span>
       {row.map((m, h) => (
         <span
           key={h}
-          title={`${day} ${clockTime(`${HOURS[h]}:00`)}: ${m ? dur(m) : "nothing"} in the last ${weeks} weeks`}
+          title={`${day} ${hours[h] < hours[0] ? "night, " : ""}${clockTime(`${String(hours[h]).padStart(2, "0")}:00`)}: ${m ? dur(m) : "nothing"} in the last ${weeks} weeks`}
           style={{ height: 22, borderRadius: 4, background: m ? `color-mix(in srgb, var(--color-accent) ${Math.round(8 + (m / top) * 92)}%, transparent)` : "color-mix(in srgb, var(--color-text) 4%, transparent)" }}
         />
       ))}

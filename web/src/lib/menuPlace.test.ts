@@ -7,7 +7,7 @@ const button = (top: number, left: number) => ({ top, bottom: top + 28, left, ri
 
 describe("where a dropdown's list goes", () => {
   it("opens below its button, its right edge at the button's", () => {
-    expect(placeList(button(100, 400), 200, 150, 1440, 900)).toEqual({ top: 132, left: 320, maxHeight: 900 - 12 - 132 })
+    expect(placeList(button(100, 400), 200, 150, 1440, 900)).toEqual({ top: 132, left: 320, maxHeight: 280 })
   })
   it("opens above when there's no room below", () => {
     const spot = placeList(button(820, 400), 200, 150, 1440, 900)
@@ -20,6 +20,12 @@ describe("where a dropdown's list goes", () => {
   it("a long list scrolls in the room there is, rather than running off the bottom", () => {
     const spot = placeList(button(400, 400), 200, 2000, 1440, 900)
     expect(spot.top).toBe(432)
-    expect(spot.maxHeight).toBe(900 - 12 - 432)
+    expect(spot.maxHeight).toBe(280)
+    expect(placeList(button(100, 400), 200, 2000, 1440, 400).maxHeight).toBe(400 - 12 - 132) // less room than that
+  })
+  it("a long list above its button sits right above it, as tall as it's drawn (20 Nov)", () => {
+    const spot = placeList(button(820, 400), 200, 2000, 1440, 900)
+    expect(spot.maxHeight).toBe(280)
+    expect(spot.top).toBe(820 - 4 - 280) // not 2000 above it
   })
 })

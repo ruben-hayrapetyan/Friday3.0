@@ -131,7 +131,7 @@ export function ProjectDetail({ p, all, onPick, top, after }: { p: Project; all:
         {steps.map((s, i) => (
           <div key={s.id} style={{ display: "contents" }}>
             {i > 0 && <Then step={s} above={steps[i - 1]} project={p} />}
-            <Step step={s} first={i === 0} last={i === steps.length - 1} next={blocks.find((b) => b.item_id === s.id)?.start ?? null} later={p.step_finish?.[String(s.id)] ?? null} waitsFor={steps.find((x) => x.id === p.waits_for?.[String(s.id)])?.title ?? null} onMove={(by) => move(i, by)} />
+            <Step step={s} linked={i > 0} first={i === 0} last={i === steps.length - 1} next={blocks.find((b) => b.item_id === s.id)?.start ?? null} later={p.step_finish?.[String(s.id)] ?? null} waitsFor={steps.find((x) => x.id === p.waits_for?.[String(s.id)])?.title ?? null} onMove={(by) => move(i, by)} />
           </div>
         ))}
         <div className="fr-row" style={{ display: "flex", gap: 8, alignItems: "center", padding: "10px 0" }}>
@@ -170,12 +170,15 @@ function Then({ step, above, project }: { step: Item; above: Item; project: Proj
       ),
   })
   return (
+    // the dividing line above it, the step below it: the line had run through it (20 Nov, a user's notes: "dependence
+    // relationship between sub-tasks is placed directly on the separating line"); its step's row draws no line of its own
     <button
-      className="fr-plain fr-hover-text"
+      className="fr-plain fr-hover-text fr-row"
+      data-step-link
       onClick={() => set({ id: step.id, any_time: !anyTime })}
       aria-label={anyTime ? `${step.title} doesn't wait for ${above.title}. Make it wait` : `${step.title} waits: after ${above.title}. Make it not wait`}
       title={anyTime ? `${step.title} doesn't wait for ${above.title}: it can be done before it. Click to make it wait` : `${step.title} starts once ${above.title} is done. Click so it doesn't wait`}
-      style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0 0 46px", marginBottom: -8, minHeight: 18, fontSize: 11, color: anyTime ? "var(--color-neutral-500)" : "var(--color-neutral-400)", alignSelf: "flex-start", maxWidth: "100%", minWidth: 0, textAlign: "left" }}
+      style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0 0 46px", marginBottom: -6, minHeight: 18, fontSize: 11, color: anyTime ? "var(--color-neutral-500)" : "var(--color-neutral-400)", alignSelf: "stretch", maxWidth: "100%", minWidth: 0, textAlign: "left" }}
     >
       <Icon name={anyTime ? "arrows-split" : "arrow-down"} size={11} style={{ flex: "none" }} />
       <span style={{ overflowWrap: "anywhere" }}>{anyTime ? "doesn't wait" : `after ${above.title}`}</span>
@@ -183,7 +186,7 @@ function Then({ step, above, project }: { step: Item; above: Item; project: Proj
   )
 }
 
-function Step({ step, first, last, next, later, waitsFor, onMove }: { step: Item; first: boolean; last: boolean; next: string | null; later: string | null; waitsFor: string | null; onMove: (by: number) => void }) {
+function Step({ step, linked, first, last, next, later, waitsFor, onMove }: { step: Item; linked?: boolean; first: boolean; last: boolean; next: string | null; later: string | null; waitsFor: string | null; onMove: (by: number) => void }) {
   const { today, layout } = useShell()
   const done = useCommand("done", { label: () => `${step.title}: done` })
   const reopen = useCommand("reopen", { label: () => "Open again" })
@@ -196,7 +199,7 @@ function Step({ step, first, last, next, later, waitsFor, onMove }: { step: Item
   // waiting for a step that has no room before its due says so, not "No room" of its own (19 Nov, a user's notes)
   const planned = isDone ? "Done" : next ? when(next, today) : later ? `Later, by ${when(later, today)}` : waitsFor ? `Waits for ${waitsFor}, which has no room before its due` : "No room before its due"
   return (
-    <div className="fr-row" style={{ display: "grid", gridTemplateColumns: cols(layout.tight), gap: 12, alignItems: "center", padding: "10px 0", opacity: isDone ? 0.55 : 1 }}>
+    <div className="fr-row" data-step-row style={{ display: "grid", gridTemplateColumns: cols(layout.tight), gap: 12, alignItems: "center", padding: "10px 0", opacity: isDone ? 0.55 : 1, boxShadow: linked ? "none" : undefined }}>
       <span style={{ display: "flex", flexDirection: "column" }}>
         <button className="fr-plain" onClick={() => onMove(-1)} aria-label="Move up" style={{ height: 12, color: "var(--color-neutral-400)", opacity: first ? 0.25 : 1 }}>
           <Icon name="caret-up" size={12} />

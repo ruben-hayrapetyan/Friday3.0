@@ -23,7 +23,7 @@ from friday.engine.moves import chunk_around
 from friday.engine.problem import Plan, Problem
 from friday.engine.prune import demote_locks
 from friday.planner.assemble import AssembledPlan, assemble
-from friday.planner.build import BuildInput, build_problem, expires, key_of
+from friday.planner.build import BuildInput, build_problem, expires, key_of, sleep_on
 from friday.planner.inputs import allocator_input, executor_input, now_settings
 from friday.planner.learning import learnable
 from friday.planner.prepare import build_input, day_of
@@ -31,7 +31,7 @@ from friday.planner.service import quick_late, with_pins_preferred
 from friday.planner.snapshot import WIN, Snapshot, picked
 from friday.planner.solve import prepared_problem, solve
 
-MAX_TRIAGE_ACTIONS = 8
+MAX_TRIAGE_ACTIONS = 12  # each is a quick replan of its own
 MAX_SKIPS = 4  # events offered to skip, least important first
 
 
@@ -475,15 +475,6 @@ def candidate_actions(snapshot: Snapshot, inp: BuildInput, late: dict[int, float
     item = by_id[worst]
     due = parse_utc(item.due_utc) if item.due_utc else snapshot.now_utc
     out: list[tuple] = []
-    for other in competitors(snapshot, item, due)[:5]:
-        out.append(
-            (
-                f"Drop {other.title}",
-                [("drop", {"id": other.id})],
-                without_item(other.id or 0),
-                [f"{other.title} won't be done"],
-            )
-        )
     for days in () if expires(item, snapshot.settings) else (1, 3):  # pointless once late: a later due won't help
         later = due + days * 1440
         out.append(
@@ -495,6 +486,7 @@ def candidate_actions(snapshot: Snapshot, inp: BuildInput, late: dict[int, float
             )
         )
     nights = nights_before(snapshot, due)
+    out += sleep_actions(snapshot, nights)
     out.append(
         (
             "Use the sleep margin on the nights before it",
@@ -521,6 +513,29 @@ def candidate_actions(snapshot: Snapshot, inp: BuildInput, late: dict[int, float
                 ["Shorter meals"],
             )
         )
+    # other work giving way comes last: what changes the day itself is tried first, and only so many are tried
+    # (MAX_TRIAGE_ACTIONS: the new options of 20 Nov had pushed "Make locked blocks preferred" past it)
+    for other in competitors(snapshot, item, due)[:3]:
+        out.append(
+            (
+                f"Drop {other.title}",
+                [("drop", {"id": other.id})],
+                without_item(other.id or 0),
+                [f"{other.title} won't be done"],
+            )
+        )
+        # or let it wait a day, if it's due before the late work and a day later still helps it (20 Nov, your answer:
+        # "making another event late")
+        if other.due_utc and parse_utc(other.due_utc) <= due and not expires(other, snapshot.settings):
+            later_due = parse_utc(other.due_utc) + 1440
+            out.append(
+                (
+                    f"Give {other.title} one more day",
+                    [("edit", {"id": other.id, "due_utc": later_due})],
+                    with_due(other.id or 0, format_utc(later_due)),
+                    [f"{other.title} due a day later"],
+                )
+            )
     return out
 
 
@@ -554,6 +569,51 @@ def with_due(item_id: int, due: str) -> Change:
 def nights_before(snapshot: Snapshot, due: int) -> list[date]:
     first, last = day_of(snapshot, snapshot.now_utc), day_of(snapshot, due)
     return [first + timedelta(days=n) for n in range((last - first).days + 1)]
+
+
+def sleep_actions(snapshot: Snapshot, nights: list[date]) -> list[tuple]:
+    """An hour more awake: up an hour later tonight, or up an hour earlier tomorrow, each tried like any option (20 Nov,
+    a user's notes: "friday is not actually suggesting that I sleep later"; your answer: "going to sleep later/waking
+    up earlier"). Tonight is the first night before the due; tomorrow, the morning after it."""
+    if not nights:
+        return []
+    tonight, tomorrow = nights[0], nights[0] + timedelta(days=1)
+    settings, day_start = snapshot.settings, minutes_of(snapshot.settings["time"].day_start)
+    bed = minutes_of(sleep_on(settings, snapshot.day_overrides, tonight).bedtime)
+    wake = minutes_of(sleep_on(settings, snapshot.day_overrides, tomorrow).wake)
+    later = (bed + 60) % 1440
+    earlier = (wake - 60) % 1440
+    out: list[tuple] = []
+    if later < day_start or bed >= day_start + 60:  # still the night, not past the day's start
+        at = f"{later // 60:02d}:{later % 60:02d}"
+        out.append(
+            (
+                f"Stay up an hour later tonight, until {clock_time(at)}",
+                [("day_override", {"date": tonight.isoformat(), "bedtime": at})],
+                with_sleep(tonight, bedtime=at),
+                ["An hour less sleep tonight"],
+            )
+        )
+    if earlier >= day_start:
+        at = f"{earlier // 60:02d}:{earlier % 60:02d}"
+        out.append(
+            (
+                f"Get up an hour earlier tomorrow, at {clock_time(at)}",
+                [("day_override", {"date": tomorrow.isoformat(), "wake": at})],
+                with_sleep(tomorrow, wake=at),
+                ["An hour less sleep tonight"],
+            )
+        )
+    return out
+
+
+def with_sleep(day: date, **times: str) -> Change:
+    def change(inp: BuildInput) -> BuildInput:
+        return dataclasses.replace(
+            inp, day_overrides=dict(inp.day_overrides) | {day: {**inp.day_overrides.get(day, {}), **times}}
+        )
+
+    return change
 
 
 def without_margin(days: list[date]) -> Change:

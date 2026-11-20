@@ -198,7 +198,10 @@ class InsightsOut(Model):
     hours: float
     estimate_ratio: float | None
     by_kind: list[KindAccuracy]
-    heat: list[list[int]]  # minutes worked by weekday (Monday first) and hour, 08:00 to 23:00
+    heat: list[list[int]]  # minutes worked by weekday (Monday first) and hour: the columns `heat_hours` says
+    heat_hours: list[int] = list(
+        range(8, 24)
+    )  # each column's hour: 8 to 23, and earlier or past midnight if you work then
     best_hours: str | None  # when you get the most done, in words
 
 
@@ -289,7 +292,6 @@ class ExamFocusFor(Model):
     """What your exam focus rule gives an exam of this name (New exam's "As your other exams")."""
 
     days: int | None  # None: the rule is off, or isn't for an exam so named
-
 
 
 class WeekLoad(Model):
@@ -597,12 +599,22 @@ class SetAsideOut(Model):
     created: str
 
 
+class ArchivedOut(Model):
+    """Work archived when its due passed, pointless after it (commands/pointless.py): in the Inbox for two weeks."""
+
+    id: int
+    title: str
+    why: str  # "Its exam is over"
+    at: str  # when, UTC
+
+
 class InboxOut(Model):
     suggestions: list[SuggestionOut]
     sources: list[SourceOut]
     llm: dict[str, Any]  # calls and tokens used today against the budget, and whether a key is set
     repeats: int = 0  # repeating calendar events waiting to be imported in Settings → Repeating
     set_aside: list[SetAsideOut] = []  # the last two weeks' duplicates of what you have, newest first
+    archived: list[ArchivedOut] = []  # work archived at its due, pointless after it: the last two weeks', newest first
 
 
 class TokenOut(Model):

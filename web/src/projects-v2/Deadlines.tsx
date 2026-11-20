@@ -6,7 +6,7 @@ import { Check, H, Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { weekday } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
-import { aimFor, at, left, milestones, type Row, share, STATUS, weekStarts, WEEKS } from "./model"
+import { aimFor, at, left, milestones, reached, type Row, STATUS, weekStarts, WEEKS } from "./model"
 
 const TONE: Record<Row["status"], string> = {
   on_track: "var(--color-accent-300)",
@@ -96,7 +96,7 @@ function DeadlineRow({ r, today, early, lit, onOpen }: { r: Row; today: string; 
         ))}
         {r.due && (
           <span data-bar style={{ position: "absolute", left: 0, width: `${at(r.due, today)}%`, top: 7, height: 12, borderRadius: 6, overflow: "hidden", background: `color-mix(in srgb, ${tint} 22%, transparent)` }}>
-            <span style={{ display: "block", height: "100%", width: `${share(r) * 100}%`, background: tint }} />
+            <span data-fill style={{ display: "block", height: "100%", width: `${reached(r, today) * 100}%`, background: tint }} />
           </span>
         )}
         {r.due && early > 0 && (

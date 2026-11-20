@@ -324,7 +324,7 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div className="tnum" style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
             <span style={{ color: "var(--color-neutral-300)" }}>{late.toFixed(1)} h late now</span>
-            <span style={{ color: saved >= late ? "var(--color-accent-300)" : "var(--fr-warn)" }}>{counted.length ? `${(late - saved).toFixed(1)} h late after these` : "Pick what gives"}</span>
+            <span style={{ color: saved >= late ? "var(--color-accent-300)" : "var(--fr-warn)" }}>{counted.length ? `${(late - saved).toFixed(1)} h late after these` : options.length ? "Pick what gives" : triage.isLoading ? "" : "Nothing to pick"}</span>
           </div>
           <div style={{ position: "relative", height: 8, borderRadius: 4, background: "color-mix(in srgb, var(--color-text) 8%, transparent)", overflow: "hidden" }}>
             <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${(saved / late) * 100}%`, background: saved >= late ? "var(--color-accent)" : "var(--fr-warn)" }} />
@@ -332,6 +332,12 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
         </div>
       )}
       {triage.error && <span style={{ color: "var(--fr-due)" }}>{triage.error.message}</span>}
+      {/* nothing tried helps: said so, and where to go from here (20 Nov, a user's notes: "Pick what gives" over nothing) */}
+      {late > 0 && data && !triage.isLoading && !options.length && (
+        <span role="status" style={{ fontSize: 13, color: "var(--color-neutral-300)", textWrap: "pretty" }}>
+          Nothing Friday tried gets this done in time: skipping an event, staying up later or getting up earlier, or other work waiting. In the Inbox, leave it late, move its due or drop it.
+        </span>
+      )}
       {options.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span className="fr-kicker" style={{ paddingBottom: 2 }}>

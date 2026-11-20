@@ -38,6 +38,7 @@ from friday.commands import (  # noqa: F401
     phones,
     pins,
     planning,
+    pointless,
     progress,
     project_options,
     queries,

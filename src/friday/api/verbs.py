@@ -31,6 +31,22 @@ VERBS = {
         False,
         "The models a provider offers, to choose from: the service's own list once its key is in (names change too",
     ),
+    "archived_ok": Verb(
+        "POST",
+        "/api/c/archived_ok",
+        commands.ItemRef,
+        True,
+        False,
+        "Let the Inbox's note about work archived at its due go; the work stays archived.",
+    ),
+    "archived_restore": Verb(
+        "POST",
+        "/api/c/archived_restore",
+        commands.ItemRef,
+        True,
+        True,
+        "Bring back work archived at its due: open again, and still worth doing after its due, so it isn't archived",
+    ),
     "area_add": Verb("POST", "/api/c/area_add", commands.AreaInput, True, False, "Add an area."),
     "area_edit": Verb(
         "POST", "/api/c/area_edit", commands.AreaEditInput, True, True, "Rename, recolor or archive an area."

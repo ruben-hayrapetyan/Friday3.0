@@ -152,10 +152,11 @@ export function InboxPage() {
       <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: tight ? "minmax(0,1fr)" : "320px minmax(0,1fr)", overflow: "hidden" }}>
         {showList && (
           <div role="list" aria-label="Waiting for you" data-tour="inbox" className="fr-scroll-column" style={{ overflowY: "auto", minHeight: 0, padding: `10px 8px ${dockRoom(40)}`, boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 2 }}>
+            {!!inbox?.archived?.length && <Archived items={inbox.archived} />}
             {list.map((m) => (
               <Row key={m.key} m={m} on={m.key === current?.key} answered={resolved.find((r) => m.kind === "suggestion" && r.s.id === m.s.id)} onClick={() => open(m.key)} />
             ))}
-            {!list.length && <span style={{ padding: 10, color: "var(--color-neutral-500)" }}>Nothing waiting.</span>}
+            {!list.length && !inbox?.archived?.length && <span style={{ padding: 10, color: "var(--color-neutral-500)" }}>Nothing waiting.</span>}
             {!!inbox?.set_aside?.length && <SetAside items={inbox.set_aside} />}
           </div>
         )}
@@ -269,6 +270,39 @@ function RepeatPane({ found, onDone }: { found: Schemas["RepeatFound"]; onDone: 
       </Actions>
       <After>Planned around, it’s in your plan every week and follows your calendar; stop it any time in Settings → Repeating. Left out, its later weeks stay out too.</After>
     </Pane>
+  )
+}
+
+/** Work Friday archived when its due passed, pointless after it (20 Nov, a user's notes: an exam's prep "2h late" after
+ * the exam; your answer: "Archive it, say so"): each with why, to bring back (still worth doing, then) or let go. */
+function Archived({ items }: { items: { id: number; title: string; why: string }[] }) {
+  const restore = useCommand("archived_restore", { label: (o) => o.result.message ?? "Brought back" })
+  const ok = useCommand("archived_ok", {
+    label: () => "OK",
+    optimistic: (client, input) => client.setQueryData<Schemas["InboxOut"]>(["inbox"], (x) => x && { ...x, archived: (x.archived ?? []).filter((a) => a.id !== input.id) }),
+  })
+  return (
+    <section aria-label="Archived at its due" className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 2, padding: "8px 6px", marginBottom: 8 }}>
+      <span className="fr-kicker" style={{ padding: "0 4px 2px" }}>
+        Archived: no point doing {items.length === 1 ? "it" : "them"} now
+      </span>
+      {items.map((a) => (
+        <div key={a.id} role="group" aria-label={a.title} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 6, alignItems: "center", padding: "2px 4px", fontSize: 12.5 }}>
+          <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.title}>
+              {a.title}
+            </span>
+            <span className="fr-kicker">{a.why}</span>
+          </span>
+          <button className="btn btn-ghost" onClick={() => restore({ id: a.id })} style={{ fontSize: 11.5, padding: "2px 8px" }} title="Still worth doing after its due: open it again">
+            Bring back
+          </button>
+          <button className="btn btn-secondary" onClick={() => ok({ id: a.id })} style={{ fontSize: 11.5, padding: "2px 8px" }}>
+            OK
+          </button>
+        </div>
+      ))}
+    </section>
   )
 }
 

@@ -95,6 +95,15 @@ export function deadlineRows(projects: Project[], exams: Exam[], blocks: Pick<Bl
 
 /** How far along: done against the whole, 0 to 1. */
 export const share = (r: Pick<Row, "doneMin" | "totalMin">) => (r.totalMin ? Math.min(1, r.doneMin / r.totalMin) : 0)
+
+/** How much of the bar to fill: how far along, and at least to the diamond of every step done, the diamonds standing at
+ * their dues on the weeks (20 Nov, a user's notes: "if you complete one of the due dates, the progress bar should fill
+ * until the diamond regardless of how long it took"). The bar runs from today to the due; 0 to 1 of it. */
+export function reached(r: Pick<Row, "doneMin" | "totalMin" | "steps" | "due">, today: string): number {
+  const end = r.due ? at(r.due, today) : 0
+  const diamonds = end > 0 ? milestones(r).filter((m) => m.done).map((m) => at(m.due ?? "", today) / end) : []
+  return Math.min(1, Math.max(share(r), ...diamonds))
+}
 export const left = (r: Pick<Row, "doneMin" | "totalMin">) => dur(Math.max(0, r.totalMin - r.doneMin)) || "0m"
 
 /** Where a moment sits on the six weeks from today's start, as a percent (0 to 100, clamped). */
