@@ -37,11 +37,22 @@ describe("the header (black box)", () => {
 describe("replanning (3 Nov)", () => {
   const dot = between(page, "function Replanning", "\n}\n")
   it("says the word beside the dot unless the window is narrow", () => {
-    expect(dot).toMatch(/tight \? <span className="sr-only">Replanning…<\/span> : "Replanning…"/)
+    expect(dot).toMatch(/tight \? <span className="sr-only">Replanning…<\/span> : <span[^>]*>Replanning…<\/span>/)
   })
   it("every place that shows it says whether there's room", () => {
     const uses = page.match(/<Replanning\b[^>]*\/>/g) ?? []
     expect(uses.length).toBeGreaterThan(0)
-    for (const u of uses) expect(u).toContain("tight={layout.tight}")
+    for (const u of uses) expect(u).toMatch(/tight=\{(layout\.tight|false)\}/)
+  })
+  // 20 Nov, the user's screenshot: with What if on and a lateness note, "Replanning…" lay over Day and 3 days. The note's
+  // words give way first, then the word (web/scripts/overflow-check.mjs's "replanning" states hold it on, at each width)
+  it("gives way in a full row instead of running over what's beside it", () => {
+    expect(dot).toMatch(/flex: "0 1 auto", minWidth: 7, overflow: "hidden"/)
+    expect(between(page, 'data-tour="attention"', "</button>")).toContain('flex: "0 100 auto"')
+  })
+  it("leaves the view buttons to the Plan menu while What if's bar needs their room", () => {
+    expect(header).toMatch(/const folded = layout\.tight \|\| \(trying && layout\.main < WHAT_IF_ROOM\)/)
+    expect(header).toContain("{!folded && (")
+    expect(header).toContain("<PlanMenu views={folded ?")
   })
 })

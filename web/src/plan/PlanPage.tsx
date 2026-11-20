@@ -135,6 +135,10 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
   const today = useDate()
   const days = view === "month" ? 1 : view
   const views = layout.weekFits ? VIEWS : VIEWS.filter((v) => v.value !== 7)
+  // What if's bar takes the view buttons' room: with it on, they're the Plan menu's first line, as on a phone, and
+  // narrower still the bar says less (20 Nov, the user's screenshot: the row ran out and "Replanning…" lay over them)
+  const trying = useWhatIf().on
+  const folded = layout.tight || (trying && layout.main < WHAT_IF_ROOM)
   return (
     <div style={{ display: "flex", alignItems: "center", gap: layout.tight ? 4 : 8, padding: "0 12px 0 var(--fr-head-inset)", minWidth: 0 }}>
       {/* Before the date, not after it: a date's length moved them, so clicking ahead many times missed (5 Nov). */}
@@ -158,14 +162,14 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
       </div>
       <div style={{ flex: 1, minWidth: 0 }} />
       <Attention first={first} days={view === "month" ? 7 : view} />
-      {!layout.tight && (
+      {!folded && (
         <span data-tour="views" style={{ flex: "none", display: "flex" }}>
           <Seg options={views} value={view} onPick={onView} label="View" />
         </span>
       )}
-      <WhatIfBar tight={layout.tight} />
+      <WhatIfBar tight={layout.tight || layout.main < WHAT_IF_FULL} />
       <ShowMenu />
-      <PlanMenu views={layout.tight ? { options: views, value: view, onPick: onView, onToday } : undefined} breaks={layout.main < BREAKS_BUTTON_MIN} search={layout.main < SEARCH_BUTTON_MIN} today={!layout.tight && layout.main < BREAKS_WORD_MIN ? onToday : undefined} />
+      <PlanMenu views={folded ? { options: views, value: view, onPick: onView, onToday } : undefined} breaks={layout.main < BREAKS_BUTTON_MIN} search={layout.main < SEARCH_BUTTON_MIN} today={!layout.tight && layout.main < BREAKS_WORD_MIN ? onToday : undefined} />
       {layout.main >= SEARCH_BUTTON_MIN && <IconButton tour="search" icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />}
       {layout.main >= BREAKS_BUTTON_MIN && <BreaksButton square={layout.main < BREAKS_WORD_MIN} />}
       <button
@@ -181,6 +185,12 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
     </div>
   )
 }
+
+// The title row's room with What if on and a change being tried, measured 20 Nov (Grace's late work, Breaks): about
+// 1,110px with the view buttons, 890px without; below the first they fold into the Plan menu, below this one the bar
+// drops its words
+const WHAT_IF_ROOM = 1200
+const WHAT_IF_FULL = 1000
 
 function IconButton({ icon, label, onClick, tour }: { icon: string; label: string; onClick: () => void; tour?: string }) {
   return (
@@ -380,14 +390,17 @@ function Attention({ first, days }: { first: string; days: number }) {
   const bg = lead.tone === "now" ? "color-mix(in srgb, var(--fr-now) 14%, transparent)" : lead.tone === "mark" ? "color-mix(in srgb, var(--fr-mark) 16%, transparent)" : "color-mix(in srgb, var(--color-text) 6%, transparent)"
   return (
     // In a phone's width it's an icon and a count: it keeps them whole, and the title gives way (16 Nov: squeezed to 6px,
-    // the pill sat under Show)
+    // the pill sat under Show). Wider, its words give way to "Replanning…" beside it: .fr-pill doesn't shrink, and the
+    // word was drawn over Day and 3 days (20 Nov, the user's screenshot, What if on)
     <span ref={box} style={{ position: "relative", minWidth: 0, flex: layout.tight ? "none" : "0 1 auto", display: "flex", alignItems: "center", gap: 6 }}>
-      <button className="fr-pill" data-tour="attention" onClick={() => setOpen(!open)} aria-expanded={open} title={notes.map((n) => n.text).join("\n")} style={{ background: bg, color, cursor: "pointer", minWidth: 0, maxWidth: "100%", ...(layout.tight ? { padding: "4px 6px" } : {}) }}>
+      <button className="fr-pill" data-tour="attention" onClick={() => setOpen(!open)} aria-expanded={open} title={notes.map((n) => n.text).join("\n")} style={{ position: "relative", background: bg, color, cursor: "pointer", flex: "0 100 auto", minWidth: 0, maxWidth: "100%", ...(layout.tight ? { padding: "4px 6px" } : {}) }}>
         <Icon name={lead.icon} size={13} />
         {!layout.tight && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.text}</span>}
         {notes.length > 1 && <span className="tnum" style={{ color: "var(--color-neutral-400)", flex: "none" }}>{layout.tight ? notes.length : `+${notes.length - 1}`}</span>}
+        {/* a phone's row has no room for one more thing: the dot sits on the note's corner */}
+        {solving && layout.tight && <span aria-hidden style={{ ...DOT, position: "absolute", top: -2, right: -2 }} />}
       </button>
-      {solving && <Replanning tight={layout.tight} />}
+      {solving && (layout.tight ? <span role="status" className="sr-only">Replanning…</span> : <Replanning tight={false} />)}
       {over && lighten && <LightenDialog start={over.date} days={1} label={FULL_DAY[weekday(over.date)]} planned={over.planned} usual={over.usual} late={late.length} onClose={() => setLighten(false)} />}
       {open && (
         <div className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: shift, zIndex: 20, width: "min(380px, calc(100vw - 24px))", maxHeight: "60vh", overflowY: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -422,13 +435,17 @@ function Attention({ first, days }: { first: string; days: number }) {
 /** Friday working out a new plan: the dot, and the word when there's room (3 Nov: "add the full replanning to the
  * blue dot if there is space for it"); a narrow window keeps just the dot. */
 function Replanning({ tight }: { tight: boolean }) {
+  // in a full row (What if on, a lateness note) the word gives way, down to the dot, after the note's words have: it
+  // was drawn over Day and 3 days (20 Nov, the user's screenshot)
   return (
-    <span role="status" title="Replanning…" style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--color-accent-200)", whiteSpace: "nowrap" }}>
-      <span aria-hidden style={{ width: 7, height: 7, flex: "none", borderRadius: "50%", background: "var(--color-accent)", animation: "fr-pulse 1.2s ease-in-out infinite" }} />
-      {tight ? <span className="sr-only">Replanning…</span> : "Replanning…"}
+    <span role="status" title="Replanning…" style={{ flex: "0 1 auto", minWidth: 7, overflow: "hidden", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--color-accent-200)", whiteSpace: "nowrap" }}>
+      <span aria-hidden style={DOT} />
+      {tight ? <span className="sr-only">Replanning…</span> : <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>Replanning…</span>}
     </span>
   )
 }
+
+const DOT = { width: 7, height: 7, flex: "none", borderRadius: "50%", background: "var(--color-accent)", animation: "fr-pulse 1.2s ease-in-out infinite" } as const
 
 const FULL_DAY: Record<string, string> = { Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday", Sun: "Sunday" }
 
