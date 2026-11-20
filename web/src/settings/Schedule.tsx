@@ -3,7 +3,7 @@
 // unmarked (planned again, or counted done). Each sets every day; "By day" sets them one day at a time.
 
 import { useState } from "react"
-import { Seg } from "@/components/fr/controls"
+import { Menu, Seg } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { usePaces, useSettings } from "@/hooks/queries"
 import { clockTime, dur } from "@/lib/format"
@@ -56,22 +56,14 @@ export function Schedule() {
     <>
       <SectionHead title="Schedule" note="The shape of a normal day. Friday plans inside these limits." />
       <Field name="Day starts" note={`Nothing flexible is planned before this.${differs("wake") ? " Some days differ; this sets them all." : ""}`}>
-        <select className="input" value={mon.wake} onChange={(e) => allNights({ wake: e.target.value })} style={{ alignSelf: "flex-start", width: 140 }}>
-          {timesWith(5, 11, mon.wake).map((t) => (
-            <option key={t} value={t}>
-              {clockTime(t)}
-            </option>
-          ))}
-        </select>
+        <span style={{ alignSelf: "flex-start" }}>
+          <Menu label="Day starts" value={mon.wake} onPick={(t) => allNights({ wake: t })} options={timesWith(5, 11, mon.wake).map((t) => ({ value: t, label: clockTime(t) }))} />
+        </span>
       </Field>
       <Field name="Bedtime" note={`Friday stops planning here; only a deadline can push past it.${differs("bedtime") ? " Some days differ; this sets them all." : ""}`}>
-        <select className="input" value={mon.bedtime} onChange={(e) => allNights({ bedtime: e.target.value })} style={{ alignSelf: "flex-start", width: 140 }}>
-          {timesWith(21, 26, mon.bedtime).map((t) => (
-            <option key={t} value={t}>
-              {clockTime(t)}
-            </option>
-          ))}
-        </select>
+        <span style={{ alignSelf: "flex-start" }}>
+          <Menu label="Bedtime" value={mon.bedtime} onPick={(t) => allNights({ bedtime: t })} options={timesWith(21, 26, mon.bedtime).map((t) => ({ value: t, label: clockTime(t) }))} />
+        </span>
       </Field>
       <Field name="Past bedtime, if a deadline needs it" note="The most Friday will plan past bedtime when there’s no other room, and only as a last resort.">
         <Seg options={[30, 45, 60, 90].map((m) => ({ value: m, label: dur(m) }))} value={mon.margin_min} onPick={(m) => allNights({ margin_min: m })} size="big" />

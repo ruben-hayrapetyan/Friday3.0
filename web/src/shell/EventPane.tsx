@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import { type Item, query } from "@/api/client"
 import { FitLine } from "@/components/Fit"
+import { CalendarName } from "@/components/fr/CalendarName"
 import { Icon, Menu, Seg, Switch } from "@/components/fr/controls"
 import { useItem, useSettings } from "@/hooks/queries"
 import { categoryPaint, newEventTargets } from "@/lib/calendars"
@@ -293,15 +294,15 @@ export function EventPane({ draft }: { draft: EventDraft }) {
       </Row>
       <Row label="Calendar">
         {isNew ? (
-          <select className="input" value={savingTo ? saveTo : ""} onChange={(e) => set({ saveTo: e.target.value })} aria-label="Calendar" style={{ ...field, maxWidth: 220 }}>
-            <option value="">Only Friday</option>
-            {writable.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {accounts > 1 && c.account && c.account !== c.name ? ` · ${c.account}` : ""}
-              </option>
-            ))}
-          </select>
+          <Menu
+            label="Calendar"
+            value={savingTo ? saveTo : ""}
+            onPick={(id) => set({ saveTo: id })}
+            options={[
+              { value: "", label: <CalendarName name="Only Friday" light={light} hollow />, hint: "Not saved to a calendar" },
+              ...writable.map((c) => ({ value: c.id, label: <CalendarName name={c.name} color={c.color} light={light} />, hint: accounts > 1 && c.account && c.account !== c.name ? c.account : undefined })),
+            ]}
+          />
         ) : (
           <span style={{ fontSize: 13, color: "var(--color-neutral-300)" }} title={draft.calendar && !draft.savesToCalendar ? "Changes here stay in Friday: switch on “Save changes” for this calendar in Settings → Calendars" : undefined}>
             {draft.calendar ?? "Only Friday"}

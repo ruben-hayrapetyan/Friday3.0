@@ -4,6 +4,7 @@
 // events by their titles, with the filter that hides the ones you'd rather not see (office hours).
 
 import { Fragment, useEffect, useRef, useState } from "react"
+import { CalendarName } from "@/components/fr/CalendarName"
 import { Chip, Icon, Menu, MenuChoice, Switch, useMenuClose } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
@@ -92,6 +93,7 @@ export const counts = (name: string, busy: Busy) => busy.calendars[name] ?? !ROO
 
 export function CalendarsSection() {
   const settings = useSettings().data as Record<string, unknown> | undefined
+  const { light } = useLook()
   const save = useCommand("settings_set", { label: () => "Saved" })
   const toCalendar = useCommand("events_to_calendar", { label: (o) => o.result.message ?? "Done" })
   // Every calendar a new event can go to: Google's and the Mac's, each once, the way Friday reads it (lib/calendars.ts).
@@ -167,21 +169,19 @@ export function CalendarsSection() {
         <Calendars mac />
       </Field>
       <Field name="New events go to" note="Events you make in Friday are saved here too and take its color. Each event can pick another in its drawer.">
-        <select
-          className="input"
+        <Menu
+          label="New events go to"
           value={(settings.gcal as { new_events_to?: string | null }).new_events_to ?? ""}
-          onChange={(e) => save({ key: "gcal", value: { ...(settings.gcal as object), new_events_to: e.target.value || null } })}
-          style={{ alignSelf: "flex-start", width: 280 }}
-          aria-label="New events go to"
-        >
-          <option value="">Only Friday</option>
-          {targets.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-              {t.account && t.account !== t.name ? ` · ${t.via === "mac" ? `${t.account}, through this Mac` : accountName(t.account)}` : t.via === "mac" ? " · through this Mac" : ""}
-            </option>
-          ))}
-        </select>
+          onPick={(id) => save({ key: "gcal", value: { ...(settings.gcal as object), new_events_to: id || null } })}
+          options={[
+            { value: "", label: <CalendarName name="Only Friday" light={light} hollow />, hint: "Not saved to a calendar" },
+            ...targets.map((t) => ({
+              value: t.id,
+              label: <CalendarName name={t.name} color={t.color} light={light} />,
+              hint: t.account && t.account !== t.name ? (t.via === "mac" ? `${t.account}, through this Mac` : accountName(t.account)) : t.via === "mac" ? "Through this Mac" : undefined,
+            })),
+          ]}
+        />
         {(settings.gcal as { new_events_to?: string | null }).new_events_to && (
           // Events made before a calendar was chosen here, put on it (3 Nov: `events_to_calendar` had no button)
           <button className="btn btn-secondary" onClick={() => toCalendar({})} title="Events you made in Friday that are still to come and on no calendar yet; ones kept only in Friday and ones from a feed stay as they are" style={{ alignSelf: "flex-start" }}>

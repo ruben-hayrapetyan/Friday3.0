@@ -118,18 +118,23 @@ describe("your calendars", () => {
 
   it("puts new events on a calendar you choose, and Friday's events already made there too", async () => {
     const { user, client } = await openFriday("/settings/calendars")
-    const to = (await screen.findByRole("combobox", { name: "New events go to" })) as HTMLSelectElement
-    expect(to.value).toBe("")
+    // Friday's own menu, each calendar with its color and account (20 Nov: not the system's "default dropdown")
+    const to = await screen.findByRole("button", { name: "New events go to" })
+    expect(to.querySelector("[data-chosen]")?.textContent).toBe("Only Friday")
     expect(screen.queryByRole("button", { name: "Put Friday’s events on it" })).toBeNull()
-    await waitFor(() => expect(within(to).getAllByRole("option").length).toBeGreaterThan(1))
-    const homework = within(to).getAllByRole("option").find((o) => o.textContent!.startsWith("Homework")) as HTMLOptionElement
-    expect(homework, within(to).getAllByRole("option").map((o) => o.textContent).join(" | ")).toBeTruthy()
-    await user.selectOptions(to, homework)
-    expect((await waitForSent("settings_set")).body).toMatchObject({ key: "gcal", value: { new_events_to: homework.value } })
+    await user.click(to)
+    await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(1))
+    expect(screen.getByRole("option", { name: /^Only Friday/ }).textContent).toContain("Not saved to a calendar")
+    const homework = screen.getAllByRole("option").find((o) => o.textContent!.startsWith("Homework"))!
+    expect(homework, screen.getAllByRole("option").map((o) => o.textContent).join(" | ")).toBeTruthy()
+    const targets = await friday.q<{ id: string; name: string }[]>("google_calendars")
+    await user.click(homework)
+    expect((await waitForSent("settings_set")).body).toMatchObject({ key: "gcal", value: { new_events_to: targets.find((c) => c.name.startsWith("Homework"))!.id } })
     await answered(client)
     await user.click(await screen.findByRole("button", { name: "Put Friday’s events on it" }))
     await waitForSent("events_to_calendar")
-    await user.selectOptions(screen.getByRole("combobox", { name: "New events go to" }), "")
+    await user.click(screen.getByRole("button", { name: "New events go to" }))
+    await user.click(screen.getByRole("option", { name: /^Only Friday/ }))
     expect((await waitForSent("settings_set")).body).toMatchObject({ key: "gcal", value: { new_events_to: null } })
   })
 
@@ -155,7 +160,8 @@ describe("your calendars", () => {
     expect((await waitForSent("calendar_set")).body).toEqual({ id: "mac-home", editable: true, mac: true })
     // the Mac's Home is one more calendar to plan around, and to send new events to
     expect(screen.getByRole("group", { name: "Home on your calendar" })).toBeTruthy()
-    expect(within(screen.getByRole("combobox", { name: "New events go to" })).getByRole("option", { name: "Home · iCloud, through this Mac" })).toBeTruthy()
+    await user.click(screen.getByRole("button", { name: "New events go to" }))
+    expect(within(screen.getByRole("listbox", { name: "New events go to" })).getByRole("option", { name: /^Home\b/ }).textContent).toBe("HomeiCloud, through this Mac")
   })
 })
 

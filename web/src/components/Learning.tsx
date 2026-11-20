@@ -4,6 +4,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { query } from "@/api/client"
 import { Button } from "@/components/ui/button"
+import { Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
 
@@ -91,39 +92,30 @@ export function LearningSettings() {
   const reset = useCommand("learn_reset", { label: (o) => o.result.message ?? "Reset" })
   if (!learn || !learned) return null
   const change = (key: keyof Learn, value: string) => set({ key: "learn", value: { ...learn, [key]: value } })
-  const select = "h-8 min-w-0 rounded-md border bg-transparent px-2 text-sm"
   const multipliers = Object.entries(learned.multipliers).filter(([, v]) => Math.abs(v - 1) > 0.05)
   return (
     <div className="space-y-3">
       <div className="fr-learn-grid grid grid-cols-[12rem_minmax(0,1fr)] items-center gap-2">
         <span>Learned weights</span>
-        <select className={select} value={learn.weights} onChange={(e) => change("weights", e.target.value)}>
-          <option value="off">Off</option>
-          <option value="suggest">Suggest, I approve</option>
-          <option value="auto">Apply by itself (small steps)</option>
-        </select>
+        <span style={{ justifySelf: "start" }}>
+          <Menu label="Learned weights" value={learn.weights} onPick={(v) => change("weights", v)} options={[{ value: "off", label: "Off" }, { value: "suggest", label: "Suggest, I approve" }, { value: "auto", label: "Apply by itself (small steps)" }]} />
+        </span>
         <span>Learned lengths</span>
-        <select className={select} value={learn.durations} onChange={(e) => change("durations", e.target.value)}>
-          <option value="off">Off</option>
-          <option value="suggest">Suggest, I approve</option>
-          <option value="auto">Use when better</option>
-        </select>
+        <span style={{ justifySelf: "start" }}>
+          <Menu label="Learned lengths" value={learn.durations} onPick={(v) => change("durations", v)} options={[{ value: "off", label: "Off" }, { value: "suggest", label: "Suggest, I approve" }, { value: "auto", label: "Use when better" }]} />
+        </span>
         <span>Good and bad hours</span>
-        <select className={select} value={learn.energy} onChange={(e) => change("energy", e.target.value)}>
-          <option value="off">Off</option>
-          <option value="suggest">Suggest, I approve</option>
-          <option value="auto">Use</option>
-        </select>
+        <span style={{ justifySelf: "start" }}>
+          <Menu label="Good and bad hours" value={learn.energy} onPick={(v) => change("energy", v)} options={[{ value: "off", label: "Off" }, { value: "suggest", label: "Suggest, I approve" }, { value: "auto", label: "Use" }]} />
+        </span>
         <span>Missing rules</span>
-        <select className={select} value={learn.proposals} onChange={(e) => change("proposals", e.target.value)}>
-          <option value="off">Don't propose</option>
-          <option value="ask">Propose, I decide</option>
-        </select>
+        <span style={{ justifySelf: "start" }}>
+          <Menu label="Missing rules" value={learn.proposals} onPick={(v) => change("proposals", v)} options={[{ value: "off", label: "Don't propose" }, { value: "ask", label: "Propose, I decide" }]} />
+        </span>
         <span>Read my state (experimental)</span>
-        <select className={select} value={learn.state_inference} onChange={(e) => change("state_inference", e.target.value)}>
-          <option value="off">Off</option>
-          <option value="on">On, with a daily check-in</option>
-        </select>
+        <span style={{ justifySelf: "start" }}>
+          <Menu label="Read my state (experimental)" value={learn.state_inference} onPick={(v) => change("state_inference", v)} options={[{ value: "off", label: "Off" }, { value: "on", label: "On, with a daily check-in" }]} />
+        </span>
       </div>
       <p className="text-muted-foreground">
         {learned.comparisons} answers, {learned.drags} moves · answer noise {learned.answer_noise}
