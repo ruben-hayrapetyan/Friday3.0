@@ -319,6 +319,56 @@ describe("exams", () => {
     await waitFor(() => expect(sent.filter((s) => s.name === "undo")).toHaveLength(2), { timeout: 5000 })
   })
 
+  // 19 Nov, a user's notes: "move text box for length of the exam to the same line as the others if possible (you can
+  // make it less wide too)" and "add dropdown for customizing the exam focus ... e.g. start focusing on that class's
+  // work 3 days before"
+  it("has its length box on the row of usual lengths, as narrow as a length", async () => {
+    const { user } = await page()
+    await user.click(screen.getByRole("button", { name: "New exam" }))
+    const dialog = await screen.findByRole("dialog", { name: "New exam" })
+    const box = within(dialog).getByRole("textbox", { name: "Length" }) as HTMLInputElement
+    const row = within(dialog).getByRole("button", { name: "3h" }).parentElement!
+    expect(row.contains(box)).toBe(true)
+    expect(box.placeholder).toBe("e.g. 2h 15m") // the box is as wide as its placeholder: "e.g. an hour and a half" had widened it
+  })
+
+  it("sets the exam's focus as it's made: as your rule gives an exam of its name, or its own", async () => {
+    const opened = await page()
+    await opened.user.click(screen.getByRole("button", { name: "New exam" }))
+    const before = await screen.findByRole("dialog", { name: "New exam" })
+    expect(await within(before).findByRole("button", { name: "Focus on its class: Off" }, { timeout: 10_000 })).toBeTruthy() // no rule: plain Off
+    opened.unmount()
+    await friday.c("rule_add", { text: "focus on exams 5 days before" })
+    try {
+      const { user } = await page()
+      await user.click(screen.getByRole("button", { name: "New exam" }))
+      const dialog = await screen.findByRole("dialog", { name: "New exam" })
+      const name = within(dialog).getByPlaceholderText("Name, e.g. MATH 2940 Prelim 2")
+      await user.type(name, "CHEM 2090 Prelim 3")
+      expect(await within(dialog).findByRole("button", { name: "Focus on its class: 5 days before (your rule)" }, { timeout: 10_000 })).toBeTruthy()
+      await user.clear(name)
+      await user.type(name, "CHEM 2090 Quiz 4") // the rule is for exams by their name: not a quiz's
+      const focus = await within(dialog).findByRole("button", { name: "Focus on its class: Off (your rule)" }, { timeout: 10_000 })
+      await user.click(focus)
+      expect(within(dialog).getByRole("radio", { name: /^As your other exams.*isn't for exams named so/ })).toBeTruthy()
+      expect(within(dialog).getByRole("dialog", { name: "Focus on its class" }).style.overflowY).toBe("auto") // its 9 choices scroll in its height
+      await user.click(within(dialog).getByRole("radio", { name: /^3 days before/ }))
+      expect(within(dialog).getByRole("button", { name: "Focus on its class: 3 days before" })).toBeTruthy()
+      sent.length = 0
+      await user.click(within(dialog).getByRole("button", { name: "Add exam" }))
+      const set = (await waitForSent("settings_set")).body as { key: string; value: Record<string, number | null> }
+      const exam = (await friday.q<{ item: { id: number; title: string } }[]>("exams")).find((x) => x.item.title === "CHEM 2090 Quiz 4")!
+      expect(set.key).toBe("exam_focus_each")
+      expect(set.value[String(exam.item.id)]).toBe(3)
+      await waitFor(async () => expect((await friday.q<{ exam_focus_each: Record<string, number> }>("settings")).exam_focus_each[String(exam.item.id)]).toBe(3))
+      // one Undo takes back the exam, its prep and its focus
+      await user.click(screen.getAllByRole("button", { name: "Undo" }).at(-1) as HTMLElement)
+      await waitFor(() => expect(sent.filter((s) => s.name === "undo")).toHaveLength(3), { timeout: 5000 })
+    } finally {
+      await friday.c("rule_remove", { name: "you:exam-focus" })
+    }
+  })
+
   it("takes an exam of any length, typed in the box beside the usual ones", async () => {
     // 15 Nov, a client: a 2h 30m final had no way in (1h, 1h 30m, 2h or 3h only)
     const { user } = await page()

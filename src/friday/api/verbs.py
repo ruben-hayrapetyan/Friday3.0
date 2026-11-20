@@ -324,6 +324,14 @@ VERBS = {
         False,
         "Put the events made in Friday that are still to come and on no calendar yet on the one new events go to, so",
     ),
+    "exam_focus_for": Verb(
+        "GET",
+        "/api/q/exam_focus_for",
+        commands.ExamFocusForInput,
+        False,
+        False,
+        "What your exam focus rule gives an exam of this name: its days, or None.",
+    ),
     "exams": Verb(
         "GET",
         "/api/q/exams",

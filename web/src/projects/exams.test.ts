@@ -76,6 +76,17 @@ describe("the line under an exam", () => {
     expect(summary(onTrack, [], TODAY)).toEqual({ text: "2h to go, planned to finish Mon 4pm, 1 day before.", tone: "good" })
     expect(summary(exam(), [], TODAY).tone).toBe("quiet")
   })
+
+  // 19 Nov, a user's notes: "Prep runs past the exam: it's planned to finish 18:30" of an exam at 19:00
+  it("says how much prep has no room when the rest finishes before the exam, and runs past only when it does", () => {
+    const at = "2026-10-27T19:30"
+    const late = (finish: string, unfit_min: number) => summary(exam({ status: "late", remaining_min: 240, planned_finish: finish, unfit_min }, at), [], TODAY)
+    expect(late("2026-10-27T18:30", 15)).toEqual({ text: "15m of prep doesn't fit before the exam; the rest is planned to finish Tue 6:30pm.", tone: "due" })
+    expect(late("2026-10-27", 90)).toEqual({ text: "1h 30m of prep doesn't fit before the exam; the rest is planned to finish Tue.", tone: "due" }) // a day, the exam's
+    expect(late("2026-10-27T18:30", 0)).toEqual({ text: "Some prep is planned after its own due; all of it finishes Tue 6:30pm, before the exam.", tone: "warn" })
+    expect(late("2026-10-27T20:00", 15).text).toBe("Prep runs past the exam: it's planned to finish Tue 8pm.")
+    expect(late("2026-10-28", 0).text).toBe("Prep runs past the exam: it's planned to finish Wed.")
+  })
 })
 
 describe("soon and later", () => {

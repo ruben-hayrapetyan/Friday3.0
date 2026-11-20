@@ -2948,6 +2948,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/exam_focus_for": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What your exam focus rule gives an exam of this name: its days, or None. */
+        get: operations["exam_focus_for"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/exams": {
         parameters: {
             query?: never;
@@ -5617,6 +5634,14 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /**
+         * ExamFocusFor
+         * @description What your exam focus rule gives an exam of this name (New exam's "As your other exams").
+         */
+        ExamFocusFor: {
+            /** Days */
+            days: number | null;
+        };
         /** ExamOut */
         ExamOut: {
             item: components["schemas"]["ItemOut"];
@@ -5642,6 +5667,13 @@ export interface components {
              * @default false
              */
             focus_own?: boolean;
+            /** Rule Days */
+            rule_days?: number | null;
+            /**
+             * Unfit Min
+             * @default 0
+             */
+            unfit_min?: number;
         };
         /** ExamPrepOut */
         ExamPrepOut: {
@@ -18427,6 +18459,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ItemOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exam_focus_for: {
+        parameters: {
+            query: {
+                title: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamFocusFor"];
                 };
             };
             /** @description Validation Error */

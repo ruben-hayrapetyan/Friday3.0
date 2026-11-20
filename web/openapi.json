@@ -11918,6 +11918,45 @@
     }
    }
   },
+  "/api/q/exam_focus_for": {
+   "get": {
+    "summary": "What your exam focus rule gives an exam of this name: its days, or None.",
+    "operationId": "exam_focus_for",
+    "parameters": [
+     {
+      "name": "title",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Title"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ExamFocusFor"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/exams": {
    "get": {
     "summary": "Upcoming exams, soonest first, each with its prep: what it waits on, and exam prep for its course due at it.",
@@ -18916,6 +18955,28 @@
     ],
     "title": "EventsToCalendarResult"
    },
+   "ExamFocusFor": {
+    "properties": {
+     "days": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Days"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "days"
+    ],
+    "title": "ExamFocusFor",
+    "description": "What your exam focus rule gives an exam of this name (New exam's \"As your other exams\")."
+   },
    "ExamOut": {
     "properties": {
      "item": {
@@ -18984,6 +19045,22 @@
       "type": "boolean",
       "title": "Focus Own",
       "default": false
+     },
+     "rule_days": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rule Days"
+     },
+     "unfit_min": {
+      "type": "integer",
+      "title": "Unfit Min",
+      "default": 0
      }
     },
     "additionalProperties": false,
