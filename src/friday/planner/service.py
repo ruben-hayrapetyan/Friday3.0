@@ -2,8 +2,10 @@
 
 import json
 import sqlite3
+import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import replace
 
 import numpy as np
@@ -28,6 +30,20 @@ from friday.planner.store import current_plan, generation, kv_get, kv_set
 MAX_PIN_CHECKS = 10
 # A lock is asked about once keeping it makes work this late or more (27 Oct: asked over a minute, "+0.02 h").
 ASK_FROM_HOURS = 0.25
+
+
+# A What if trial solving in this process: the worker waits to start a replan until it's done, as two solves at once
+# took each 1.75 times as long, and the trial is what you're waiting on (20 Nov).
+TRIAL = threading.Event()
+
+
+@contextmanager
+def trying() -> Iterator[None]:
+    TRIAL.set()
+    try:
+        yield
+    finally:
+        TRIAL.clear()
 
 
 def replan(

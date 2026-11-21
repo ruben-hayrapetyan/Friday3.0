@@ -38,16 +38,16 @@ class Solved:
     result: Schedule
 
 
-def prepared_problem(snapshot: Snapshot) -> tuple[BuildInput, Problem, Allocation]:
+def prepared_problem(snapshot: Snapshot, cancel: np.ndarray | None = None) -> tuple[BuildInput, Problem, Allocation]:
     inp = build_input(snapshot)
     problem = build_problem(inp)
-    allocation = allocate(allocator_input(inp, problem))
+    allocation = allocate(allocator_input(inp, problem), cancel)
     apply_quotas(problem.items.values(), allocation, problem.grid.horizon_end, problem.grid.units)
     return inp, problem, allocation
 
 
 def solve(snapshot: Snapshot, warm: bool, cancel: np.ndarray | None = None, threads: int | None = None) -> Solved:
-    inp, problem, allocation = prepared_problem(snapshot)
+    inp, problem, allocation = prepared_problem(snapshot, cancel)
     deadlines = executor_input(inp, problem)
     overloaded = not edf(deadlines.jobs, deadlines.free).feasible
     config = scheduler_config(snapshot.settings, threads)

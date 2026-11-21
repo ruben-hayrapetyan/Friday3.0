@@ -1,5 +1,6 @@
 """The allocator: capacities, pacing, lateness first, no front-loading, dependencies, quotas (DESIGN §13)."""
 
+import time
 from collections.abc import Sequence
 from datetime import timedelta
 
@@ -194,3 +195,67 @@ def test_the_running_totals_find_the_same_best_allocation_as_the_sums() -> None:
         return got
 
     assert scores(Summed) == pytest.approx(scores(allocator.AllocatorLP), abs=1e-6)  # the solver's 1e-12s aside
+
+
+def users_shape() -> list[EngineItem]:
+    """A week shaped like a user's (20 Nov): 14 projects of 7 steps, each waiting on every step before it and half of
+    them a day apart, 5 exams' prep each waiting on 40 steps, and loose work: 103 tasks, 494 links."""
+    items: list[EngineItem] = []
+    keys: list[str] = []
+    for p in range(14):
+        mine: list[str] = []
+        for s in range(7):
+            gap = 1440 if p % 2 == 0 else 0
+            waits = tuple(DepSpec(k, 1.0, gap if mine and k == mine[-1] else 0, 8, 0) for k in mine)
+            pacing = "linear" if s == 0 else "none"
+            items.append(work(f"p{p}s{s}", 4 + (p + s) % 9, 10 + p * 4 + s * 2, depends_on=waits, pacing=pacing))
+            mine.append(f"p{p}s{s}")
+        keys += mine
+    for e in range(5):
+        waits = tuple(DepSpec(k, 1.0, 0, 8, 0) for k in keys[e * 9 : e * 9 + 40])
+        items.append(work(f"exam{e}", 16, 30 + e * 9, depends_on=waits))
+    return items + [work(f"loose{k}", 2 + k % 5, 3 + k % 70) for k in range(103 - len(items))]
+
+
+def test_a_week_shaped_like_a_users_allocates_in_seconds(capfd: pytest.CaptureFixture[str]) -> None:
+    """20 Nov: a user's plans took over three minutes, all but a few seconds of it here. This shape took 55 s summed
+    afresh, 30 s with running totals on GLOP and 3 s on HiGHS; and the solver says nothing (HiGHS printed its banner
+    on every solve)."""
+    items = users_shape()
+    began = time.perf_counter()
+    alloc = run(items, make_days(84, free=40))
+    assert time.perf_counter() - began < 20  # a loaded test machine: 3 s here
+    assert set(alloc.units) == {i.key for i in items}
+    assert "HiGHS" not in "".join(capfd.readouterr())
+
+
+def rounds_of(items: list[EngineItem], cancel: object = None) -> int:
+    from friday.engine import allocator  # noqa: PLC0415
+
+    count = [0]
+    real = allocator.AllocatorLP.solve
+
+    def counted(self: allocator.AllocatorLP) -> tuple:
+        count[0] += 1
+        return real(self)
+
+    allocator.AllocatorLP.solve = counted  # type: ignore[method-assign]
+    try:
+        days = make_days(84, free=40)
+        allocate(AllocatorInput(days, items, [], NOW, 14, at(14, "04:00")), cancel)  # type: ignore[arg-type]
+    finally:
+        allocator.AllocatorLP.solve = real  # type: ignore[method-assign]
+    return count[0]
+
+
+def test_spaced_steps_settle_in_a_few_rounds() -> None:
+    """20 Nov: a user's 16 spaced waits ("a day after") took 12 rounds, each the whole allocation again; held behind
+    their sources by the gap from the first, 2, to the same scores. This shape took 7."""
+    assert rounds_of(users_shape()) <= 3
+
+
+def test_a_raised_cancel_stops_after_the_round_its_in() -> None:
+    """A replan or a What if try replaced by a newer one stops between rounds, not after all of them."""
+    import numpy as np  # noqa: PLC0415
+
+    assert rounds_of(users_shape(), np.ones(1, dtype=np.int64)) == 1

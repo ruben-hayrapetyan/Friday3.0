@@ -44,7 +44,7 @@ def test_what_if_plans_from_the_passed_blocks_and_the_plan_without_the_changes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     planned: list = []
-    monkeypatch.setattr(whatif, "plan_snapshot", lambda snapshot, warm: planned.append(snapshot) or "plan")
+    monkeypatch.setattr(whatif, "plan_snapshot", lambda snapshot, warm, stop=None: planned.append(snapshot) or "plan")
     now = 600
     after = NS(
         now_utc=now,

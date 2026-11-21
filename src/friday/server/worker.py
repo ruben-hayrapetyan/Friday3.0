@@ -27,7 +27,7 @@ import numpy as np
 
 from friday.core.db import connect
 from friday.notify.webhooks import fire
-from friday.planner.service import plan_snapshot, save_plan
+from friday.planner.service import TRIAL, plan_snapshot, save_plan
 from friday.planner.snapshot import Snapshot, take_snapshot
 from friday.planner.store import current_plan, kv_get, load_settings
 from friday.server.events import Hub
@@ -144,8 +144,8 @@ class Supervisor:
 
     def maybe_start(self, conn: sqlite3.Connection) -> None:
         with self.lock:
-            if self.due is None or time.monotonic() < self.due:
-                return
+            if self.due is None or time.monotonic() < self.due or (self.job is None and TRIAL.is_set()):
+                return  # a What if trial solving: it goes first (two solves at once each took 1.75 times as long)
             if self.job is not None:
                 if not self.job.cancelled:  # chains stop within 50k steps; the newer snapshot goes next
                     self.job.cancelled = True
