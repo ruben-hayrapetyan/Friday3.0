@@ -1,6 +1,47 @@
 {
-  "current": "0.5.5",
+  "current": "0.6.4",
   "versions": [
+    {
+      "version": "0.6.4",
+      "released": "2026-11-21",
+      "url": "https://friday-scheduler.com/get/Friday-0.6.4.dmg?via=update",
+      "sha256": "568d127d6d3dc96064e6036a9ea78e1102160f6bb444d4cee987323fe885108d",
+      "bytes": 239118466,
+      "minimum_macos": "14.0",
+      "notes": {
+        "summary": "Breaks: take days off, or light days with a short list, and Friday plans around them. Replanning is much faster, and many fixes from your notes.",
+        "new": [
+          "Breaks: drag across days on the calendar, or use the Breaks button at the top, to make days a break, as long as you like.",
+          "An Off break has nothing to do: work due during it is planned before it starts. A Light break holds about the time a day you choose, as a short list of tasks by name, each with a tick and a timer.",
+          "On break days your repeating events pause (classes, shifts, meetings) while one-off events stay; meals and sleep aren't planned unless you say so; tasks with a tag you pause wait until it's over.",
+          "Friday suggests breaks in the Inbox from your calendar: all-day events that say you're away (vacation, out of office, spring break and more), and weekdays where your repeating events stop. Each break shows as one all-day event on Friday's own calendar, so your phone shows it too.",
+          "Work that's pointless once late (an exam's prep, or a step you marked Pointless) is archived once its due passes. The Inbox says what went and why, with Bring back and OK.",
+          "When work won't make it, Friday can also offer staying up an hour later tonight, getting up an hour earlier tomorrow, or giving less important work one more day. Each is tried on a copy of your plan first.",
+          "New exam asks how many days before it to plan only its class's work, or follows your rule in Rules for an exam of that name.",
+          "Test users join with an invite link, which joins the device it's opened on, or by pasting it in Settings → Updates."
+        ],
+        "changed": [
+          "Replanning is much faster: a busy week that took minutes to plan takes seconds, and What if plans your week as it opens, so a change you try is answered sooner. A newer try stops the one still being worked out.",
+          "Every dropdown is Friday's own menu. The calendar lists show each calendar with its color and account.",
+          "Settings → Breaks holds your defaults: what pauses, the time a light day holds, meals and sleep. The Breaks button takes the place of the Inbox's tray at the top of the plan; the Inbox keeps its count in the sidebar.",
+          "The buttons at the top of the plan fold into the Plan menu as the window gets narrow. On a phone, What if's bar has a line of its own, with Discard and Keep in reach.",
+          "When nothing Friday tries would help late work, the window says so and where to go, instead of an empty list.",
+          "Insights' \"When you get things done\" counts every hour: work before 8am or after midnight shows, after midnight on the evening it belongs to.",
+          "A finished step fills a project's bar to its diamond, however quickly you finished it. The sidebar's day leaves out events you said you're not going to, as the calendar does."
+        ],
+        "fixed": [
+          "Two tasks with the same name for different classes (HW 12 for CHEM and for MATH), or due days apart, were taken as copies of one. Copies are now the same words, the same tags and dues within a day.",
+          "Friday offered to plan a meal shorter than it said it takes you (\"about 20m\", then \"Plan 15m\"). It now offers at least what it takes, to the quarter hour.",
+          "A What if that took long could end with the browser's \"couldn't parse\" error. A cut-off answer now says so plainly.",
+          "\"Replanning…\" could sit over the Day and 3 days buttons. The header now makes room for it.",
+          "Steps after one with no room before its due were planned anyway. They now wait for it and say why.",
+          "An exam whose prep was planned to finish before it said \"Prep runs past the exam\" when some prep didn't fit. It now says how much doesn't fit and when the rest finishes.",
+          "A long menu, like New exam's or the Breaks list, ran past its edge or jumped back to its top; it now scrolls.",
+          "A short block's time was cut mid-letter in a narrow column, and a long to-do list squeezed its rows; both now fit.",
+          "Dragging across days to make a break selected the text on the page as well."
+        ]
+      }
+    },
     {
       "version": "0.5.5",
       "released": "2026-11-19",
