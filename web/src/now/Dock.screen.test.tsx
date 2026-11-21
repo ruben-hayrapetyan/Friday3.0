@@ -220,6 +220,30 @@ describe("timing something", () => {
     await waitFor(async () => expect((await friday.q<{ timer: unknown }>("status")).timer).toBeNull(), { timeout: 10_000 })
   })
 
+  // 21 Nov, the user: timing CATC, then lunch, then math, and the pill showed one of them ("i would like the two or
+  // more timers to be next to each other")
+  it("in the minimal style, two things timed and a meal show side by side on the pill, oldest first", async () => {
+    window.localStorage.setItem("friday-look-v8", JSON.stringify({ dockStyle: "Minimal" }))
+    const [a, b] = await work()
+    await friday.c("start", { id: a.item_id })
+    await friday.c("start", { id: b.item_id, alongside: true })
+    const { client } = await openDock()
+    await waitFor(() => expect(client.getQueryData(["meals"])).toBeTruthy())
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    const d = new Date()
+    const two = (n: number) => String(n).padStart(2, "0")
+    const local = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`
+    client.setQueryData<Schemas["MealsOut"]>(["meals"], (m) => m && { ...m, on: true, next: null, eating: { id: 9, kind: "lunch", date: local.slice(0, 10), start: local, end: null, minutes: null, skipped: false, item_id: null, nth: 1 } })
+    const open = await inDock().findByRole("button", { name: `Open the Now bar: ${a.title}, ${b.title}, Lunch` }, { timeout: 20_000 })
+    expect([...open.querySelectorAll("[data-going]")].map((g) => g.getAttribute("data-going"))).toEqual(["timer", "timer", "meal"])
+    expect(within(open).getByText("Lunch")).toBeTruthy()
+    expect(within(open).queryByText(/^\+\d/)).toBeNull() // not "+1"
+    // Done and Pause act on the one started last
+    expect(inDock().getByRole("button", { name: `Pause the timer on ${b.title} (Space)` })).toBeTruthy()
+    await friday.c("stop", { id: a.item_id })
+    await friday.c("stop", { id: b.item_id })
+  })
+
   it("free in the minimal style: Start now's chips wait in the opened bar, the first a round Start on the pill", async () => {
     window.localStorage.setItem("friday-look-v8", JSON.stringify({ dockStyle: "Minimal" }))
     const { user, client } = await openDock()

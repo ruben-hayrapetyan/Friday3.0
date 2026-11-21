@@ -928,3 +928,12 @@ kbd.fr-kbd {
   -webkit-user-select: none !important;
   user-select: none !important;
 }
+
+/* The Now pill with several things going (21 Nov, Dock.tsx PillOfSeveral): every name gives way, a long one far
+   before a short one; with the room of a laptop, a short name ("Lunch") stays whole, where a fraction of a pixel
+   given up had cut it to "Lun…". */
+.fr-several { container-type: inline-size; }
+.fr-going-name { flex: 0 var(--shrink) auto; min-width: 1.2em; }
+@container (min-width: 500px) {
+  .fr-going-name.is-short { flex: none; }
+}

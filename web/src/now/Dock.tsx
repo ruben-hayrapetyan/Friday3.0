@@ -34,6 +34,7 @@ import { useShell } from "@/shell/ShellContext"
 import { useBreaks } from "./breaks"
 import { mealLabel } from "@/body/mealNames"
 import { covered, DOCK_VAR } from "./dockRoom"
+import { type Running, runningNow } from "./running"
 
 type Menu = "time" | "more" | "swap" | null
 type Fit = { item_id: number; title: string; minutes: number }
@@ -73,9 +74,12 @@ export function Dock() {
   const work = !!cur && !cur.fixed
   const room = "100% - var(--fr-side) - var(--fr-drawer) - 12px" // beside the sidebar and any drawer (Shell's variables)
   // a tap waiting on the sleep or meal row, or another timer: a mark on the pill, so the pill is never all there is
+  // Two or more going at once (timers, a meal): side by side on the pill, which widens for them (21 Nov)
+  const running = runningNow(status, meals)
+  const several = running.length > 1
   const waiting = [
     ...(sleep?.on && sleep.napping ? ["bed"] : sleep?.on && sleep.next ? [TAPS[sleep.next].icon] : []),
-    ...(meals?.on && (meals.eating || meals.next) ? [MEAL_ICON[meals.eating?.kind ?? meals.next ?? "snack"] ?? "fork-knife"] : []),
+    ...(meals?.on && (meals.eating || meals.next) && !(several && meals.eating) ? [MEAL_ICON[meals.eating?.kind ?? meals.next ?? "snack"] ?? "fork-knife"] : []),
   ]
   return (
     <div
@@ -88,14 +92,14 @@ export function Dock() {
         left: `calc(var(--fr-side) + (${room}) / 2)`,
         bottom: 18,
         transform: "translateX(-50%)",
-        width: `min(${pill ? 440 : 780}px, calc(${room} - 16px))`,
+        width: `min(${pill ? (several ? 640 : 440) : 780}px, calc(${room} - 16px))`,
         zIndex: 8,
         borderRadius: pill ? 999 : "var(--radius-lg)",
         overflow: "hidden",
       }}
     >
       {pill ? (
-        <Pill now={now} cur={cur} timing={timing} elapsed={timer?.elapsed_s ?? 0} dot={cur ? color(cur.area, cur.preset) : "var(--color-neutral-500)"} today={today} marks={waiting} alongside={alongside.length} onOpen={() => setOpened(true)} />
+        <Pill now={now} cur={cur} timing={timing} elapsed={timer?.elapsed_s ?? 0} dot={cur ? color(cur.area, cur.preset) : "var(--color-neutral-500)"} today={today} marks={waiting} alongside={alongside.length} running={several ? running : null} onOpen={() => setOpened(true)} />
       ) : (
         <>
           {work && menu === "more" && <MoreMenu itemId={cur.item_id} onSwitch={() => setMenu("swap")} onClose={() => setMenu(null)} />}
@@ -122,7 +126,7 @@ export function Dock() {
 }
 
 /** Minimal's pill: the dot, what's on (or free), and its main round actions; the rest is a tap away. */
-function Pill({ now, cur, timing, elapsed, dot, today, marks, alongside, onOpen }: { now: Schemas["NowOut"]; cur: Block | null | undefined; timing: boolean; elapsed: number; dot: string; today: string; marks: string[]; alongside: number; onOpen: () => void }) {
+function Pill({ now, cur, timing, elapsed, dot, today, marks, alongside, running, onOpen }: { now: Schemas["NowOut"]; cur: Block | null | undefined; timing: boolean; elapsed: number; dot: string; today: string; marks: string[]; alongside: number; running: Running[] | null; onOpen: () => void }) {
   const seconds = useElapsed(elapsed)
   const nowMin = useClock()
   const pause = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
@@ -134,6 +138,7 @@ function Pill({ now, cur, timing, elapsed, dot, today, marks, alongside, onOpen 
   const title = cur ? cur.title : now.next?.start ? `Free until ${when(now.next.start, today)}` : "Free for the rest of today"
   const aside = timing ? hms(seconds) : cur?.fixed ? `until ${clock(cur.end)}` : cur ? `${span(toMin(cur.end) - nowMin)} left` : ""
   const round = { width: 32, height: 32, borderRadius: "50%", boxShadow: "none", flex: "none" } as const
+  if (running) return <PillOfSeveral running={running} dot={dot} marks={marks} round={round} onOpen={onOpen} />
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 6px 5px 6px" }}>
       <button className="fr-plain" onClick={onOpen} aria-expanded={false} aria-label={`Open the Now bar: ${title}`} title="Open the Now bar" style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8, padding: "4px 8px 4px 10px", textAlign: "left", borderRadius: 999 }}>
@@ -587,6 +592,61 @@ function Bar({ pct, live, muted }: { pct: number; live?: boolean; muted?: boolea
 // Its ring is RING px past the dot; the line it sits in hides what's outside it, so the dot keeps that much room around
 // it (16 Nov, a screenshot: the ring's left side was cut off at the line's edge).
 export const RING = 3
+
+/** The pill with two or more going at once: each side by side, oldest first, its own time ticking; Done and Pause act
+ * on the timer you started last, as on the one-thing pill; a tap anywhere else opens the bar with each one's row. */
+function PillOfSeveral({ running, dot, marks, round, onOpen }: { running: Running[]; dot: string; marks: string[]; round: object; onOpen: () => void }) {
+  const pause = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
+  const finish = useCommand("stop", { label: (o) => o.result.message ?? "Done" })
+  const main = running.find((r) => r.main)
+  const names = running.map((r) => r.title).join(", ")
+  return (
+    <div className="fr-several" style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 6px" }}>
+      <button className="fr-plain" onClick={onOpen} aria-expanded={false} aria-label={`Open the Now bar: ${names}`} title="Open the Now bar" style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6, padding: "4px 8px 4px 6px", textAlign: "left", borderRadius: 999, overflow: "hidden" }}>
+        {running.map((r, i) => (
+          <span key={r.key} style={{ display: "contents" }}>
+            {i > 0 && <span aria-hidden style={{ flex: "none", width: 1, height: 16, margin: "0 6px", background: "color-mix(in srgb, var(--color-text) 14%, transparent)" }} />}
+            <Going r={r} dot={dot} />
+          </span>
+        ))}
+        <span style={{ flex: 1 }} />
+        {marks.map((icon) => (
+          <Icon key={icon} name={icon} size={13} style={{ flex: "none", color: "var(--color-accent-300)" }} />
+        ))}
+      </button>
+      {main && (
+        <>
+          <button className="btn btn-icon btn-primary" onClick={() => finish({ done: true })} aria-label={`Stop the timer and mark ${main.title} done`} title={`Stop the timer and mark ${main.title} done`} style={round}>
+            <Icon name="check" size={15} />
+          </button>
+          <button className="btn btn-icon btn-secondary" onClick={() => pause({})} aria-label={`Pause the timer on ${main.title} (Space)`} title={`Pause the timer on ${main.title} (Space)`} style={{ ...round, background: "var(--fr-chip-bg)" }}>
+            <Icon name="pause" size={15} />
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** One thing going on, in the pill of several: a pulse (or the meal's icon), its name, how long so far. */
+function Going({ r, dot }: { r: Running; dot: string }) {
+  const seconds = useElapsed(r.kind === "timer" ? r.elapsed_s : null)
+  const nowMin = useClock()
+  const soFar = r.kind === "timer" ? hms(seconds) : dur(Math.max(0, nowMin - (r.started ? toMin(r.started) : nowMin)))
+  // Only names give way, a long one far before a short one ("Lunch" whole beside "Prep: PHYS 1112 Prel…"); the dot and
+  // the time keep their room. Its parts sit in the pill's own row (display: contents), so each shrinks on its own.
+  return (
+    <span data-going={r.kind} style={{ display: "contents" }}>
+      {r.kind === "meal" ? <Icon name={MEAL_ICON[r.meal ?? ""] ?? "fork-knife"} size={13} style={{ flex: "none", color: "var(--color-accent-300)" }} /> : <Pulse color={r.main ? dot : "var(--color-neutral-400)"} />}
+      <span className={`fr-h fr-going-name${r.title.length <= 12 ? " is-short" : ""}`} style={{ ["--shrink" as string]: r.title.length ** 3, fontSize: 14, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: r.main ? "var(--color-text)" : "var(--color-neutral-300)" }}>
+        {r.title}
+      </span>
+      <span className="tnum" style={{ flex: "none", fontSize: 12, whiteSpace: "nowrap", color: r.kind === "timer" ? "var(--color-accent-200)" : "var(--color-neutral-400)" }}>
+        {soFar}
+      </span>
+    </span>
+  )
+}
 
 function Pulse({ color }: { color: string }) {
   return <span data-pulse style={{ flex: "none", width: 8, height: 8, margin: RING, borderRadius: "50%", background: color, boxShadow: `0 0 0 ${RING}px color-mix(in srgb, ${color} 30%, transparent)` }} />
