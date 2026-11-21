@@ -530,7 +530,7 @@ class Buffer(Rule):
                 groups.setdefault(b, []).append(item)
         for b, members in sorted(groups.items()):
             for s in range(grid.S):
-                starts = lin_sum(ctx.start(m.key, s) for m in members)
+                starts = ctx.starts_at(members, s)
                 window = before(grid, s, b)
                 if starts.is_const() or not window:
                     continue
@@ -574,7 +574,7 @@ def travel_measures(rule: Rule, ctx: Any, scoped: list[Any], slope: float) -> It
                     continue
                 if side == "before":
                     # A chunk starting at s, with other work or an event in the b units before it.
-                    starts = lin_sum(ctx.start(m.key, s) for m in members)
+                    starts = ctx.starts_at(members, s)
                     if starts.is_const():
                         continue
                     events = sum(int(grid.units[w]) for w in window if problem.events[w])
