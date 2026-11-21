@@ -137,7 +137,7 @@ def test_lunches_taken_longer_offer_a_longer_routine(app: App) -> None:
     out = app.do("meals")
     (weekdays,) = [x for x in out["learned"] if x["kind"] == "lunch" and x["group"] == "weekdays"]
     assert (weekdays["usual_start"], weekdays["usual_min"], weekdays["skip_share"]) == ("12:00", 45, 0)
-    assert out["changes"] == [{"kind": "lunch", "planned_min": 30, "usual_min": 45}]
+    assert out["changes"] == [{"kind": "lunch", "planned_min": 30, "usual_min": 45, "new_min": 45}]
     assert "planned at 45 min" in app.do("meal_use_length", kind="lunch")["message"]
     assert todays_lunch(app)["ideal_units"] == 3
     assert app.do("meals")["changes"] == []
@@ -291,3 +291,25 @@ def test_a_meal_eaten_after_a_timer_ticked_its_routine_off_still_names_that_rout
     # what's stored is unchanged: the meal ticked nothing off, so taking it back opens nothing
     (row,) = app.table("meals")
     assert row["item_id"] is None
+
+
+@pytest.mark.parametrize(("took", "offered"), [(20, None), (40, 45), (55, 60)])
+def test_a_new_length_covers_what_you_take(app: App, took: int, offered: int | None) -> None:
+    """20 Nov, a user's screenshot: "Dinner takes you about 20m. Friday plans 30m. Plan 15m from now on?": what you
+    take went to the nearest quarter hour, 15 minutes, less than you take. It goes up to the quarter hour that covers
+    it, and a meal that already fits in what's planned isn't asked about."""
+    on(app)
+    lunch_routine(app)  # planned 30 minutes
+    for back in range(1, 8):
+        day = date(2026, 10, 19) - timedelta(days=back)
+        end = f"{12 + took // 60:02d}:{took % 60:02d}"
+        app.do("meal_log", kind="lunch", start=f"{day}T12:00", end=f"{day}T{end}")
+    changes = app.do("meals")["changes"]
+    if offered is None:
+        assert changes == []
+        with pytest.raises(FieldError, match="hasn't learned a different length"):
+            app.do("meal_use_length", kind="lunch")
+        return
+    assert changes == [{"kind": "lunch", "planned_min": 30, "usual_min": took, "new_min": offered}]
+    assert f"planned at {offered} min" in app.do("meal_use_length", kind="lunch")["message"]
+    assert todays_lunch(app)["ideal_units"] == offered // 15

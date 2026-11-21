@@ -12,6 +12,7 @@ you skip it. Pure: no database.
 - A meal whose routine is planned 10 minutes or more off the length you take is offered the length you take.
 """
 
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -105,16 +106,24 @@ def learn(meals: Iterable[Meal], min_days: int) -> list[Learned]:
     return out
 
 
+def planned_length(took: int) -> int:
+    """The length a meal is planned at for what it takes you: up to the quarter hour that covers it. To the nearest, a
+    dinner of 20 minutes was offered 15, less than it takes (20 Nov, a user's screenshot: "Dinner takes you about
+    20m. Friday plans 30m. Plan 15m from now on?")."""
+    return max(QUARTER, math.ceil(took / QUARTER) * QUARTER)
+
+
 def length_changes(learned: list[Learned], planned: dict[str, int]) -> dict[str, int]:
-    """Meals whose routine (`planned`: minutes, by meal) is 10 minutes or more off what you take: the length you take,
-    from the weekdays' days where there are enough, else the weekends'."""
+    """Meals whose routine (`planned`: minutes, by meal) is 10 minutes or more off what you take, and would be planned
+    at another length for it (`planned_length`): the length you take, from the weekdays' days where there are enough,
+    else the weekends'. One that fits in what's planned isn't asked about."""
     out = {}
     for kind, minutes in planned.items():
         mine = [x for x in learned if x.kind == kind and x.usual_min]
         usual = next((x.usual_min for x in mine if x.group == "weekdays"), None) or next(
             (x.usual_min for x in mine), None
         )
-        if usual is not None and abs(usual - minutes) >= OFF_BY:
+        if usual is not None and abs(usual - minutes) >= OFF_BY and planned_length(usual) != minutes:
             out[kind] = usual
     return out
 

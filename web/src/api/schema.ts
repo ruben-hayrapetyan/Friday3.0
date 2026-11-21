@@ -7653,6 +7653,8 @@ export interface components {
             planned_min: number;
             /** Usual Min */
             usual_min: number;
+            /** New Min */
+            new_min: number;
         };
         /** MealDayOut */
         MealDayOut: {
