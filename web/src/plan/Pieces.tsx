@@ -138,7 +138,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
         {b.pinned === "preferred" && !look && <Icon name="push-pin" fill size={11} style={tall ? ICON_AT_LINE : undefined} />}
         {done && <Icon name="check" size={11} style={tall ? ICON_AT_LINE : undefined} />}
         {look === "sitting" && <Icon name="timer" size={11} style={tall ? ICON_AT_LINE : undefined} />}
-        <span ref={lines.title} data-title-lines={tall ? lines.titleMost : undefined} style={tall ? { ...clamped(lines.titleMost), minWidth: 0 } : { overflow: "hidden", textOverflow: "ellipsis" }}>
+        <span ref={lines.title} data-title-lines={tall ? lines.titleMost : undefined} style={tall ? { ...clamped(lines.titleMost), minWidth: 0 } : ONE_LINE_TITLE}>
           {b.title}
         </span>
         {!tall && <Inline at={b.start} color={missed ? "var(--color-neutral-500)" : s.sub} time={look ? undefined : time} />}
@@ -265,7 +265,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
         <span
           ref={lines.title}
           data-title-lines={tall ? lines.titleMost : undefined}
-          style={{ ...(tall ? { ...clamped(lines.titleMost), minWidth: 0 } : { overflow: "hidden", textOverflow: "ellipsis" }), ...(cancelled ? { textDecoration: "line-through" } : {}) }}
+          style={{ ...(tall ? { ...clamped(lines.titleMost), minWidth: 0 } : ONE_LINE_TITLE), ...(cancelled ? { textDecoration: "line-through" } : {}) }}
           title={it.left_out ? `${it.title} — not counted as busy (${LEFT_OUT[it.left_out] ?? it.left_out})` : undefined}
         >
           {it.event_kind === "shove" ? "Your time" : it.title}
@@ -341,6 +341,10 @@ interface Timing {
   save: (span: Span) => void
   stop: () => void
 }
+
+/** A short piece's title, on its one line: it gives way before the time beside it (20 Nov, 320px: the time had been
+ * cut, then shrank to an ellipsis while the title kept the room). */
+const ONE_LINE_TITLE = { overflow: "hidden", textOverflow: "ellipsis", flexShrink: 100 } as const
 
 /** A short piece's time, on its one line after the title. In a narrow column it gives way after the title, with an
  * ellipsis: it couldn't shrink, and the box cut it mid-letter ("9:30an", 20 Nov, 320px, 3 days). */
