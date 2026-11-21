@@ -50,6 +50,14 @@ describe("replanning (3 Nov)", () => {
     expect(dot).toMatch(/flex: "0 1 auto", minWidth: 7, overflow: "hidden"/)
     expect(between(page, 'data-tour="attention"', "</button>")).toContain('flex: "0 100 auto"')
   })
+  // 20 Nov, 320px: on a phone the bar ran 77px off the screen, Discard and Keep with it
+  it("puts What if's bar on its own line under a phone's header", () => {
+    expect(header).toContain("const below = layout.tight && trying")
+    expect(header).toContain("{!below && <WhatIfBar")
+    expect(header).toMatch(/\{below && \(\s*<div[^>]*>\s*<WhatIfBar tight \/>/)
+    const shell = readFileSync(join(__dirname, "..", "shell", "Shell.tsx"), "utf8")
+    expect(shell).toContain('gridTemplateRows: "minmax(60px, auto) minmax(0,1fr)"') // the header row grows for it
+  })
   it("leaves the view buttons to the Plan menu while What if's bar needs their room", () => {
     expect(header).toMatch(/const folded = layout\.tight \|\| \(trying && layout\.main < WHAT_IF_ROOM\)/)
     expect(header).toContain("{!folded && (")

@@ -139,49 +139,59 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
   // narrower still the bar says less (20 Nov, the user's screenshot: the row ran out and "Replanning…" lay over them)
   const trying = useWhatIf().on
   const folded = layout.tight || (trying && layout.main < WHAT_IF_ROOM)
+  // a phone's row has no room for it at all (20 Nov, 320px: it ran 77px off the screen): its own line under the row,
+  // Discard and Keep in reach
+  const below = layout.tight && trying
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: layout.tight ? 4 : 8, padding: "0 12px 0 var(--fr-head-inset)", minWidth: 0 }}>
-      {/* Before the date, not after it: a date's length moved them, so clicking ahead many times missed (5 Nov). */}
-      <div data-testid="day-arrows" style={{ display: "flex", gap: 0, flex: "none" }}>
-        <button className="btn btn-icon btn-ghost" onClick={() => onStep(-1)} aria-label="Previous" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
-          <Icon name="caret-left" />
-        </button>
-        <button className="btn btn-icon btn-ghost" onClick={() => onStep(1)} aria-label="Next" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
-          <Icon name="caret-right" />
-        </button>
-      </div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: layout.tight ? 40 : 48, flex: "0 1 auto", overflow: "hidden" }}>
-        <span className="fr-h" style={{ fontSize: layout.tight ? 18 : 24, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {rangeTitle(first, view, layout.main < 900, layout.tight)}
-        </span>
-        {layout.main >= BREAKS_WORD_MIN && ( // narrower, "back to today" is in the Plan menu (19 Nov: 700px cut it)
-          <button className="fr-plain fr-hover-text" style={{ color: "var(--color-neutral-500)", whiteSpace: "nowrap" }} onClick={onToday} title="Back to today">
-            {subTitle(first, days, today, view)}
+    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: layout.tight ? 4 : 8, padding: "0 12px 0 var(--fr-head-inset)", minWidth: 0, height: 60 }}>
+        {/* Before the date, not after it: a date's length moved them, so clicking ahead many times missed (5 Nov). */}
+        <div data-testid="day-arrows" style={{ display: "flex", gap: 0, flex: "none" }}>
+          <button className="btn btn-icon btn-ghost" onClick={() => onStep(-1)} aria-label="Previous" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
+            <Icon name="caret-left" />
           </button>
+          <button className="btn btn-icon btn-ghost" onClick={() => onStep(1)} aria-label="Next" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
+            <Icon name="caret-right" />
+          </button>
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: layout.tight ? 40 : 48, flex: "0 1 auto", overflow: "hidden" }}>
+          <span className="fr-h" style={{ fontSize: layout.tight ? 18 : 24, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {rangeTitle(first, view, layout.main < 900, layout.tight)}
+          </span>
+          {layout.main >= BREAKS_WORD_MIN && ( // narrower, "back to today" is in the Plan menu (19 Nov: 700px cut it)
+            <button className="fr-plain fr-hover-text" style={{ color: "var(--color-neutral-500)", whiteSpace: "nowrap" }} onClick={onToday} title="Back to today">
+              {subTitle(first, days, today, view)}
+            </button>
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }} />
+        <Attention first={first} days={view === "month" ? 7 : view} />
+        {!folded && (
+          <span data-tour="views" style={{ flex: "none", display: "flex" }}>
+            <Seg options={views} value={view} onPick={onView} label="View" />
+          </span>
         )}
+        {!below && <WhatIfBar tight={layout.tight || layout.main < WHAT_IF_FULL} />}
+        <ShowMenu />
+        <PlanMenu views={folded ? { options: views, value: view, onPick: onView, onToday } : undefined} breaks={layout.main < BREAKS_BUTTON_MIN} search={layout.main < SEARCH_BUTTON_MIN} today={!layout.tight && layout.main < BREAKS_WORD_MIN ? onToday : undefined} />
+        {layout.main >= SEARCH_BUTTON_MIN && <IconButton tour="search" icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />}
+        {layout.main >= BREAKS_BUTTON_MIN && <BreaksButton square={layout.main < BREAKS_WORD_MIN} />}
+        <button
+          className="btn btn-icon btn-secondary"
+          data-tour="drawer"
+          onClick={() => setDrawer(!drawer)}
+          aria-label="To-do list"
+          title="To-do list (T)"
+          style={{ flex: "none", color: drawer ? "var(--color-accent-200)" : undefined, background: drawer ? "color-mix(in srgb, var(--color-accent) 14%, transparent)" : undefined }}
+        >
+          <Icon name="list-checks" size={16} />
+        </button>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }} />
-      <Attention first={first} days={view === "month" ? 7 : view} />
-      {!folded && (
-        <span data-tour="views" style={{ flex: "none", display: "flex" }}>
-          <Seg options={views} value={view} onPick={onView} label="View" />
-        </span>
+      {below && (
+        <div style={{ display: "flex", padding: "0 12px 8px", minWidth: 0 }}>
+          <WhatIfBar tight />
+        </div>
       )}
-      <WhatIfBar tight={layout.tight || layout.main < WHAT_IF_FULL} />
-      <ShowMenu />
-      <PlanMenu views={folded ? { options: views, value: view, onPick: onView, onToday } : undefined} breaks={layout.main < BREAKS_BUTTON_MIN} search={layout.main < SEARCH_BUTTON_MIN} today={!layout.tight && layout.main < BREAKS_WORD_MIN ? onToday : undefined} />
-      {layout.main >= SEARCH_BUTTON_MIN && <IconButton tour="search" icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />}
-      {layout.main >= BREAKS_BUTTON_MIN && <BreaksButton square={layout.main < BREAKS_WORD_MIN} />}
-      <button
-        className="btn btn-icon btn-secondary"
-        data-tour="drawer"
-        onClick={() => setDrawer(!drawer)}
-        aria-label="To-do list"
-        title="To-do list (T)"
-        style={{ flex: "none", color: drawer ? "var(--color-accent-200)" : undefined, background: drawer ? "color-mix(in srgb, var(--color-accent) 14%, transparent)" : undefined }}
-      >
-        <Icon name="list-checks" size={16} />
-      </button>
     </div>
   )
 }
