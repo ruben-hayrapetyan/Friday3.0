@@ -15,4 +15,8 @@ describe("a short piece's time", () => {
     expect(inline).toContain('textOverflow: "ellipsis"')
     expect(inline).not.toContain('flex: "none"')
   })
+  it("keeps its room until the title beside it has given way", () => {
+    expect(pieces).toMatch(/const ONE_LINE_TITLE = \{[^}]*flexShrink: 100/)
+    expect(pieces.match(/: ONE_LINE_TITLE/g)?.length).toBe(2) // a block's and an event's
+  })
 })
