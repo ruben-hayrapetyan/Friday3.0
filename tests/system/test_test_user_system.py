@@ -113,7 +113,8 @@ def test_a_test_user_gets_their_version_with_their_code_and_leaving_offers_every
     joined = friday.post("/api/c/update_test_join", json={"code": "k7qf 29xm"})
     assert joined.status_code == 200, joined.text
     known = wait_for(friday, lambda s: (s.get("test_user") or {}).get("known") is not None)
-    assert known["test_user"] == {"code": CODE, "name": "Ana", "known": True}
+    # a code from before 0.6.4: still the code (this site swaps none for a key), so no device key (H233)
+    assert known["test_user"] == {"code": CODE, "name": "Ana", "known": True, "device": False}
     assert [(v["version"], v["test"]) for v in known["versions"]] == [("0.3.0", True), ("0.2.1", False)]
     friday.post("/api/c/update_start", json={})
     ready = wait_for(friday, lambda s: s["state"] in ("ready", "failed"))
