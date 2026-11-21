@@ -129,7 +129,11 @@ describe("steps waiting for one that has no room", () => {
     const add = async (title: string, minutes: number, more: Record<string, unknown> = {}) =>
       (await friday.c<Made>("add", { title, preset: "Assignment", duration_min: minutes, parent_id: made.item.id, ...more })).result.item.id
     await add("Gather sources", 60)
-    const cram = await add("Cram the whole thing", 120, { due: `${day(-1)}T23:00`, expires: true }) // its due gone: no room, never late
+    // pointless once late, two hours due in 20 minutes: no room before its due, so never planned, never late. Not a due
+    // already gone (21 Nov): such work is archived within a minute (server/jobs.py), and the test failed when it was
+    const soon = new Date(Date.now() + 20 * 60_000)
+    const due = `${day(0)}T${String(soon.getHours()).padStart(2, "0")}:${String(soon.getMinutes()).padStart(2, "0")}`
+    const cram = await add("Cram the whole thing", 120, { due, expires: true })
     await friday.c("step_any_time", { id: cram, any_time: true })
     const write = await add("Write it up", 120)
     // planned now, as Replan does, rather than waiting on the replan its changes asked for: under the whole suite's
