@@ -54,12 +54,13 @@ async function sayNow(client: QueryClient, change: (now: Now, local: string) => 
 
 /** The nap or meal just tapped taken away again (begun this minute, it can't be ended yet). */
 async function nappedNone() {
-  await waitFor(async () => expect((await friday.q<Schemas["SleepOut"]>("sleep")).napping).not.toBeNull())
+  await waitFor(async () => expect((await friday.q<Schemas["SleepOut"]>("sleep")).napping).not.toBeNull(), { timeout: 10_000 })
   const nap = (await friday.q<Schemas["SleepOut"]>("sleep")).napping
   if (nap) await friday.c("nap_remove", { id: nap.id })
 }
+// both wait as long as the server may take under a full run's load: the default second ran out (20 Nov)
 async function eatenNone() {
-  await waitFor(async () => expect((await friday.q<Schemas["MealsOut"]>("meals")).eating).not.toBeNull())
+  await waitFor(async () => expect((await friday.q<Schemas["MealsOut"]>("meals")).eating).not.toBeNull(), { timeout: 10_000 })
   const meal = (await friday.q<Schemas["MealsOut"]>("meals")).eating
   if (meal) await friday.c("meal_remove", { id: meal.id })
 }
@@ -423,6 +424,7 @@ describe("sleep and meals, tracked", () => {
   })
 
   it("asks about a meal at its time: eating now, or skip it; and another of the last one", async () => {
+    await setting("meal_tracking", { on: true }) // its own, not the test before's: alone it failed (20 Nov)
     const { user, client } = await openDock()
     const meal = async (change: Partial<Schemas["MealsOut"]>) => {
       await waitFor(() => expect(client.getQueryData(["meals"])).toBeTruthy())
