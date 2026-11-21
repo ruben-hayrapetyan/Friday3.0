@@ -5,11 +5,10 @@ said without what the rule gains. Now a rule clashes only when keeping it gains 
 card names both sides."""
 
 from datetime import datetime
+from pathlib import Path
 from types import SimpleNamespace as NS
 
 from friday.core.time import to_utc
-from pathlib import Path
-
 from friday.planner.snapshot import take_snapshot
 from friday.planner.views import CLASH_FACTOR, clash_of, cost_said, kept_said
 from tests.commands.helpers import new_app
