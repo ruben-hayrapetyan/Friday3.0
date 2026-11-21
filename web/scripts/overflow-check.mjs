@@ -157,9 +157,11 @@ async function opened(base, kind) {
   return made[kind]
 }
 
-// A break from tomorrow for five days with a long name, and an all-day "Spring break" a few weeks on that the Inbox
-// suggests as one; made once.
-let breakMade = false
+// A break from today for five days with a long name, and an all-day "Spring break" a few weeks on that the Inbox
+// suggests as one; made once a width, and the break deleted when the width is done (offBreak): 21 Nov, made at
+// 1440px it stayed for 390px, whose week was then all Off break with no block to open.
+let breakMade = null
+let spring = false
 async function onBreak(base) {
   if (!breakMade) {
     const c = async (name, body) => (await fetch(`${base}/api/c/${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })).json()
@@ -168,12 +170,20 @@ async function onBreak(base) {
       const d = new Date(Date.now() + n * 86_400_000)
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
     }
-    await c("vacation_add", { name: "Thanksgiving break at my grandparents' house in Vermont", start: day(0), end: day(4) })
-    await c("add", { title: "Spring break", when: "fixed", start: `${day(20)}T00:00`, end: `${day(27)}T00:00` })
-    breakMade = true
+    const made = await c("vacation_add", { name: "Thanksgiving break at my grandparents' house in Vermont", start: day(0), end: day(4) })
+    if (!spring) await c("add", { title: "Spring break", when: "fixed", start: `${day(20)}T00:00`, end: `${day(27)}T00:00` })
+    spring = true
+    breakMade = made.result.vacation.id
     await wait(1500) // planned
   }
   return "/"
+}
+
+async function offBreak(base) {
+  if (!breakMade) return
+  await fetch(`${base}/api/c/vacation_delete`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: breakMade }) })
+  breakMade = null
+  await wait(1500) // planned again
 }
 
 function freePort() {
@@ -478,6 +488,7 @@ async function main() {
         }
         if (process.env.OVERFLOW_PROGRESS) console.error(`  ${width}px ${state.name} took ${((Date.now() - began) / 1000).toFixed(1)}s`)
       }
+      await offBreak(sample.base)
     }
   } finally {
     close()
