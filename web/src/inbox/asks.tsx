@@ -235,7 +235,9 @@ export function mealAsks(meals: Schemas["MealsOut"], run: MealRun): Ask[] {
   const out: Ask[] = []
   for (const c of meals.changes ?? []) {
     if (decided.has(c.kind)) continue
-    const minutes = Math.max(15, Math.round(c.usual_min / 15) * 15)
+    // the server's: what you take, up to the quarter hour that covers it (20 Nov: rounded to the nearest here, "takes
+    // you about 20m ... Plan 15m from now on?")
+    const minutes = c.new_min
     out.push({ key: `meal-length:${c.kind}`, evidence: String(c.usual_min), icon: "fork-knife", kicker: "Your meals", title: `${named(c.kind)} takes you about ${dur(c.usual_min)}`, why: `Friday plans ${dur(c.planned_min)}. Plan ${dur(minutes)} from now on?`, yes: { label: `Plan ${dur(minutes)}`, run: () => run.length({ kind: c.kind as Meal }) } })
   }
   for (const t of meals.times ?? []) {

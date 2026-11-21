@@ -41,7 +41,7 @@ describe("meals' questions", () => {
   const run = { length: async () => ({}), time: async () => ({}), plan: async () => ({}) }
   const meals = {
     on: true,
-    changes: [{ kind: "lunch", usual_min: 40, planned_min: 60 }],
+    changes: [{ kind: "lunch", usual_min: 40, planned_min: 60, new_min: 45 }],
     times: [{ kind: "dinner", usual_start: "19:00", start: "18:00", end: "19:00", new_start: "18:45", new_end: "19:45" }],
     plans: [{ kind: "breakfast", plan: false, usual_start: null }],
     decided: [] as string[],
@@ -54,6 +54,16 @@ describe("meals' questions", () => {
     expect(found[0].yes?.label).toBe("Plan 45m")
     expect(found[1].yes?.label).toBe("Plan 6:45pm–7:45pm")
     expect(found[2]).toMatchObject({ title: "You usually skip breakfast", why: "Friday still plans it. Stop planning it?" })
+  })
+
+  // 20 Nov, a user's screenshot: "Dinner takes you about 20m. Friday plans 30m. Plan 15m from now on?": the length was
+  // rounded to the nearest quarter hour here, below what you take. It's the server's: up to the quarter that covers it
+  it("offers the length Friday would plan, covering what you take", () => {
+    const longer = { ...meals, changes: [{ kind: "dinner", usual_min: 50, planned_min: 30, new_min: 60 }] } as unknown as Schemas["MealsOut"]
+    const [dinner] = mealAsks(longer, run)
+    expect(dinner.title).toBe("Dinner takes you about 50m")
+    expect(dinner.why).toBe("Friday plans 30m. Plan 1h from now on?")
+    expect(dinner.yes?.label).toBe("Plan 1h")
   })
 
   it("leaves out a meal Friday decides itself", () => {

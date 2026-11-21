@@ -24189,6 +24189,10 @@
      "usual_min": {
       "type": "integer",
       "title": "Usual Min"
+     },
+     "new_min": {
+      "type": "integer",
+      "title": "New Min"
      }
     },
     "additionalProperties": false,
@@ -24196,7 +24200,8 @@
     "required": [
      "kind",
      "planned_min",
-     "usual_min"
+     "usual_min",
+     "new_min"
     ],
     "title": "MealChangeOut"
    },

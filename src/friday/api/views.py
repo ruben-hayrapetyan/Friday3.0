@@ -927,6 +927,7 @@ class MealChangeOut(Model):
     kind: str
     planned_min: int  # the routine's length now
     usual_min: int  # what you take
+    new_min: int  # what it would be planned at: what you take, up to the quarter hour
 
 
 class MealTimeOut(Model):

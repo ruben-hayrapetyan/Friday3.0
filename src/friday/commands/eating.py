@@ -49,7 +49,7 @@ from friday.core.time import (
     to_local,
     to_zoned,
 )
-from friday.learn.meals import Learned, Meal, learn, length_changes, meal_name, nths
+from friday.learn.meals import Learned, Meal, learn, length_changes, meal_name, nths, planned_length
 from friday.planner.store import kv_get, kv_set, load_item, load_settings
 
 SHIFT_OFF_BY = 45  # minutes a usual meal's middle must be off its window's middle (or outside it) to offer moving it
@@ -337,7 +337,7 @@ def meal_use_length(ctx: Ctx, inp: MealLengthInput) -> Changed:
     usual = length_changes(learned(ctx), {inp.kind: planned}).get(inp.kind)
     if usual is None:
         raise FieldError("kind", f"Friday hasn't learned a different length for {inp.kind}")
-    length = max(UNIT_MIN, round(usual / UNIT_MIN) * UNIT_MIN)  # plans are in quarter hours
+    length = planned_length(usual)  # up to the quarter hour that covers it
     low, high = (item.min_units or 1) * UNIT_MIN, (item.max_units or 1) * UNIT_MIN
     given = {"ideal_min": length, "min_min": min(low, length), "max_min": max(high, length)}
     edit_from(ctx, item, ctx.today.isoformat(), given)
@@ -539,7 +539,10 @@ def meals(ctx: Ctx, inp: Empty) -> MealsOut:
         again=None if now else again(ctx, shown),
         days=[MealDayOut(date=d, meals=ms) for d, ms in sorted(days.items(), reverse=True)],
         learned=[MealLearnedOut(**vars(x)) for x in found],
-        changes=[MealChangeOut(kind=k, planned_min=planned[k][1], usual_min=v) for k, v in changes.items()],
+        changes=[
+            MealChangeOut(kind=k, planned_min=planned[k][1], usual_min=v, new_min=planned_length(v))
+            for k, v in changes.items()
+        ],  # fmt: skip
         min_days=settings.min_days,
         times=time_changes(ctx, found, planned),
         plans=plan_offers(found, planned),
