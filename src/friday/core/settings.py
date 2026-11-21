@@ -555,6 +555,7 @@ class BreakSettings(Model):
     work_min: int = Field(120, ge=15, le=1440)  # Light: about this much work a day (19 Nov: time, not things)
     pause: Pause = Pause()
     plan_meals: bool = False  # 18 Nov: "don't plan meals and sleep as usual during break on default"
+    plan_repeating: bool = False  # 21 Nov: "on vacation, errands/other repeated tasks should be turned off by default"
     keep_sleep: bool = False
 
     @model_validator(mode="before")

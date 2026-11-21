@@ -46,6 +46,18 @@ def weekly(app: App, title: str, day: str, every: str) -> None:
     app.do("add", title=title, when="fixed", start=f"{day}T10:00", end=f"{day}T16:00", every=every)
 
 
+def groceries_daily(app: App) -> None:
+    """A repeating errand: 45 minutes a day, between 9am and 8pm."""
+    app.do("series_add", title="Groceries", every="day", duration_min=45, release_offset_min=540,
+           due_offset_min=1200)  # fmt: skip
+
+
+def listed_on(app: App, day: str) -> list[str]:
+    replan(app.conn, app.now_utc)
+    found = app.do("vacation_day", date=day)
+    return [t["title"] for t in found.get("tasks", found.get("items", []))]
+
+
 def event_on(app: App, title: str, day: str) -> int:
     """The time of an event, or of a routine, on that day."""
     return next(i["id"] for i in app.table("items") if i["title"] == title and i["status"] == "todo"
@@ -190,6 +202,30 @@ class TestWork:
         assert minutes_on(app, WED, lunch) == 0
         app.do("vacation_edit", id=made["id"], plan_meals=True)
         assert minutes_on(app, WED, lunch) > 0
+
+    def test_repeating_tasks_are_not_planned_on_a_break_unless_you_say(self, app: App) -> None:
+        """21 Nov, the user: "on vacation, errands/other repeated tasks should be turned off by default". Before, a
+        daily errand was late all through an Off break (asked about in the Inbox) and on every Light day's list."""
+        groceries_daily(app)
+        made = add_break(app, mode="off")
+        replan(app.conn, app.now_utc)
+        assert "Groceries" not in app.do("status")["late"]
+        assert app.do("vacations")["vacations"][0]["plan_repeating"] is False
+        app.do("vacation_edit", id=made["id"], mode="light")
+        assert "Groceries" not in listed_on(app, WED)
+        app.do("vacation_edit", id=made["id"], plan_repeating=True)
+        assert "Groceries" in listed_on(app, WED)
+
+    def test_your_default_plans_repeating_tasks_on_every_break(self, app: App) -> None:
+        groceries_daily(app)
+        app.do("settings_set", key="breaks", value={"plan_repeating": True})
+        add_break(app)
+        assert "Groceries" in listed_on(app, WED)
+
+    def test_a_repeating_tasks_times_outside_the_break_are_planned_as_usual(self, app: App) -> None:
+        groceries_daily(app)
+        add_break(app)
+        assert minutes_on(app, "2026-10-20", event_on(app, "Groceries", "2026-10-20")) == 45  # Tuesday, before it
 
     def test_a_break_added_mid_day_lists_no_meal_planned_that_morning(self, app: App) -> None:
         """Found in the demo, 18 Nov: a break added at 4pm listed that day's Breakfast and Lunch, kept as blocks begun

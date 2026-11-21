@@ -39075,6 +39075,17 @@
       ],
       "title": "Plan Meals"
      },
+     "plan_repeating": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan Repeating"
+     },
      "keep_sleep": {
       "anyOf": [
        {
@@ -39419,6 +39430,17 @@
       ],
       "title": "Plan Meals"
      },
+     "plan_repeating": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan Repeating"
+     },
      "keep_sleep": {
       "anyOf": [
        {
@@ -39437,6 +39459,7 @@
         "work_min",
         "pause",
         "plan_meals",
+        "plan_repeating",
         "keep_sleep"
        ]
       },
@@ -39451,7 +39474,7 @@
      "id"
     ],
     "title": "VacationEditInput",
-    "description": "What changes; `defaults` names what goes back to following your defaults (work_min, pause, plan_meals,\nkeep_sleep)."
+    "description": "What changes; `defaults` names what goes back to following your defaults (work_min, pause, plan_meals,\nplan_repeating, keep_sleep)."
    },
    "VacationEditResult": {
     "properties": {
@@ -39564,6 +39587,10 @@
       "type": "boolean",
       "title": "Plan Meals"
      },
+     "plan_repeating": {
+      "type": "boolean",
+      "title": "Plan Repeating"
+     },
      "keep_sleep": {
       "type": "boolean",
       "title": "Keep Sleep"
@@ -39588,6 +39615,7 @@
      "work_min",
      "pause",
      "plan_meals",
+     "plan_repeating",
      "keep_sleep",
      "own"
     ],

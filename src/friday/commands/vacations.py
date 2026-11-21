@@ -48,7 +48,7 @@ def vacation_out(v: breaks.Vacation) -> VacationOut:
     return VacationOut(
         id=v.id, name=v.name, start=v.start, end=v.end, days=v.days, mode=v.mode,  # type: ignore[arg-type]
         work_min=v.work_min, pause=PauseIn.model_validate(v.pause.model_dump()), plan_meals=v.plan_meals,
-        keep_sleep=v.keep_sleep, own=sorted(v.own),
+        plan_repeating=v.plan_repeating, keep_sleep=v.keep_sleep, own=sorted(v.own),
     )  # fmt: skip
 
 
@@ -78,7 +78,7 @@ def own_values(inp: Model) -> dict[str, Any]:
         out["work_min"] = inp.work_min  # type: ignore[attr-defined]
     if getattr(inp, "pause", None) is not None:
         out["pause"] = json.dumps(inp.pause.model_dump())  # type: ignore[attr-defined]
-    for key in ("plan_meals", "keep_sleep"):
+    for key in ("plan_meals", "plan_repeating", "keep_sleep"):
         if getattr(inp, key, None) is not None:
             out[key] = int(getattr(inp, key))
     return out
@@ -211,6 +211,8 @@ def vacation_things(ctx: Ctx, day: date) -> list[VacationThing]:
             continue
         item = item_from_row(row)
         if breaks.is_meal(item) and not (v and v.plan_meals) and item_id not in ticks:
+            continue
+        if breaks.is_repeating_task(item) and not (v and v.plan_repeating) and item_id not in ticks:
             continue
         things.append(
             VacationThing(item_id=item_id, title=item.title, area=areas.get(item.area_id or 0), preset=item.preset,

@@ -12373,6 +12373,8 @@ export interface components {
             pause?: components["schemas"]["PauseIn"] | null;
             /** Plan Meals */
             plan_meals?: boolean | null;
+            /** Plan Repeating */
+            plan_repeating?: boolean | null;
             /** Keep Sleep */
             keep_sleep?: boolean | null;
         };
@@ -12465,7 +12467,7 @@ export interface components {
         /**
          * VacationEditInput
          * @description What changes; `defaults` names what goes back to following your defaults (work_min, pause, plan_meals,
-         *     keep_sleep).
+         *     plan_repeating, keep_sleep).
          */
         VacationEditInput: {
             /** Id */
@@ -12483,13 +12485,15 @@ export interface components {
             pause?: components["schemas"]["PauseIn"] | null;
             /** Plan Meals */
             plan_meals?: boolean | null;
+            /** Plan Repeating */
+            plan_repeating?: boolean | null;
             /** Keep Sleep */
             keep_sleep?: boolean | null;
             /**
              * Defaults
              * @default []
              */
-            defaults?: ("work_min" | "pause" | "plan_meals" | "keep_sleep")[];
+            defaults?: ("work_min" | "pause" | "plan_meals" | "plan_repeating" | "keep_sleep")[];
         };
         /** VacationEditResult */
         VacationEditResult: {
@@ -12534,6 +12538,8 @@ export interface components {
             pause: components["schemas"]["PauseIn"];
             /** Plan Meals */
             plan_meals: boolean;
+            /** Plan Repeating */
+            plan_repeating: boolean;
             /** Keep Sleep */
             keep_sleep: boolean;
             /** Own */

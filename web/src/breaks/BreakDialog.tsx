@@ -17,14 +17,14 @@ import { PauseChooser, useBreakChoices } from "./PauseChooser"
 import { BREAK_ICON, daysIn, EVERYTHING, full, modeWords, nextDay, type Pause, pauseWords, rangeWords, things, type Vacation, WORK_AMOUNTS } from "./words"
 
 /** Your defaults for a break (Settings → Breaks; core/settings.py `BreakSettings`). */
-export type Defaults = { work_min: number; pause: Pause; plan_meals: boolean; keep_sleep: boolean }
+export type Defaults = { work_min: number; pause: Pause; plan_meals: boolean; plan_repeating?: boolean; keep_sleep: boolean }
 type Row = "dates" | "mode" | "pause" | null
 
 export const useVacations = () => useQuery({ queryKey: ["vacations"], queryFn: () => query("vacations") })
 
 export function useBreakDefaults(): Defaults {
   const saved = (useSettings().data as Record<string, unknown> | undefined)?.breaks as Defaults | undefined
-  return saved ? { ...saved, pause: full(saved.pause) } : { work_min: 120, pause: EVERYTHING, plan_meals: false, keep_sleep: false }
+  return saved ? { ...saved, pause: full(saved.pause) } : { work_min: 120, pause: EVERYTHING, plan_meals: false, plan_repeating: false, keep_sleep: false }
 }
 
 /** A change to a break shows at once in the list of breaks (the server's answer follows). */
@@ -46,7 +46,7 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
   // A new break's own state until it's added: from your defaults, a week from the day it was opened on.
   const [draft, setDraft] = useState<Vacation>(() => ({
     id: 0, name: edit.id === undefined ? (edit.name ?? "") : "", start: start ?? today, end: edit.id === undefined ? (edit.end ?? addWeek(start ?? today)) : today, days: 7, mode: "light",
-    work_min: defaults.work_min, pause: defaults.pause, plan_meals: defaults.plan_meals, keep_sleep: defaults.keep_sleep, own: [],
+    work_min: defaults.work_min, pause: defaults.pause, plan_meals: defaults.plan_meals, plan_repeating: defaults.plan_repeating ?? false, keep_sleep: defaults.keep_sleep, own: [],
   }))
   const v = edit.id === undefined ? draft : saved
   const [open, setOpen] = useState<Row>(edit.id === undefined && edit.pickDays ? "dates" : null)
@@ -64,7 +64,7 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
   const toggle = (row: Row) => setOpen(open === row ? null : row)
   const create = async () => {
     const name = v.name.trim() || "Break"
-    const out = await add({ name, start: v.start, end: v.end, mode: v.mode, work_min: v.work_min, pause: full(v.pause), plan_meals: v.plan_meals, keep_sleep: v.keep_sleep })
+    const out = await add({ name, start: v.start, end: v.end, mode: v.mode, work_min: v.work_min, pause: full(v.pause), plan_meals: v.plan_meals, plan_repeating: v.plan_repeating, keep_sleep: v.keep_sleep })
     if (out) onClose()
   }
   const badDays = v.end < v.start
@@ -146,6 +146,10 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
         <span className="fr-kicker">Meals</span>
         <Toggle on={v.plan_meals} label="Plan meals during the break" onToggle={() => set({ plan_meals: !v.plan_meals })}>
           {v.plan_meals ? "Planned as usual" : "Not planned"}
+        </Toggle>
+        <span className="fr-kicker">Repeating tasks</span>
+        <Toggle on={v.plan_repeating} label="Plan repeating tasks during the break" onToggle={() => set({ plan_repeating: !v.plan_repeating })}>
+          {v.plan_repeating ? "Planned as usual" : "Not planned"}
         </Toggle>
         <span className="fr-kicker">Sleep</span>
         <Toggle on={v.keep_sleep} label="Keep my sleep schedule during the break" onToggle={() => set({ keep_sleep: !v.keep_sleep })}>

@@ -68,6 +68,12 @@ export function BreaksSection() {
           {defaults.plan_meals ? "Planned as usual" : "Not planned"}
         </label>
       </Field>
+      <Field name="Repeating tasks" note="Whether to-dos that repeat, like errands and chores, are planned on break days.">
+        <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Switch on={defaults.plan_repeating ?? false} onToggle={() => set({ plan_repeating: !defaults.plan_repeating })} label="Plan repeating tasks on break days" />
+          {defaults.plan_repeating ? "Planned as usual" : "Not planned"}
+        </label>
+      </Field>
       <Field name="Sleep" note="Whether your sleep schedule holds on break days.">
         <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Switch on={defaults.keep_sleep} onToggle={() => set({ keep_sleep: !defaults.keep_sleep })} label="Keep my sleep schedule on break days" />

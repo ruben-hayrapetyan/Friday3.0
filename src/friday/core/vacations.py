@@ -22,7 +22,13 @@ from friday.core.settings import BreakSettings, Pause, minutes_of
 from friday.core.time import format_utc, parse_utc, planning_date, planning_day_start_utc, to_local
 
 FRIDAY_CALENDAR = "Friday"  # what the pause chooser calls events made here, on no calendar of yours
-OWN = ("work_min", "pause", "plan_meals", "keep_sleep")  # what a break may set for itself, else your defaults
+OWN = (
+    "work_min",
+    "pause",
+    "plan_meals",
+    "plan_repeating",
+    "keep_sleep",
+)  # what a break may set for itself, else your defaults
 
 
 @dataclass(frozen=True)
@@ -35,6 +41,7 @@ class Vacation:
     work_min: int = 120  # Light: about this much work a day
     pause: Pause = Pause()
     plan_meals: bool = False
+    plan_repeating: bool = False  # repeating tasks (errands, chores, any to-do that repeats) on its days
     keep_sleep: bool = False
     own: frozenset[str] = frozenset()  # which of OWN this break set itself
 
@@ -71,6 +78,7 @@ def from_row(row: Mapping[str, Any], defaults: BreakSettings) -> Vacation:
         work_min=row["work_min"] if row["work_min"] is not None else defaults.work_min,
         pause=Pause.model_validate(json.loads(row["pause"])) if row["pause"] is not None else defaults.pause,
         plan_meals=bool(row["plan_meals"]) if row["plan_meals"] is not None else defaults.plan_meals,
+        plan_repeating=(bool(row["plan_repeating"]) if row["plan_repeating"] is not None else defaults.plan_repeating),
         keep_sleep=bool(row["keep_sleep"]) if row["keep_sleep"] is not None else defaults.keep_sleep,
         own=own,
     )
@@ -120,6 +128,11 @@ def is_meal(item: Item) -> bool:
     return item.preset == "Routine" and item.amount == "elastic" and MEAL.search(item.title) is not None
 
 
+def is_repeating_task(item: Item) -> bool:
+    """A time of a repeating to-do (an errand, a chore, a routine), not an event and not a meal (their own rules)."""
+    return item.series_id is not None and item.when != "fixed" and not is_meal(item)
+
+
 def on_break(
     items: tuple[Item, ...],
     vacations: tuple[Vacation, ...],
@@ -127,7 +140,8 @@ def on_break(
     calendars: Mapping[int, str],
 ) -> tuple[tuple[Item, ...], frozenset[int]]:
     """The items as a break leaves them: each repeat it pauses blocks no time (and is returned, to be drawn paused);
-    a meal on a break day isn't planned unless the break plans meals."""
+    a meal on a break day isn't planned unless the break plans meals, nor a repeating task's time unless it plans
+    those (21 Nov: on an Off break a daily errand was late all through it, on a Light one on every day's list)."""
     if not vacations:
         return items, frozenset()
     tz, day_start = settings["time"].timezone, minutes_of(settings["time"].day_start)
@@ -144,7 +158,7 @@ def on_break(
                 out.append(replace(item, blocks_time=False))
             else:
                 out.append(item)
-        elif is_meal(item) and not vacation.plan_meals:
+        elif (is_meal(item) and not vacation.plan_meals) or (is_repeating_task(item) and not vacation.plan_repeating):
             continue
         else:
             out.append(item)

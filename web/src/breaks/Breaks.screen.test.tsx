@@ -28,6 +28,33 @@ describe("a Light day's time", () => {
   })
 })
 
+// 21 Nov: "on vacation, errands/other repeated tasks should be turned off by default": a switch beside Meals, in
+// Settings → Breaks and in each break.
+describe("repeating tasks on a break", () => {
+  it("aren't planned unless you say, in Settings → Breaks", async () => {
+    const { user } = await openFriday("/settings/breaks")
+    const planned = await screen.findByRole("switch", { name: "Plan repeating tasks on break days" })
+    expect(planned.getAttribute("aria-checked")).toBe("false")
+    await user.click(planned)
+    expect((await waitForSent("settings_set")).body).toMatchObject({ key: "breaks", value: { plan_repeating: true } })
+    await waitFor(async () => expect((await friday.q<{ breaks: { plan_repeating: boolean } }>("settings")).breaks.plan_repeating).toBe(true))
+    await friday.c("settings_set", { key: "breaks", value: { plan_repeating: false } })
+  })
+
+  it("a break says for itself, beside its meals", async () => {
+    const { today } = await friday.q<{ today: string }>("calendar", { start: "2026-01-01", days: "1" })
+    await friday.c("vacation_add", { name: "Long weekend", start: today, end: addDays(today, 2), mode: "off" })
+    const { user } = await openFriday("/")
+    await user.click(await screen.findByRole("button", { name: "Breaks, 1 break planned" }, { timeout: 15_000 }))
+    await user.click(within(await screen.findByRole("dialog", { name: "Breaks" })).getByRole("button", { name: /^Long weekend/ }))
+    const own = await screen.findByRole("switch", { name: "Plan repeating tasks during the break" })
+    expect(own.getAttribute("aria-checked")).toBe("false")
+    await user.click(own)
+    expect((await waitForSent("vacation_edit")).body).toMatchObject({ plan_repeating: true })
+    await friday.c("vacation_delete", { id: (await friday.q<{ vacations: { id: number }[] }>("vacations")).vacations[0].id })
+  })
+})
+
 // 19 Nov, of prototype 2: "i like the dragging" and, for longer breaks, "instead of the yellow inbox in the top right
 // corner can we make that a 'breaks' clickable square" (no umbrella).
 describe("ways into a break", () => {

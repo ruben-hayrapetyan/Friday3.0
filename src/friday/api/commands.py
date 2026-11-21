@@ -1310,12 +1310,13 @@ class VacationAddInput(Model):
     work_min: int | None = Field(None, ge=15, le=1440)  # Light: about this much work a day
     pause: PauseIn | None = None
     plan_meals: bool | None = None
+    plan_repeating: bool | None = None
     keep_sleep: bool | None = None
 
 
 class VacationEditInput(Model):
     """What changes; `defaults` names what goes back to following your defaults (work_min, pause, plan_meals,
-    keep_sleep)."""
+    plan_repeating, keep_sleep)."""
 
     id: int
     name: str | None = Field(None, max_length=80)
@@ -1325,8 +1326,9 @@ class VacationEditInput(Model):
     work_min: int | None = Field(None, ge=15, le=1440)
     pause: PauseIn | None = None
     plan_meals: bool | None = None
+    plan_repeating: bool | None = None
     keep_sleep: bool | None = None
-    defaults: list[Literal["work_min", "pause", "plan_meals", "keep_sleep"]] = []
+    defaults: list[Literal["work_min", "pause", "plan_meals", "plan_repeating", "keep_sleep"]] = []
 
 
 class VacationOut(Model):
@@ -1339,6 +1341,7 @@ class VacationOut(Model):
     work_min: int  # Light: about this much work a day
     pause: PauseIn
     plan_meals: bool
+    plan_repeating: bool  # repeating tasks (errands, chores) on its days
     keep_sleep: bool
     own: list[str]  # what this break set itself; the rest follows your defaults
 
