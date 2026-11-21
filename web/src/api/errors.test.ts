@@ -28,3 +28,23 @@ describe("errors said so you can act on them (8 Nov)", () => {
     expect(errorWords(new TypeError("x is undefined"))).toBe("x is undefined") // a mistake in the page, not the server
   })
 })
+
+// 20 Nov: a What if that took minutes came back "couldn't parse": an answer cut off on its way (the window's request
+// gave up, or the connection) has no whole JSON, and the browser's words for that were shown as they were
+describe("an answer cut off on its way", () => {
+  it("is said in plain words, as an ApiError, not the browser's parse error", async () => {
+    const { vi } = await import("vitest")
+    const { query } = await import("./client")
+    vi.stubGlobal("fetch", async () => new Response('{"out": {"verdict": "fi', { status: 200, headers: { "content-type": "application/json" } }))
+    try {
+      const failed = await query("status").then(
+        () => null,
+        (error: unknown) => error,
+      )
+      expect(failed).toBeInstanceOf(ApiError)
+      expect(errorWords(failed)).toBe("Friday's answer was cut off on its way. Try again.")
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+})

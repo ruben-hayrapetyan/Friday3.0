@@ -24,7 +24,8 @@ from typing import Any
 import numpy as np
 
 from friday.api.commands import Changed, RangeInput, WhatIfChange, WhatIfInput, WhatIfKeepInput
-from friday.api.views import FitLate, PlanOut, WhatIfChangeOut, WhatIfDay, WhatIfOut
+from friday.api.types import Empty
+from friday.api.views import FitLate, PlanOut, WhatIfChangeOut, WhatIfDay, WhatIfOut, WhatIfReadyOut
 from friday.commands.fitting import deadlines, hours, late_minutes, listed, short_minutes, worst_first
 from friday.commands.registry import REGISTRY, Ctx, Tried, command, query, tried_many
 from friday.commands.writer import Writer
@@ -130,6 +131,21 @@ def whatif(ctx: Ctx, inp: WhatIfInput) -> WhatIfOut:
         for out, earlier, now, t in zip(outs, [before, *steps[:-1]], steps, done, strict=True):
             out.late = [] if t.error else newly_short(earlier, now, titles)
     return summed(ctx, before, after, was, plan, shown, outs, inp, began)
+
+
+@query("whatif_ready")
+def whatif_ready(ctx: Ctx, inp: Empty) -> WhatIfReadyOut:
+    """The plan without your changes, made as What if opens, so the first change tried plans once, not twice (20 Nov:
+    on a user's week the two took 22 s). The same plan a try would make (`without`), kept for it the same way; your
+    saved plan when it's current, with nothing to plan."""
+    with SOLVING, trying():
+        before = take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id)
+        key = (str(ctx.conn.execute("PRAGMA database_list").fetchone()[2]), ctx.user_id, before.generation)
+        had = key in BEFORE
+        saved = current_plan(ctx.conn, ctx.user_id)
+        current = saved is not None and saved["status"] == "current" and saved["generation"] == before.generation
+        without(ctx, before)
+        return WhatIfReadyOut(planned=not had and not current and key in BEFORE)
 
 
 def without(ctx: Ctx, before: Snapshot, stop: np.ndarray | None = None) -> AssembledPlan:

@@ -220,3 +220,22 @@ def _try(app: App, *changes: tuple[str, dict]) -> object:
         return tried(app, *changes)
     except Exception as error:  # noqa: BLE001
         return error
+
+
+def test_the_plan_without_the_changes_is_made_as_what_if_opens(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
+    """20 Nov: on a user's week the first try planned twice, without the changes and with them, 22 s. Made as What if
+    opens, the first try plans once; it's the same plan a try would have made, kept the same way."""
+    essay_day(app)
+    whatif.BEFORE.clear()
+    solves: list[int] = []
+    real = whatif.plan_snapshot
+    monkeypatch.setattr(whatif, "plan_snapshot", lambda s, warm, stop=None: (solves.append(1), real(s, warm, stop))[1])
+    assert app.do("whatif_ready") == {"planned": False}  # your saved plan is current: nothing to plan
+    assert solves == [] and not whatif.BEFORE
+    app.do("add", text="email prof ~15m")  # a change since: the plan without the changes needs planning
+    assert app.do("whatif_ready") == {"planned": True}
+    (kept,) = whatif.BEFORE.values()
+    assert len(solves) == 1
+    tried(app, coffee())
+    assert len(solves) == 2 and next(iter(whatif.BEFORE.values())) is kept  # the try planned once, with the change
+    assert app.do("whatif_ready") == {"planned": False}  # opened again: already made

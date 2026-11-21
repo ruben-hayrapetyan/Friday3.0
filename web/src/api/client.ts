@@ -79,9 +79,21 @@ export function errorWords(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+/** An answer that came cut off on its way: what the browser says of the JSON it couldn't read ("couldn't parse",
+ * Safari's "The string did not match the expected pattern") means nothing to you (20 Nov: a What if that took
+ * minutes ended so). */
+export const CUT_OFF = "Friday's answer was cut off on its way. Try again."
+
 async function read<T>(response: Response): Promise<T> {
   noteResponse(response)
-  if (response.ok) return response.json()
+  if (response.ok) {
+    try {
+      return await response.json()
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error // Stop pressed while it came
+      throw new ApiError(CUT_OFF, response.status)
+    }
+  }
   let body: unknown = null
   try {
     body = await response.json()
@@ -98,7 +110,7 @@ async function read<T>(response: Response): Promise<T> {
  * of their own: two of them at once used to hold half the page's turns (13 Nov). */
 export type Lane = "quick" | "planning"
 const AT_ONCE: Record<Lane, number> = { quick: 4, planning: 2 }
-const PLANNING = new Set(["whatif", "suggestion_effect", "other_way"])
+const PLANNING = new Set(["whatif", "whatif_ready", "suggestion_effect", "other_way"])
 const reading: Record<Lane, number> = { quick: 0, planning: 0 }
 const waitingReads: Record<Lane, (() => void)[]> = { quick: [], planning: [] }
 

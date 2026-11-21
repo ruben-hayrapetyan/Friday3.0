@@ -20,6 +20,24 @@ async function startWhatIf() {
 }
 
 describe("What if", () => {
+  // 20 Nov: on a user's week the first change tried planned twice, 22 s; the plan without the changes is asked for as
+  // What if opens, so the first try plans once
+  it("asks for the plan without your changes as it opens", async () => {
+    const asked: string[] = []
+    const real = window.fetch
+    window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      asked.push(typeof input === "string" ? input : input instanceof URL ? input.href : input.url)
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      await startWhatIf()
+      await waitFor(() => expect(asked.some((u) => /\/api\/q\/whatif_ready\b/.test(u))).toBe(true))
+      expect(asked.filter((u) => /\/api\/q\/whatif_ready\b/.test(u))).toHaveLength(1)
+    } finally {
+      window.fetch = real
+    }
+  })
+
   it("starts from the Plan menu, with nothing tried yet and a way out", async () => {
     const { user } = await startWhatIf()
     expect(within(bar()).getByText("nothing tried yet")).toBeTruthy()

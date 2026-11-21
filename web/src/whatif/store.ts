@@ -10,7 +10,7 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { queryBody, type Schemas } from "@/api/client"
+import { query, queryBody, type Schemas } from "@/api/client"
 import { addDays } from "@/lib/time"
 
 export type Change = Schemas["WhatIfChange"]
@@ -72,7 +72,12 @@ export const whatIf = {
     listeners.add(listener)
     return () => void listeners.delete(listener)
   },
-  start: () => set({ on: true, panel: true, changes: [], made: [], answer: null }),
+  start: () => {
+    set({ on: true, panel: true, changes: [], made: [], answer: null })
+    // the plan without your changes, made now, so the first change tried plans once, not twice (20 Nov: 22 s on a
+    // user's week); nothing is shown from it, and a failure only means the first try makes it itself
+    query("whatif_ready").catch(() => undefined)
+  },
   stop: () => set({ on: false, changes: [], made: [], answer: null }),
   here: (here: boolean) => set({ here }),
   showPanel: (panel: boolean) => set({ panel }),

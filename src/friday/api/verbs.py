@@ -1730,6 +1730,14 @@ VERBS = {
         True,
         "Keep what you tried in What if: every change made, in order, as one; one Undo takes them all back.",
     ),
+    "whatif_ready": Verb(
+        "GET",
+        "/api/q/whatif_ready",
+        commands.Empty,
+        False,
+        False,
+        "The plan without your changes, made as What if opens, so the first change tried plans once, not twice (20 Nov:",
+    ),
     "whats_new_seen": Verb(
         "POST",
         "/api/c/whats_new_seen",
