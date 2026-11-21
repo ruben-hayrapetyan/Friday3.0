@@ -177,8 +177,9 @@ def build_problem(inp: BuildInput) -> Problem:
     rules = [
         rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled
     ]
-    problem.rules = build_rules(steady(rules) + [MEAL_WINDOW, PIN_HOLD, *travel_kept(rules), *project_pace(inp, items),
-                                 *break_rules(inp)])
+    problem.rules = build_rules(
+        steady(rules) + [MEAL_WINDOW, PIN_HOLD, *travel_kept(rules), *project_pace(inp, items), *break_rules(inp)]
+    )
     for rule in problem.rules:
         rule.prepare(problem)
     set_cutoffs(problem, settings["rules"], settings["time"].timezone)

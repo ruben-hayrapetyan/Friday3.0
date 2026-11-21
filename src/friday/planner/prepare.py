@@ -203,6 +203,7 @@ def break_caps(snapshot: Snapshot) -> dict[date, dict[str, Any]]:
 
     def usual(day: date) -> float:
         return cap_hours_on(snapshot.settings, snapshot.day_overrides, day)
+
     return breaks.with_caps(snapshot.day_overrides, snapshot.vacations, usual, first, last)
 
 
