@@ -629,6 +629,12 @@ test("Friday's links: add a to-do, open a page or a new box; anything else is ig
     check(link("fridaytest://add?text=x") == nil, "Friday Test's links aren't Friday's")
     check(FridayLink.of(URL(string: "fridaytest://add?text=x")!, scheme: "fridaytest") == .add("x"), "and the other way")
     check(link("friday://delete?all=1") == nil, "anything else: ignored")
+    // H233: the join page's Accept invite hands the invite to Friday, which joins with it on Settings → Updates
+    check(link("friday://join?invite=Inv1te-abcdefghijklmnop") == .open(.join("Inv1te-abcdefghijklmnop")), "an invite")
+    check(link("friday://join?invite=short") == nil && link("friday://join") == nil, "no invite: nothing")
+    check(link("friday://join?invite=%3Cscript%3Exxxxxxxxxxxxxxxx") == nil, "only an invite's letters")
+    check(HostAction.join("Inv1te-abcdefghijklmnop").script.contains(#""action":"join","argument":"Inv1te-abcdefghijklmnop""#),
+          "the page is sent the invite")
 }
 
 test("a + in a link's text is a +, %2B one too, and %20 or a space a space (the audit, 12 Nov)") {

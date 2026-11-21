@@ -24,13 +24,14 @@ export type HostName =
   | "tour"
   | "setup"
   | "triage"
+  | "join"
 
 export interface HostRequest {
   action: HostName
   argument?: string
 }
 
-const NAMES = new Set<string>(["newEvent", "newTodo", "search", "ask", "today", "previous", "next", "view", "drawer", "go", "ways", "shove", "pace", "brief", "triage", "tour", "setup"])
+const NAMES = new Set<string>(["newEvent", "newTodo", "search", "ask", "today", "previous", "next", "view", "drawer", "go", "ways", "shove", "pace", "brief", "triage", "tour", "setup", "join"])
 // "/review" stays for a Mac app built before Review moved into the Inbox: its menu still sends it, and it opens the Inbox.
 const PAGES = ["/", "/todo", "/projects", "/review", "/inbox", "/insights", "/body", "/rules", "/settings"]
 
@@ -43,6 +44,7 @@ export function readHost(detail: unknown): HostRequest | null {
   if (argument !== undefined && typeof argument !== "string") return null
   if (action === "view" && !["day", "three", "week", "month"].includes(argument ?? "")) return null
   if (action === "go" && !PAGES.some((p) => argument === p || (p !== "/" && argument?.startsWith(`${p}/`)))) return null
+  if (action === "join" && !/^[A-Za-z0-9_-]{16,}$/.test(argument ?? "")) return null // an invite (H233), nothing else
   return argument === undefined ? { action } : { action, argument }
 }
 

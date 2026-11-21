@@ -2639,6 +2639,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/update_test_invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Join as a test user with an invite (H233), opened from its link (friday://join) or pasted in Settings → */
+        post: operations["update_test_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/update_test_join": {
         parameters: {
             query?: never;
@@ -4009,7 +4026,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The plan without your changes, made as What if opens, so the first change tried plans once, not twice (20 Nov: */
+        /** The plan without your changes, made as What if opens: the first change tried then plans once, not twice (20 */
         get: operations["whatif_ready"];
         put?: never;
         post?: never;
@@ -11493,6 +11510,11 @@ export interface components {
             /** Needed */
             needed: boolean;
         };
+        /** TestInviteInput */
+        TestInviteInput: {
+            /** Invite */
+            invite: string;
+        };
         /** TestUserJoinInput */
         TestUserJoinInput: {
             /** Code */
@@ -11504,11 +11526,16 @@ export interface components {
          */
         TestUserOut: {
             /** Code */
-            code: string;
+            code?: string | null;
             /** Name */
             name?: string | null;
             /** Known */
             known?: boolean | null;
+            /**
+             * Device
+             * @default false
+             */
+            device?: boolean;
         };
         /**
          * TimeGroup
@@ -11957,6 +11984,27 @@ export interface components {
         };
         /** UpdateStopResult */
         UpdateStopResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["UpdateStatusOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** UpdateTestInviteResult */
+        UpdateTestInviteResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["UpdateStatusOut"];
@@ -18119,6 +18167,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpdateStopResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_test_invite: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestInviteInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateTestInviteResult"];
                 };
             };
             /** @description Validation Error */

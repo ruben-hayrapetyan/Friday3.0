@@ -8,6 +8,8 @@ import Foundation
 ///                                            everything after text= is the to-do, & and # included (13 Nov)
 ///     friday://open?page=inbox               a page: plan, todo, projects, inbox, insights, rules, settings
 ///     friday://new?what=event                the new-event (or to-do) box, Friday in front
+///     friday://join?invite=…                 a test user's invite (H233), from the join page's Accept invite:
+///                                            Friday in front on Settings → Updates, joining with it
 enum FridayLink: Equatable {
     case add(String)
     case open(HostAction)
@@ -29,6 +31,9 @@ enum FridayLink: Equatable {
             return pages[(asked["page"] ?? "plan").lowercased()].map { .open(.go($0)) }
         case "new":
             return (asked["what"] ?? "todo").lowercased() == "event" ? .open(.newEvent) : .open(.newTodo)
+        case "join":
+            let invite = asked["invite"] ?? ""
+            return invite.range(of: "^[A-Za-z0-9_-]{16,}$", options: .regularExpression) != nil ? .open(.join(invite)) : nil
         default:
             return nil
         }

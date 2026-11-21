@@ -135,9 +135,9 @@ def whatif(ctx: Ctx, inp: WhatIfInput) -> WhatIfOut:
 
 @query("whatif_ready")
 def whatif_ready(ctx: Ctx, inp: Empty) -> WhatIfReadyOut:
-    """The plan without your changes, made as What if opens, so the first change tried plans once, not twice (20 Nov:
-    on a user's week the two took 22 s). The same plan a try would make (`without`), kept for it the same way; your
-    saved plan when it's current, with nothing to plan."""
+    """The plan without your changes, made as What if opens: the first change tried then plans once, not twice (20
+    Nov: on a user's week the two took 22 s). The same plan a try would make (`without`), kept for it the same way;
+    your saved plan when it's current, with nothing to plan."""
     with SOLVING, trying():
         before = take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id)
         key = (str(ctx.conn.execute("PRAGMA database_list").fetchone()[2]), ctx.user_id, before.generation)

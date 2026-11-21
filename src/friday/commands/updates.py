@@ -20,12 +20,12 @@ import os
 import re
 import sqlite3
 import threading
-from contextlib import nullcontext
+from contextlib import nullcontext, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from friday.api.commands import TestUserJoinInput
+from friday.api.commands import TestInviteInput, TestUserJoinInput
 from friday.api.types import Empty
 from friday.api.views import TestUserOut, UpdateStatusOut, UpdateVersionOut
 from friday.commands.connecting import data_file
@@ -89,8 +89,47 @@ def run_for(conn: sqlite3.Connection) -> Run:
 
 
 def test_code(conn: sqlite3.Connection, user_id: int) -> str | None:
+    """A code typed before invites, while it hasn't been swapped for this device's key."""
     found = kv_get(conn, "update_test_user", None, user_id)
-    return found["code"] if found else None
+    return found.get("code") if found and not found.get("key") else None
+
+
+def test_key(conn: sqlite3.Connection, user_id: int) -> str | None:
+    """This device's test-user key (H233), from an invite or a swapped code; never shown to the page."""
+    found = kv_get(conn, "update_test_user", None, user_id)
+    return found.get("key") if found else None
+
+
+def site() -> str:
+    """Friday's site, where the feed is: https://friday-scheduler.com for …/updates.json."""
+    return (feed_url() or "").rsplit("/", 1)[0]
+
+
+def this_device() -> dict:
+    """What the hub lists this device as: the Mac's name and its system."""
+    import platform  # noqa: PLC0415
+    import subprocess  # noqa: PLC0415
+
+    name = platform.node().removesuffix(".local")
+    with suppress(OSError, subprocess.SubprocessError):  # not a Mac, or no name set: its host name
+        name = subprocess.run(["scutil", "--get", "ComputerName"], capture_output=True, text=True, timeout=3,
+                              check=True).stdout.strip() or name  # fmt: skip
+    mac = platform.mac_ver()[0]
+    return {"name": name, "system": f"macOS {mac}" if mac else f"{platform.system()} {platform.release()}"}
+
+
+def swapped(conn: sqlite3.Connection, user_id: int) -> None:
+    """A code from before invites, swapped once for this device's key; kept as it was if the site doesn't."""
+    code = test_code(conn, user_id)
+    if not code:
+        return
+    try:
+        got = net.swap(site(), code, this_device(), version=have())
+    except net.UpdateError:
+        return
+    if got and test_code(conn, user_id) == code:  # still the code it swapped (you may have left meanwhile)
+        kv_set(conn, "update_test_user", {"key": got["key"], "name": got.get("name"), "known": True}, user_id)
+        conn.commit()
 
 
 def check(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> bool:
@@ -101,13 +140,16 @@ def check(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> bool:
     url, mine = feed_url(), have()
     if not url or not mine:
         return True
-    code = test_code(conn, user_id)
-    feed = net.fetch_feed(url, version=mine, test_code=code)
+    swapped(conn, user_id)
+    code, key = test_code(conn, user_id), test_key(conn, user_id)
+    feed = net.fetch_feed(url, version=mine, test_code=code, test_key=key)
     with transaction(conn) if not conn.in_transaction else nullcontext(conn):
-        if test_code(conn, user_id) != code:
+        if test_code(conn, user_id) != code or test_key(conn, user_id) != key:
             return False
-        if code:  # a site that doesn't answer about the code (one from before test users) doesn't know it
-            name = feed.get("test_user") if isinstance(feed.get("test_user"), str) else None
+        name = feed.get("test_user") if isinstance(feed.get("test_user"), str) else None
+        if key:  # a removed device's key gets the public feed, which says nobody: no longer a test user's
+            kv_set(conn, "update_test_user", {"key": key, "name": name, "known": name is not None}, user_id)
+        elif code:  # a site that doesn't answer about the code (one from before test users) doesn't know it
             kv_set(conn, "update_test_user", {"code": code, "name": name, "known": name is not None}, user_id)
         notes = kv_get(conn, "update_notes", {}, user_id)
         for entry in feed["versions"]:
@@ -200,7 +242,11 @@ def status(ctx: Ctx) -> UpdateStatusOut:
         whats_new=[entry_out(e) for e in whats_new(ctx.conn, ctx.user_id)],
         restart=ctx.settings["updates"].restart,
         staged=run.staged if run.state == "ready" else None,
-        test_user=TestUserOut(**joined) if joined else None,
+        test_user=TestUserOut(
+            code=joined.get("code"), name=joined.get("name"), known=joined.get("known"), device=bool(joined.get("key"))
+        )
+        if joined
+        else None,  # fmt: skip
     )
 
 
@@ -243,7 +289,8 @@ def fetch(conn: sqlite3.Connection, run: Run, user_id: int) -> None:
         raise net.UpdateError("there's no newer version to download")
     folder = staging_folder() / newest[0]
     image = net.download(notes[newest[0]], folder, progress=lambda p: setattr(run, "progress", p),
-                         cancelled=lambda: run.stop, version=have(), test_code=test_code(conn, user_id))  # fmt: skip
+                         cancelled=lambda: run.stop, version=have(), test_code=test_code(conn, user_id),
+                         test_key=test_key(conn, user_id))  # fmt: skip
     run.staged = str(net.unpack(image, folder))
     image.unlink(missing_ok=True)
     run.state, run.message = "ready", None
@@ -279,6 +326,43 @@ def update_test_join(ctx: Ctx, inp: TestUserJoinInput) -> UpdateStatusOut:
         raise FieldError("code", "a test user's code is eight letters and digits, like K7QF-29XM")
     code = f"{typed[:4]}-{typed[4:]}"
     kv_set(ctx.conn, "update_test_user", {"code": code, "name": None, "known": None}, ctx.user_id)
+    ctx.conn.commit()
+    return look_now(ctx)
+
+
+INVITE = re.compile(r"[A-Za-z0-9_-]{16,}")
+REFUSED = {
+    "used": "this invite was used already: it joins one device, once. Ask for a new one",
+    "gone": "this invite has run out: invites last a day. Ask for a new one",
+    "none": "that isn't an invite Friday's site knows: paste the whole link you were sent",
+    "limited": "too many wrong invites from here: try again in an hour",
+}
+
+
+def invite_in(pasted: str) -> str | None:
+    """The invite in what was pasted: the link (…/join#…), Friday's own (friday://join?invite=…), or just the invite."""
+    text = pasted.strip()
+    found = re.search(r"[#?&]invite=([A-Za-z0-9_-]+)", text) or re.search(r"#([A-Za-z0-9_-]+)\s*$", text)
+    token = found[1] if found else text
+    return token if INVITE.fullmatch(token) else None
+
+
+@command("update_test_invite", logged=False)
+def update_test_invite(ctx: Ctx, inp: TestInviteInput) -> UpdateStatusOut:
+    """Join as a test user with an invite (H233), opened from its link (friday://join) or pasted in Settings →
+    Updates: the site swaps it, once, for this device's own key, kept here and sent with each look from then on."""
+    if not feed_url() or not have():
+        raise FieldError("invite", "this Friday doesn't look for updates, so it can't be a test user")
+    token = invite_in(inp.invite)
+    if token is None:
+        raise FieldError("invite", "paste the whole invite link you were sent: it ends in # and the invite")
+    try:
+        got = net.join(site(), token, this_device(), version=have())
+    except net.InviteError as refused:
+        raise FieldError("invite", REFUSED.get(refused.state, REFUSED["none"])) from refused
+    except net.UpdateError as wrong:
+        raise FieldError("invite", str(wrong)) from wrong
+    kv_set(ctx.conn, "update_test_user", {"key": got["key"], "name": got.get("name"), "known": True}, ctx.user_id)
     ctx.conn.commit()
     return look_now(ctx)
 

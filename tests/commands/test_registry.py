@@ -706,6 +706,7 @@ def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> N
         # test users (H224): a code joined or left; Stop being a test user's toast has its own Undo (it joins again)
         "update_test_join",
         "update_test_leave",
+        "update_test_invite",  # an invite used (H233): the site answers with this device's key, a secret
     } == UNLOGGED
 
 

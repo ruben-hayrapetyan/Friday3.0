@@ -108,3 +108,13 @@ describe("changing the view (switchView), as the View buttons, the keys and the 
     expect(placeAfter({ action: "view", argument: "month" }, place, today)).toEqual(switchView(place, "month", today))
   })
 })
+
+// H233: the Mac app hands an invite opened from its link (friday://join?invite=…) to the page, which joins
+describe("an invite from the Mac app", () => {
+  it("is read only when it looks like an invite", () => {
+    expect(readHost({ action: "join", argument: "Inv1te-abcdefghijklmnop" })).toEqual({ action: "join", argument: "Inv1te-abcdefghijklmnop" })
+    expect(readHost({ action: "join", argument: "short" })).toBeNull()
+    expect(readHost({ action: "join", argument: "<script>alert(1)</script>xxxxxxxx" })).toBeNull()
+    expect(readHost({ action: "join" })).toBeNull()
+  })
+})

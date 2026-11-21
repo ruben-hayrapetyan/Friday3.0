@@ -557,9 +557,10 @@ class UpdateVersionOut(Model):
 class TestUserOut(Model):
     """This Friday as a test user (H224): the code typed in Settings → Updates, and what the site said of it."""
 
-    code: str  # K7QF-29XM
-    name: str | None = None  # the name the hub has for them, once the site knows the code
+    code: str | None = None  # K7QF-29XM, typed before invites, until it's swapped for this device's key
+    name: str | None = None  # the name the hub has for them, once the site knows the code or key
     known: bool | None = None  # the site knows it (True), doesn't (False), or hasn't been asked yet (None)
+    device: bool = False  # joined with this device's own key (H233: an invite, or a swapped code); the key stays here
 
 
 class UpdateStatusOut(Model):

@@ -15,6 +15,7 @@ enum HostAction: Equatable {
     case otherWays, shove, pace, brief, triage
     case tour  // the tour of Friday
     case setup  // Setup's questions again
+    case join(String)  // an invite opened from its link (H233): the page joins with it, on Settings → Updates
 
     var name: String {
         switch self {
@@ -35,6 +36,7 @@ enum HostAction: Equatable {
         case .triage: return "triage"
         case .tour: return "tour"
         case .setup: return "setup"
+        case .join: return "join"
         }
     }
 
@@ -42,6 +44,7 @@ enum HostAction: Equatable {
         switch self {
         case .view(let v): return v
         case .go(let path): return path
+        case .join(let invite): return invite
         case .openDrawer: return "open"
         default: return nil
         }

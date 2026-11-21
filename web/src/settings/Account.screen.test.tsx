@@ -218,7 +218,7 @@ describe("Updates", () => {
     globalThis.fetch = held
     undo.push(() => ((window.fetch = inner), (globalThis.fetch = inner)))
     const { user } = await openFriday("/settings/updates")
-    const box = await screen.findByRole("textbox", { name: "Test user code" })
+    const box = await screen.findByRole("textbox", { name: "Test user invite" })
     const join = screen.getByRole("button", { name: "Join" }) as HTMLButtonElement
     expect(join.disabled).toBe(true)
     await user.type(box, "k7qf 29xm")
@@ -243,16 +243,52 @@ describe("Updates", () => {
     expect(screen.getByText(/they may have removed it/)).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Stop being a test user" }))
     expect(await screen.findByText("You're no longer a test user. You keep the version you have.")).toBeTruthy()
-    expect(screen.getByRole("textbox", { name: "Test user code" })).toBeTruthy()
+    expect(screen.getByRole("textbox", { name: "Test user invite" })).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Undo" }))
     expect((await waitForSent("update_test_join")).body).toEqual({ code: "K7QF-29XM" })
     expect(await screen.findByText("Code K7QF-29XM")).toBeTruthy()
   })
 
+  // H233: test users join by invite; this Mac then has its own key, which only a new invite brings back
+  it("joins with a pasted invite link, and stopping asks first since only a new invite rejoins", async () => {
+    let status: Status = idle()
+    undo.push(answer("update_status", () => ({ json: status })))
+    undo.push(answer("update_test_invite", () => ((status = { ...idle(), test_user: { code: null, name: "Ana", known: true, device: true } }), { json: { command_id: null, result: status } })))
+    undo.push(answer("update_test_leave", () => ((status = idle()), { json: { command_id: null, result: status } })))
+    const { user } = await openFriday("/settings/updates")
+    const box = await screen.findByRole("textbox", { name: "Test user invite" })
+    const join = screen.getByRole("button", { name: "Join" }) as HTMLButtonElement
+    await user.type(box, "hello")
+    expect(join.disabled).toBe(true) // neither an invite nor a code
+    await user.clear(box)
+    await user.type(box, "https://friday-scheduler.com/join#Inv1te-abcdefghijklmnop")
+    await user.click(join)
+    expect((await waitForSent("update_test_invite")).body).toEqual({ invite: "https://friday-scheduler.com/join#Inv1te-abcdefghijklmnop" })
+    expect(await screen.findByText("You're a test user, as Ana")).toBeTruthy()
+    expect(screen.getByText("Joined with an invite: this Mac has its own key")).toBeTruthy()
+    await user.click(screen.getByRole("button", { name: "Stop being a test user" }))
+    const asked = screen.getByRole("group", { name: "Stop being a test user?" })
+    expect(within(asked).getByText(/joining again takes a new invite/)).toBeTruthy()
+    expect(sent.some((s) => s.name === "update_test_leave")).toBe(false) // not before you say so
+    await user.click(within(asked).getByRole("button", { name: "Stop being a test user" }))
+    expect(await screen.findByText("You're no longer a test user. You keep the version you have.")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull() // the key can't come back
+  })
+
+  it("joins with an invite the Mac app opened from its link, on Settings → Updates", async () => {
+    let status: Status = idle()
+    undo.push(answer("update_status", () => ({ json: status })))
+    undo.push(answer("update_test_invite", () => ((status = { ...idle(), test_user: { code: null, name: "Ana", known: true, device: true } }), { json: { command_id: null, result: status } })))
+    await openFriday("/")
+    window.dispatchEvent(new CustomEvent("friday:host", { detail: { action: "join", argument: "Inv1te-abcdefghijklmnop" } }))
+    expect((await waitForSent("update_test_invite")).body).toEqual({ invite: "Inv1te-abcdefghijklmnop" })
+    expect(await screen.findByText("You're a test user, as Ana")).toBeTruthy()
+  })
+
   it("isn't offered where Friday doesn't look for updates", async () => {
     await openFriday("/settings/updates")
     expect(await screen.findByText("This Friday doesn't look for updates")).toBeTruthy()
-    expect(screen.queryByRole("textbox", { name: "Test user code" })).toBeNull()
+    expect(screen.queryByRole("textbox", { name: "Test user invite" })).toBeNull()
   })
 
   it("tells the Mac app to swap a ready update in", async () => {

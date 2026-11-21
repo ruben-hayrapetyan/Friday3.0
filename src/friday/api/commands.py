@@ -431,6 +431,10 @@ class SettingsSetInput(Model):
     value: Any
 
 
+class TestInviteInput(Model):
+    invite: str  # the link (…/join#…), friday://join?invite=…, or the invite alone
+
+
 class TestUserJoinInput(Model):
     code: str  # as typed: K7QF-29XM, k7qf29xm and "k7qf 29xm" are the same code
 
