@@ -110,7 +110,7 @@ async function read<T>(response: Response): Promise<T> {
  * of their own: two of them at once used to hold half the page's turns (13 Nov). */
 export type Lane = "quick" | "planning"
 const AT_ONCE: Record<Lane, number> = { quick: 4, planning: 2 }
-const PLANNING = new Set(["whatif", "suggestion_effect", "other_way"])
+const PLANNING = new Set(["whatif", "whatif_ready", "suggestion_effect", "other_way"])
 const reading: Record<Lane, number> = { quick: 0, planning: 0 }
 const waitingReads: Record<Lane, (() => void)[]> = { quick: [], planning: [] }
 

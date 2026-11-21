@@ -964,6 +964,12 @@ class MealsOut(Model):
     decided: list[str] = []  # meals a rule leaves to Friday: what's learned of them it applies itself, each night
 
 
+class WhatIfReadyOut(Model):
+    """What if's plan without your changes, made ready as What if opens: whether one had to be planned."""
+
+    planned: bool
+
+
 class WhatIfOut(Model):
     """What if: the calendar with the staged changes, and what they cost together, against the plan without them."""
 

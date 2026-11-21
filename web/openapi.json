@@ -13956,6 +13956,24 @@
     }
    }
   },
+  "/api/q/whatif_ready": {
+   "get": {
+    "summary": "The plan without your changes, made as What if opens, so the first change tried plans once, not twice (20 Nov:",
+    "operationId": "whatif_ready",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WhatIfReadyOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/why": {
    "get": {
     "summary": "Why a block is where it is: its cost by rule and one plain sentence.",
@@ -38737,6 +38755,21 @@
     ],
     "title": "WhatIfOut",
     "description": "What if: the calendar with the staged changes, and what they cost together, against the plan without them."
+   },
+   "WhatIfReadyOut": {
+    "properties": {
+     "planned": {
+      "type": "boolean",
+      "title": "Planned"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "planned"
+    ],
+    "title": "WhatIfReadyOut",
+    "description": "What if's plan without your changes, made ready as What if opens: whether one had to be planned."
    },
    "WhatifKeepResult": {
     "properties": {
