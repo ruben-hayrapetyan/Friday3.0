@@ -13,6 +13,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
+import numpy as np
 from ortools.linear_solver import pywraplp
 
 from friday.core.pace import DayScales, budget_factor
@@ -113,7 +114,9 @@ def claim_reserved_time(inp: AllocatorInput, caps: list[int], day_of: DayIndex) 
                 caps[d] = max(0, caps[d] - round(share))
 
 
-def allocate(inp: AllocatorInput) -> Allocation:
+def allocate(inp: AllocatorInput, cancel: np.ndarray | None = None) -> Allocation:
+    """Each item's units a day. Spaced waits settle their ready days over rounds; a raised `cancel` stops after the
+    round it's in (a replaced plan's had run every round, minutes on a user's week, 20 Nov): its plan isn't kept."""
     caps = day_capacities(inp)
     room = list(caps)
     day_of = DayIndex(inp.days)
@@ -126,7 +129,7 @@ def allocate(inp: AllocatorInput) -> Allocation:
     for _ in range(len(todo) + 1):
         units, over = AllocatorLP(inp, caps, day_of, todo, ready).solve()
         later = ready_days(todo, units, ready)
-        if later == ready:
+        if later == ready or (cancel is not None and cancel[0]):
             break
         ready = later
     return Allocation(units, over, caps, quotas(inp, todo, units), room)
@@ -207,12 +210,23 @@ def quotas(inp: AllocatorInput, todo: list[EngineItem], units: dict[str, list[fl
     return out
 
 
+def lp_solver() -> pywraplp.Solver:
+    """HiGHS, quiet (it prints its banner on every solve otherwise; the call says False and silences it anyway), else
+    GLOP. On a user's 103 tasks and 492 links HiGHS took half GLOP's time, ten times less on a week shaped like it,
+    to the same scores (20 Nov); where two allocations score the same, it may pick the other."""
+    highs = pywraplp.Solver.CreateSolver("HIGHS")
+    if highs is None:
+        return pywraplp.Solver.CreateSolver("GLOP")
+    highs.SetSolverSpecificParametersAsString("output_flag=false")
+    return highs
+
+
 class AllocatorLP:
     def __init__(self, inp: AllocatorInput, caps: list[int], day_of: DayIndex, todo: list[EngineItem],
                  ready: dict[str, int]):  # fmt: skip
         self.inp, self.caps, self.day_of, self.todo = inp, caps, day_of, todo
         self.A = len(caps)
-        self.lp = pywraplp.Solver.CreateSolver("GLOP")
+        self.lp = lp_solver()
         self.effective_due = self.aimed_for(effective_due_days(todo, day_of, caps))
         self.day_prices = self.whole_day_prices()
         self.y: dict[tuple[str, int], pywraplp.Variable] = {}
@@ -245,20 +259,31 @@ class AllocatorLP:
 
         Said with each item's running total, one variable a day, so a link compares two of them: summed afresh for
         every link and every day, a user's 492 links over 84 days were 40,000 rows and 41 million terms, rebuilt each
-        of 12 rounds, and a plan took three minutes (20 Nov). A day neither total moves would repeat the day before."""
+        of 12 rounds, and a plan took three minutes (20 Nov). A day neither total moves would repeat the day before.
+
+        A spaced wait ("a day after") keeps it behind its source as it was the gap before: the rounds still hold its
+        ready day, but laid out in order from the first they settled in 2 rounds, not 12, on that user's week (to the
+        same scores; where two allocations score the same, it may pick the other)."""
         needs = {it.key: it.need for it in self.todo}
         totals: dict[str, list[pywraplp.Variable | None]] = {}
         for item in self.todo:
             for dep in item.depends_on:
-                if dep.key not in needs or dep.required == 0 or needs[dep.key] <= 0 or dep.lag_min > 0:
-                    continue  # a wait with a lag (spacing) is held by its ready day instead
+                if dep.key not in needs or dep.required == 0 or needs[dep.key] <= 0:
+                    continue
+                gap = math.ceil(dep.lag_min / 1440) + (1 if dep.lag_min > 0 else 0)  # as its ready day: the next, + lag
                 mine = totals.get(item.key) or totals.setdefault(item.key, self.running_total(item.key))
                 theirs = totals.get(dep.key) or totals.setdefault(dep.key, self.running_total(dep.key))
                 said: tuple[object, object] = (None, None)  # identity: == on a variable makes a constraint
                 for d in range(self.A):
-                    if mine[d] is None or (mine[d] is said[0] and theirs[d] is said[1]):
+                    back = theirs[d - gap] if d - gap >= 0 else None
+                    if mine[d] is None or (mine[d] is said[0] and back is said[1]):
                         continue
-                    said = (mine[d], theirs[d])
+                    said = (mine[d], back)
+                    if back is None:
+                        self.lp.Add(mine[d] <= 0)
+                    else:
+                        self.lp.Add(mine[d] * needs[dep.key] <= back * item.need)
+                    continue
                     self.lp.Add(mine[d] * needs[dep.key] <= theirs[d] * item.need if theirs[d] is not None else
                                 mine[d] <= 0)  # fmt: skip
 
