@@ -273,6 +273,23 @@ def test_privacy_and_the_terms_say_what_the_update_check_sends_and_the_code_send
     )
 
 
+def test_privacy_says_what_joining_as_a_test_user_sends_and_the_code_sends_that() -> None:
+    """H235: joining by invite sends the Mac's name and system once; each look then sends a key for this Mac."""
+    privacy = " ".join((SITE / "privacy.html").read_text().split())
+    said = re.search(r"<b>Test users\.</b>(.*?)</li>", privacy)[1]
+    assert "your Mac's name and its system version, once" in said and "sends a key for this Mac" in said
+    assert "can't be turned back into it" in said
+    spec = importlib.util.spec_from_file_location("updates", ROOT / "src" / "friday" / "sync" / "updates.py")
+    assert spec and spec.loader
+    updates = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(updates)
+    keyed = updates.asking("https://friday-scheduler.com/updates.json", "0.6.4", test_key="k" * 43)
+    assert keyed.get_header("X-friday-test-key") == "k" * 43 and keyed.get_header("X-friday-test-user") is None
+    commands = (ROOT / "src" / "friday" / "commands" / "updates.py").read_text()
+    sent = re.search(r"def this_device\(\) -> dict:(.*?)\n\n\n", commands, re.S)[1]
+    assert re.search(r'return \{"name": name, "system": ', sent)  # the name and system, nothing else
+
+
 def test_whats_new_download_is_matched_to_the_computer_like_the_home_page() -> None:
     """H189: the current version's Download on What's new is a [data-download] with its note, and the page runs the
     same download.js as the home page; older versions have no download."""
