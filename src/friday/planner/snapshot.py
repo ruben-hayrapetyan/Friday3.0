@@ -67,6 +67,8 @@ class SleepFacts:
     wind_down_min: dict[str, int] = field(default_factory=dict)  # done with work to bed, learned, by the evening
     done_utc: int | None = None  # tonight's "Done with work", before going to bed
     napped_min: dict[date, int] = field(default_factory=dict)  # naps, by their planning day
+    slept_utc: int | None = None  # this morning's night: when you went to bed
+    ready_utc: int | None = None  # this morning's "Ready to work" (or the first timer since waking)
 
 
 @dataclass(frozen=True)
@@ -273,6 +275,8 @@ def sleep_facts(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any]
         woke_utc=utc_minutes(morning.up.at) if morning and morning.up else None,
         ready=bool(morning and morning.ready_at),
         napped_min=napped,
+        slept_utc=utc_minutes(morning.bed.at) if morning and morning.bed else None,
+        ready_utc=utc_minutes(morning.ready_at) if morning and morning.ready_at else None,
     )
 
 

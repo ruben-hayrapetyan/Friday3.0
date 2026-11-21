@@ -22,7 +22,7 @@ from friday.planner.assemble import AssembledPlan, PlannedBlock, assemble, late_
 from friday.planner.build import BuildInput, build_problem, key_of, scheduler_config
 from friday.planner.learning import learnable
 from friday.planner.planned_late import remember as remember_late
-from friday.planner.prepare import build_input
+from friday.planner.prepare import awake_parts, away_this_morning, build_input
 from friday.planner.snapshot import Snapshot, read_snapshot, take_snapshot
 from friday.planner.solve import solve
 from friday.planner.store import current_plan, generation, kv_get, kv_set
@@ -120,8 +120,9 @@ def write_plan(
         ).lastrowid
         or 0
     )
-    # The day's past blocks carry over: a replan mustn't lose what was planned earlier.
-    past = past_blocks(conn, saved, snapshot.now_utc)
+    # The day's past blocks carry over: a replan mustn't lose what was planned earlier. Not while you were asleep or
+    # getting ready this morning (`away_this_morning`): that didn't happen.
+    past = past_blocks(conn, saved, snapshot.now_utc, away_this_morning(snapshot))
     conn.executemany(
         "INSERT INTO blocks (plan_id, user_id, item_id, start_utc, end_utc, cost, tentative) "
         "VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -176,9 +177,12 @@ def record_drag(conn: sqlite3.Connection, snapshot: Snapshot, before: dict, afte
     )
 
 
-def past_blocks(conn: sqlite3.Connection, saved: dict | None, now_utc: int) -> list[PlannedBlock]:
+def past_blocks(
+    conn: sqlite3.Connection, saved: dict | None, now_utc: int, away: tuple[int, int] | None = None
+) -> list[PlannedBlock]:
     """The previous plan's blocks from the last two days up to now, cut where the new plan begins (the next
-    quarter hour). The review and the assumed-progress rule (§8) still need what was planned earlier."""
+    quarter hour), less the time `away` (asleep or getting ready this morning). The review and the assumed-progress
+    rule (§8) still need what was planned earlier."""
     if saved is None:
         return []
     cut = -(-now_utc // UNIT_MIN) * UNIT_MIN
@@ -187,14 +191,9 @@ def past_blocks(conn: sqlite3.Connection, saved: dict | None, now_utc: int) -> l
         [saved["id"], format_utc(now_utc), format_utc(now_utc - 2 * 1440)],
     ).fetchall()
     return [
-        PlannedBlock(
-            r["item_id"],
-            parse_utc(r["start_utc"]),
-            min(parse_utc(r["end_utc"]), cut),
-            json.loads(r["cost"]),
-            bool(r["tentative"]),
-        )
+        PlannedBlock(r["item_id"], lo, hi, json.loads(r["cost"]), bool(r["tentative"]))
         for r in found
+        for lo, hi in awake_parts(parse_utc(r["start_utc"]), min(parse_utc(r["end_utc"]), cut), away)
     ]
 
 

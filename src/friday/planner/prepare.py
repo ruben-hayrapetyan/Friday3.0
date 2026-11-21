@@ -7,7 +7,7 @@ from typing import Any
 from friday.core import vacations as breaks
 from friday.core.pace import dials_on, scales
 from friday.core.settings import minutes_of
-from friday.core.time import UNIT_MIN, format_utc, parse_utc, planning_date
+from friday.core.time import UNIT_MIN, WEEKDAYS, format_utc, parse_utc, planning_date, planning_day_start_utc, to_local
 from friday.planner.build import BuildInput, Dependency, Pin, cap_hours_on, night_times
 from friday.planner.cushion import past_shortened
 from friday.planner.progress import recorded_minutes, remaining_minutes
@@ -33,6 +33,31 @@ def day_of(snapshot: Snapshot, moment: int) -> date:
     return planning_date(moment, time.timezone, minutes_of(time.day_start))
 
 
+def away_this_morning(snapshot: Snapshot) -> tuple[int, int] | None:
+    """While this morning's taps say you were asleep or getting ready (tracked sleep, once you've said you're up):
+    from going to bed (else the day's start) until "Ready to work" (else up and your usual routine after it). What a
+    plan had there didn't happen: it's neither assumed done nor kept on the day's calendar (21 Nov: up at 12:04, the
+    11:45 lunch of a plan made before stayed, and a lunch before you were ready to work showed beside the new one)."""
+    sleep = snapshot.sleep
+    if sleep is None or sleep.woke_utc is None:
+        return None
+    time = snapshot.settings["time"]
+    if sleep.slept_utc is not None:
+        lo = sleep.slept_utc
+    else:
+        lo = planning_day_start_utc(day_of(snapshot, sleep.woke_utc), time.timezone, minutes_of(time.day_start))
+    weekday = WEEKDAYS[to_local(sleep.woke_utc, time.timezone).weekday()]
+    hi = sleep.ready_utc if sleep.ready_utc is not None else sleep.woke_utc + (sleep.routine_min.get(weekday) or 0)
+    return (lo, hi) if lo < hi else None
+
+
+def awake_parts(start: int, end: int, away: tuple[int, int] | None) -> list[tuple[int, int]]:
+    """[start, end) less the time you were away (`away_this_morning`): itself, a piece either side, or nothing."""
+    if away is None or end <= away[0] or start >= away[1]:
+        return [(start, end)]
+    return [(lo, hi) for lo, hi in ((start, away[0]), (away[1], end)) if lo < hi]
+
+
 def assumed_blocks(snapshot: Snapshot) -> list[BlockRow]:
     """Past blocks that count as done until the review says otherwise (§8 rule 1): today's, and an earlier day's
     the plan still holds until that day is reviewed or closed (`close_day` writes them as progress, which settles
@@ -51,6 +76,7 @@ def assumed_blocks(snapshot: Snapshot) -> list[BlockRow]:
         upto,
     )
     background = {i.id for i in snapshot.items if i.background and i.id is not None}
+    away = away_this_morning(snapshot)
     out = []
     for block in snapshot.plan_blocks:
         day = day_of(snapshot, block.start_utc)
@@ -71,7 +97,10 @@ def assumed_blocks(snapshot: Snapshot) -> list[BlockRow]:
         # The slider sets the total as of when you moved it: a block begun before then is in that total already.
         slid = any(r["source"] == "slider" and parse_utc(r["created_utc"]) > block.start_utc for r in recorded)
         if not settled and not timed and not slid:
-            out.append(block)
+            out.extend(
+                dataclasses.replace(block, start_utc=lo, end_utc=hi)
+                for lo, hi in awake_parts(block.start_utc, block.end_utc, away)
+            )
     return out
 
 

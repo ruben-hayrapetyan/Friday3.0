@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from friday.core.items import FieldError
-from friday.core.time import parse_local, to_utc
+from friday.core.time import parse_local, parse_utc, to_utc
 from friday.planner.snapshot import take_snapshot
 from tests.commands.helpers import App, new_app
 
@@ -335,3 +335,67 @@ def test_done_with_work_at_4am_still_offers_going_to_bed(app: App) -> None:
     app.do("sleep_mark", kind="up")
     night = next(n for n in app.do("sleep")["nights"] if n["date"] == "2026-10-19")
     assert night["bed"] and night["up"]  # one night, from bed at 4:20am to up at 12:30pm
+
+
+def current_blocks(app: App, item_id: int) -> list[tuple[str, str]]:
+    found = app.conn.execute(
+        "SELECT b.start_utc, b.end_utc FROM blocks b JOIN plans p ON p.id = b.plan_id "
+        "WHERE p.status = 'current' AND b.item_id = ? ORDER BY b.start_utc",
+        [item_id],
+    ).fetchall()
+    return [(r[0], r[1]) for r in found]
+
+
+def utc(local: str) -> str:
+    from friday.core.time import format_utc  # noqa: PLC0415
+
+    return format_utc(to_utc(parse_local(local), "America/New_York"))
+
+
+def test_what_was_planned_while_you_slept_in_didnt_happen(tmp_path: Path) -> None:
+    """21 Nov, a user's screenshot: up at 12:04, and the 11:45 lunch of the plan made before stayed on the day beside
+    the new one. Planned at 7am for 9 to 11, up at 11: those two hours weren't done, and aren't kept on the day."""
+    from friday.planner.prepare import assumed_blocks  # noqa: PLC0415
+
+    app = new_app(tmp_path, now="2026-10-19T07:00")
+    on(app)
+    essay = app.do("add", text="essay ~2h due tue")["item"]["id"]
+    app.do("replan")
+    assert current_blocks(app, essay) == [(utc("2026-10-19T09:00"), utc("2026-10-19T11:00"))]
+    app.now_utc += 4 * 60  # 11am
+    app.do("sleep_mark", kind="up")
+    assert assumed_blocks(take_snapshot(app.conn, app.now_utc)) == []  # not two hours done in your sleep
+    app.do("replan")
+    planned = current_blocks(app, essay)
+    assert planned and all(start >= utc("2026-10-19T11:00") for start, _ in planned)  # none before you were up
+    assert sum(parse_utc(end) - parse_utc(start) for start, end in planned) == 120  # all of it still to do
+
+
+def test_getting_ready_counts_as_away_until_you_say_youre_ready(tmp_path: Path) -> None:
+    from friday.planner.prepare import assumed_blocks, away_this_morning  # noqa: PLC0415
+
+    app = new_app(tmp_path, now="2026-10-19T07:00")
+    on(app)
+    app.do("add", text="essay ~2h due tue")
+    app.do("replan")  # 9 to 11
+    app.now_utc += 4 * 60 + 30  # 11:30am
+    app.do("sleep_mark", kind="up", at="2026-10-19T09:30")
+    app.do("sleep_mark", kind="ready", at="2026-10-19T10:30")
+    snapshot = take_snapshot(app.conn, app.now_utc)
+    assert away_this_morning(snapshot)[1] == to_utc(parse_local("2026-10-19T10:30"), "America/New_York")
+    (done,) = assumed_blocks(snapshot)  # 10:30 to 11, once you were ready
+    assert (done.start_utc, done.end_utc) == (
+        to_utc(parse_local("2026-10-19T10:30"), "America/New_York"),
+        to_utc(parse_local("2026-10-19T11:00"), "America/New_York"),
+    )
+
+
+def test_work_before_you_went_to_bed_still_counts(tmp_path: Path) -> None:
+    from friday.planner.prepare import awake_parts  # noqa: PLC0415
+
+    away = (100, 200)  # bed at 100, ready at 200
+    assert awake_parts(40, 90, away) == [(40, 90)]  # the evening before: done as planned
+    assert awake_parts(80, 120, away) == [(80, 100)]  # up to going to bed
+    assert awake_parts(150, 260, away) == [(200, 260)]  # from being ready
+    assert awake_parts(120, 180, away) == []
+    assert awake_parts(120, 180, None) == [(120, 180)]  # no taps this morning: as planned
