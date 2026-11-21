@@ -171,14 +171,17 @@ def test_a_download_that_isnt_the_published_file_fails_plainly(app: App, site: S
     assert failed["popup"] is True  # the popup says what went wrong and offers Update again
 
 
+@pytest.mark.filterwarnings("error::pytest.PytestUnhandledThreadExceptionWarning")
 def test_stop_ends_a_download_and_changes_nothing(app: App, site: Site, monkeypatch: pytest.MonkeyPatch) -> None:
+    """21 Nov: the stand-in download took no test user's code or key, so the download died at once of a TypeError
+    (only a warning) and stopping was never tried on a download under way."""
     launch(app)
     gate = threading.Event()
     real = net.download
 
-    def slow(entry: dict, folder: Path, progress, cancelled, version):  # noqa: ANN001, ANN202
+    def slow(entry: dict, folder: Path, progress, cancelled, version, **asked):  # noqa: ANN001, ANN003, ANN202
         gate.wait(5)
-        return real(entry, folder, progress=progress, cancelled=cancelled, version=version)
+        return real(entry, folder, progress=progress, cancelled=cancelled, version=version, **asked)
 
     monkeypatch.setattr(net, "download", slow)
     app.do("update_start")
