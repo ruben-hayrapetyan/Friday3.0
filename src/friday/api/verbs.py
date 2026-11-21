@@ -1641,6 +1641,14 @@ VERBS = {
         False,
         "Stop a download that's going on; nothing is changed.",
     ),
+    "update_test_invite": Verb(
+        "POST",
+        "/api/c/update_test_invite",
+        commands.TestInviteInput,
+        True,
+        False,
+        "Join as a test user with an invite (H233), opened from its link (friday://join) or pasted in Settings →",
+    ),
     "update_test_join": Verb(
         "POST",
         "/api/c/update_test_join",
@@ -1736,7 +1744,7 @@ VERBS = {
         commands.Empty,
         False,
         False,
-        "The plan without your changes, made as What if opens, so the first change tried plans once, not twice (20 Nov:",
+        "The plan without your changes, made as What if opens: the first change tried then plans once, not twice (20",
     ),
     "whats_new_seen": Verb(
         "POST",

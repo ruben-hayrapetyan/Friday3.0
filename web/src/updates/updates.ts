@@ -11,7 +11,7 @@ import { inMacApp } from "@/dialogs/Setup"
 export type UpdateStatus = Schemas["UpdateStatusOut"]
 export type UpdateVersion = Schemas["UpdateVersionOut"]
 export type TestUser = Schemas["TestUserOut"]
-type Act = "update_check" | "update_later" | "update_start" | "update_stop" | "whats_new_seen" | "update_test_join" | "update_test_leave"
+type Act = "update_check" | "update_later" | "update_start" | "update_stop" | "whats_new_seen" | "update_test_join" | "update_test_invite" | "update_test_leave"
 
 const KEY = ["updates"] as const
 const BUSY = new Set(["checking", "downloading"])
@@ -56,17 +56,28 @@ export function testCode(typed: string): string | null {
   return /^[A-Z0-9]{8}$/.test(bare) ? `${bare.slice(0, 4)}-${bare.slice(4)}` : null
 }
 
+/** An invite in what was pasted (H233): the link it came in (…/join#…), Friday's own (friday://join?invite=…), or the
+ * invite alone; null for anything else. The server reads it again. */
+export function pastedInvite(typed: string): string | null {
+  const text = typed.trim()
+  const found = /[#?&]invite=([A-Za-z0-9_-]+)/.exec(text) ?? /#([A-Za-z0-9_-]+)\s*$/.exec(text)
+  const token = found ? found[1] : text
+  return /^[A-Za-z0-9_-]{16,}$/.test(token) ? token : null
+}
+
 /** What joining or leaving shows before the server answers (UI-PRINCIPLES 2: every click shows its result at once). */
 function optimistic(status: UpdateStatus, name: Act, input: Record<string, unknown>): UpdateStatus | null {
   if (name === "update_test_leave") return { ...status, test_user: null, versions: (status.versions ?? []).filter((v) => !v.test) }
+  if (name === "update_test_invite") return { ...status, state: "checking", test_user: { code: null, name: null, known: null, device: true } }
   const code = name === "update_test_join" ? testCode(String(input.code ?? "")) : null
-  return code ? { ...status, state: "checking", test_user: { code, name: null, known: null } } : null
+  return code ? { ...status, state: "checking", test_user: { code, name: null, known: null, device: false } } : null
 }
 
-/** "You're a test user, as Ana", "Checking your code…", or that the site doesn't know it. */
+/** "You're a test user, as Ana", "Checking your code…" ("Joining…" with an invite), or that the site doesn't know it. */
 export function testUserLine(user: TestUser, state: UpdateStatus["state"]): string {
   if (user.known) return user.name ? `You're a test user, as ${user.name}` : "You're a test user"
-  if (user.known === false) return "Friday's site doesn't know this code"
+  if (user.known === false) return user.device ? "Friday's site no longer knows this Mac" : "Friday's site doesn't know this code"
+  if (user.device) return state === "checking" ? "Joining…" : "Checked the next time Friday looks"
   return state === "checking" ? "Checking your code…" : "Your code is checked the next time Friday looks"
 }
 

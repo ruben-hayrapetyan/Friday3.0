@@ -3,8 +3,9 @@
 fetched, checked against its checksum and unpacked from its disk image beside the app, ready for the Mac app to swap
 in. Every Mac build but Friday Test reads the site's feed (Mac/build.sh). Friday names itself in each request
 (`Friday/0.3.0 (Mac)`): Cloudflare, in front of the site, refuses Python's own name (error 1010). A test user's Friday
-(H224) sends its code too, in `X-Friday-Test-User`: the site then answers with the test users' feed and
-lets their version be downloaded."""
+(H224) sends its device's key, in `X-Friday-Test-Key` (H233: from an invite, or from swapping the code typed before
+invites; a Friday that still has only a code sends it in `X-Friday-Test-User`): the site then answers with the test
+users' feed and lets their version be downloaded."""
 
 import hashlib
 import json
@@ -12,6 +13,7 @@ import logging
 import shutil
 import subprocess
 import tempfile
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 from pathlib import Path
@@ -21,6 +23,7 @@ log = logging.getLogger("friday.updates")
 TIMEOUT_S = 15
 CHUNK = 1 << 20
 TEST_USER_HEADER = "X-Friday-Test-User"
+TEST_KEY_HEADER = "X-Friday-Test-Key"
 
 
 class UpdateError(Exception):
@@ -34,20 +37,33 @@ def version_key(version: str) -> tuple[int, ...]:
         raise UpdateError(f"{version!r} isn't a version number") from wrong
 
 
-def asking(url: str, version: str | None, test_code: str | None = None) -> urllib.request.Request:
-    """A request that says it's Friday, and which version; a test user's code with it, if there is one."""
+def asking(
+    url: str, version: str | None, test_code: str | None = None, test_key: str | None = None, body: dict | None = None
+) -> urllib.request.Request:
+    """A request that says it's Friday, and which version; this device's test-user key with it, else a code from before
+    invites, if there is one; a JSON body makes it a POST."""
     headers = {"User-Agent": f"Friday/{version or 'dev'} (Mac)"}
-    if test_code:
+    if test_key:
+        headers[TEST_KEY_HEADER] = test_key
+    elif test_code:
         headers[TEST_USER_HEADER] = test_code
-    return urllib.request.Request(url, headers=headers)
+    if body is None:
+        return urllib.request.Request(url, headers=headers)
+    headers["Content-Type"] = "application/json"
+    return urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method="POST")
 
 
 def fetch_feed(
-    url: str, opener: Callable[..., Any] | None = None, *, version: str | None = None, test_code: str | None = None
+    url: str,
+    opener: Callable[..., Any] | None = None,
+    *,
+    version: str | None = None,
+    test_code: str | None = None,
+    test_key: str | None = None,
 ) -> dict:
     opener = opener or urllib.request.urlopen
     try:
-        with opener(asking(url, version, test_code), timeout=TIMEOUT_S) as answer:
+        with opener(asking(url, version, test_code, test_key), timeout=TIMEOUT_S) as answer:
             feed = json.loads(answer.read())
     except (OSError, ValueError) as wrong:
         log.info("update feed %s: %s", url, wrong)
@@ -55,6 +71,48 @@ def fetch_feed(
     if not isinstance(feed, dict) or not isinstance(feed.get("versions"), list) or "current" not in feed:
         raise UpdateError("the update feed isn't in the expected shape")
     return feed
+
+
+class InviteError(UpdateError):
+    """An invite the site wouldn't take: `state` says why (used, gone, none, limited)."""
+
+    def __init__(self, state: str) -> None:
+        super().__init__(state)
+        self.state = state
+
+
+def post(url: str, body: dict, opener: Callable[..., Any] | None, version: str | None,
+         test_code: str | None = None) -> tuple[int, dict]:  # fmt: skip
+    """POST `body` to the site; its status and JSON answer (an error's too)."""
+    opener = opener or urllib.request.urlopen
+    try:
+        with opener(asking(url, version, test_code, body=body), timeout=TIMEOUT_S) as answer:
+            return getattr(answer, "status", 200), json.loads(answer.read())
+    except urllib.error.HTTPError as refused:
+        try:
+            return refused.code, json.loads(refused.read())
+        except ValueError:
+            return refused.code, {}
+    except (OSError, ValueError) as wrong:
+        log.info("test users %s: %s", url, wrong)
+        raise UpdateError("couldn't reach Friday's site; try again in a moment") from wrong
+
+
+def join(site: str, invite: str, device: dict, opener: Callable[..., Any] | None = None, *,
+         version: str | None = None) -> dict:  # fmt: skip
+    """Use an invite (H233): this device's key and whose it is ({"key", "name"}); InviteError if the site refused it."""
+    status, answer = post(f"{site}/test/join", {"invite": invite, "device": device}, opener, version)
+    if status == 200 and isinstance(answer.get("key"), str):
+        return answer
+    raise InviteError(str(answer.get("state") or "none"))
+
+
+def swap(site: str, code: str, device: dict, opener: Callable[..., Any] | None = None, *,
+         version: str | None = None) -> dict | None:  # fmt: skip
+    """A code from before invites, swapped for this device's key ({"key", "name"}); None when the site doesn't (a
+    code it doesn't know, or a site from before invites)."""
+    status, answer = post(f"{site}/test/swap", {"device": device}, opener, version, test_code=code)
+    return answer if status == 200 and isinstance(answer.get("key"), str) else None
 
 
 def newer(feed: dict, have: str) -> list[dict]:
@@ -73,6 +131,7 @@ def download(
     *,
     version: str | None = None,
     test_code: str | None = None,
+    test_key: str | None = None,
 ) -> Path:
     """The version's disk image, saved in `folder` and checked against the feed's checksum before it's kept."""
     opener = opener or urllib.request.urlopen
@@ -83,7 +142,10 @@ def download(
     total = max(int(entry.get("bytes") or 0), 1)
     got = 0
     try:
-        with opener(asking(entry["url"], version, test_code), timeout=TIMEOUT_S) as answer, partial.open("wb") as out:
+        with (
+            opener(asking(entry["url"], version, test_code, test_key), timeout=TIMEOUT_S) as answer,
+            partial.open("wb") as out,
+        ):
             while chunk := answer.read(CHUNK):
                 if cancelled():
                     raise UpdateError("the update was stopped")

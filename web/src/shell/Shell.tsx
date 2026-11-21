@@ -11,6 +11,7 @@ import { BriefDialog, briefDue, ChangesDialog, TriageDialog, useBriefSwitch } fr
 import { useDecisionsTitle } from "@/inbox/Decisions"
 import { SetupDialog, useSetup } from "@/dialogs/Setup"
 import { useToast } from "@/components/Toasts"
+import { runUpdateAct } from "@/updates/updates"
 import { useNow, useStatus } from "@/hooks/queries"
 import { runCommand, undoLast } from "@/hooks/useCommand"
 import { type Selection, useDrop } from "@/hooks/useDrop"
@@ -215,6 +216,8 @@ function useHostActions() {
   // A menu's shortcut or a hotkey again closes what it opened, when Friday was already in front (shell/toggles.ts).
   const again = (opener: Opener) => closes(opener, { dialog, pop, newEvent: event?.id === null }, wasInFront())
   const navigate = useNavigate()
+  const client = useQueryClient()
+  const toast = useToast()
   const location = useLocation()
   const toPlan = () => location.pathname !== "/" && navigate("/")
   useHost((request) => {
@@ -252,6 +255,10 @@ function useHostActions() {
         return setTour(true)
       case "setup":
         return setDialog("setup")
+      case "join":
+        // an invite opened from its link (H233): joined here, where a refused one says why; Settings → Updates shows it
+        navigate("/settings/updates")
+        return void runUpdateAct(client, toast, "update_test_invite", { invite: request.argument ?? "" })
     }
   })
 }

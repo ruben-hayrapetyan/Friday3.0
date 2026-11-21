@@ -1,0 +1,126 @@
+/* The invite page (H233, H234): a landing-page reveal, then a ticket whose stub tears off when you accept. Flat paint,
+   no gradients; still for reduced motion. */
+
+.join main.invite { max-width: 760px; padding: 28px 20px 64px; display: flex; flex-direction: column; gap: 28px; }
+
+/* which words show: the state the invite is in (checking, ok, used, gone, none), then "in" once accepted; "both" for
+   an invite you can accept or have */
+.invite:not([data-state="ok"]):not([data-state="checking"]) .ok,
+.invite:not([data-state="in"]) .in,
+.invite:not([data-state="ok"]):not([data-state="in"]):not([data-state="checking"]) .both,
+.invite:not([data-state="used"]) .used, .invite:not([data-state="gone"]) .gone, .invite:not([data-state="none"]) .none,
+.invite:not([data-state="limited"]) .limited, .invite:not([data-state="offline"]) .offline { display: none; }
+.invite .act { display: flex; }
+
+/* the cover over the page while it opens */
+.cover { position: fixed; inset: 0; z-index: 50; pointer-events: none; overflow: hidden; }
+.cover.gone { display: none; }
+.curtain { position: absolute; top: 0; bottom: 0; width: 51%; background: var(--navy); transition: transform 0.95s cubic-bezier(0.76, 0, 0.24, 1); }
+.curtain.l { left: 0; }
+.curtain.r { right: 0; }
+.cover.open .curtain.l { transform: translateX(-101%); }
+.cover.open .curtain.r { transform: translateX(101%); }
+
+/* the counter, bottom left, and its line */
+.count { position: absolute; left: clamp(20px, 5vw, 56px); bottom: clamp(26px, 6vh, 60px); overflow: hidden; line-height: 0.9; }
+.digits { display: block; font: 800 clamp(72px, 16vw, 168px)/0.9 var(--head); color: #fff; letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums; transition: transform 0.6s cubic-bezier(0.76, 0, 0.24, 1); }
+.cover.counted .digits { transform: translateY(105%); }
+.bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; }
+.bar span { display: block; height: 100%; width: 0; background: #f1d27a; transition: width 0.12s linear, opacity 0.4s; }
+.cover.counted .bar span { opacity: 0; }
+
+/* the cards: Friday's blocks, in its paints, flying in to a stack, then fanning out */
+.deck { position: absolute; left: 50%; top: 62%; width: 0; height: 0; }
+.card { position: absolute; left: calc(var(--w) / -2); top: calc(var(--h) / -2); width: var(--w); height: var(--h);
+  border-radius: 12px; background: var(--paint); color: #fff; padding: 12px 14px; display: flex; flex-direction: column;
+  justify-content: space-between; font: 600 14px/1.2 var(--body); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+  transform: translate(var(--fx), var(--fy)) rotate(var(--fr)); opacity: 0;
+  transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1) var(--d), opacity 0.3s var(--d); }
+.card small { font: 500 12px/1 var(--mono); opacity: 0.85; }
+.cover.stacked .card { transform: translate(var(--sx), var(--sy)) rotate(var(--sr)); opacity: 1; }
+.cover.fanned .card { transform: translate(var(--px), var(--py)) rotate(var(--pr)); opacity: 1; transition-delay: calc(var(--d) / 3); }
+.cover.open .card { transform: translate(var(--ox), var(--oy)) rotate(var(--or)); opacity: 0;
+  transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1), opacity 0.5s 0.35s; }
+
+/* the words, each line rising from behind its own mask */
+.lines { position: absolute; left: 0; right: 0; top: 30%; transform: translateY(-50%); margin: 0; text-align: center;
+  font: 800 clamp(44px, 10vw, 112px)/0.98 var(--head); color: #fff; letter-spacing: -0.02em; }
+.line { display: block; overflow: hidden; padding-bottom: 0.06em; }
+.line > span { display: inline-block; transform: translateY(110%); transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+.line:nth-child(2) > span { transition-delay: 0.12s; }
+.cover.said .line > span { transform: none; }
+.cover.open .line > span { transform: translateY(-110%); transition: transform 0.6s cubic-bezier(0.76, 0, 0.24, 1); }
+
+/* the ticket */
+.ticket { display: grid; grid-template-columns: 132px minmax(0, 1fr); background: var(--leaf); border-radius: 14px;
+  box-shadow: 0 1px 0 var(--rule), 0 12px 32px rgba(31, 36, 48, 0.08); position: relative; }
+.js .ticket { transform: translateY(40px); opacity: 0; transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.25s, opacity 0.5s 0.25s; }
+.js .ticket.shown { transform: none; opacity: 1; }
+.stub { background: var(--navy); color: #fff; border-radius: 14px 0 0 14px; padding: 20px 14px; display: flex; flex-direction: column;
+  gap: 8px; align-items: flex-start; position: relative; transform-origin: 50% 0; }
+/* the perforation between stub and ticket */
+.stub::after { content: ""; position: absolute; right: -5px; top: 10px; bottom: 10px; width: 10px;
+  background: radial-gradient(circle at 5px 6px, var(--paper) 3.2px, transparent 3.6px) 0 0 / 10px 14px repeat-y; }
+.stub .kicker { font: 700 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: #f1d27a; }
+.stub .admit { font: 800 22px/1.05 var(--head); }
+.stub .serial { font: 400 11px/1 var(--mono); color: #c9d3e6; margin-top: auto; }
+.ticket .body { grid-column: 2; grid-row: 1; padding: 22px 24px 22px 28px; display: flex; flex-direction: column; gap: 12px; }
+.ticket h1 { font: 800 clamp(28px, 5vw, 40px)/1.05 var(--head); margin: 0; letter-spacing: -0.01em; }
+.ticket .lead { margin: 0; color: var(--quiet); font-size: 16px; line-height: 1.5; text-wrap: pretty; }
+.act { align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+.button.big { padding: 15px 22px; font-size: 17px; border-radius: 11px; animation: nudge 2.4s 2.6s ease-in-out infinite; }
+@keyframes nudge { 0%, 88%, 100% { transform: none; } 92% { transform: translateY(-2px); } 96% { transform: translateY(1px); } }
+.left { font: 400 13px/1.3 var(--mono); color: var(--faint); }
+
+/* torn: the stub's edge jagged (its clip-path, set when it tears), swinging off and falling; the ticket's edge too */
+.stub.torn::after { display: none; }
+.stub.falling { animation: drop 1.15s cubic-bezier(0.45, 0, 0.7, 0.4) forwards; }
+@keyframes drop {
+  0% { transform: none; }
+  22% { transform: translate(-6px, 4px) rotate(-9deg); }
+  100% { transform: translate(-60px, 120vh) rotate(-38deg); opacity: 0.9; }
+}
+.ticket.torn { grid-template-columns: 0 minmax(0, 1fr); transition: grid-template-columns 0.5s 0.55s cubic-bezier(0.22, 1, 0.36, 1); }
+.ticket.torn .body { border-left: 0; }
+.bits { position: absolute; top: 0; bottom: 0; width: 0; pointer-events: none; } /* placed at the tear by join.js */
+.bits i { position: absolute; width: 5px; height: 4px; background: var(--navy); border-radius: 1px; opacity: 0;
+  animation: bit 0.9s var(--d) cubic-bezier(0.3, 0.5, 0.6, 1) forwards; }
+@keyframes bit { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)); } }
+
+/* if it didn't open */
+.steps h2 { font: 700 18px/1.2 var(--head); margin: 0 0 10px; }
+.steps ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.steps li { display: flex; gap: 12px; align-items: center; }
+.steps .n { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--hour); display: grid; place-items: center;
+  font: 700 13px/1 var(--mono); color: var(--ink); }
+.steps li > span:last-child { line-height: 1.5; }
+.steps li .button { margin-left: 8px; vertical-align: middle; }
+.steps .fine { color: var(--quiet); font-size: 14px; margin: 12px 0 0; }
+.perks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.perks > div { background: var(--leaf); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px;
+  box-shadow: inset 0 0 0 1px var(--hour); }
+.perks b { font: 700 15px/1.2 var(--head); }
+.perks span { color: var(--quiet); font-size: 14px; line-height: 1.45; }
+
+/* a phone: the stub on top, torn along a line across */
+@media (max-width: 620px) {
+  .ticket { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+  .ticket.torn { grid-template-columns: 1fr; grid-template-rows: 0 auto; transition: grid-template-rows 0.5s 0.55s cubic-bezier(0.22, 1, 0.36, 1); }
+  .stub { border-radius: 14px 14px 0 0; flex-direction: row; align-items: baseline; flex-wrap: wrap; padding: 14px 18px; transform-origin: 0 50%; }
+  .stub::after { right: 10px; left: 10px; top: auto; bottom: -5px; width: auto; height: 10px;
+    background: radial-gradient(circle at 6px 5px, var(--paper) 3.2px, transparent 3.6px) 0 0 / 14px 10px repeat-x; }
+  .stub .serial { margin: 0 0 0 auto; }
+  .ticket .body { grid-column: 1; grid-row: 2; }
+  .bits { left: 0; right: 0; bottom: auto; width: auto; height: 0; }
+  .perks { grid-template-columns: 1fr; }
+  .card { --w: 150px !important; --h: 96px !important; }
+}
+
+/* reduced motion: no cover, nothing flies; the stub just goes */
+@media (prefers-reduced-motion: reduce) {
+  .cover { display: none; }
+  .js .ticket { transform: none; opacity: 1; transition: none; }
+  .stub.falling { animation: none; opacity: 0; }
+  .button.big { animation: none; }
+}

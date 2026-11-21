@@ -11284,6 +11284,77 @@
     }
    }
   },
+  "/api/c/update_test_invite": {
+   "post": {
+    "summary": "Join as a test user with an invite (H233), opened from its link (friday://join) or pasted in Settings \u2192",
+    "operationId": "update_test_invite",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TestInviteInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UpdateTestInviteResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/update_test_join": {
    "post": {
     "summary": "Become a test user with the code you were given (H224): kept, and checked with the site now; from then on",
@@ -14389,7 +14460,7 @@
   },
   "/api/q/whatif_ready": {
    "get": {
-    "summary": "The plan without your changes, made as What if opens, so the first change tried plans once, not twice (20 Nov:",
+    "summary": "The plan without your changes, made as What if opens: the first change tried then plans once, not twice (20",
     "operationId": "whatif_ready",
     "responses": {
      "200": {
@@ -37215,6 +37286,20 @@
     "title": "TermsOut",
     "description": "Friday's terms as they are now, and whether you have yet to accept them."
    },
+   "TestInviteInput": {
+    "properties": {
+     "invite": {
+      "type": "string",
+      "title": "Invite"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "invite"
+    ],
+    "title": "TestInviteInput"
+   },
    "TestUserJoinInput": {
     "properties": {
      "code": {
@@ -37232,7 +37317,14 @@
    "TestUserOut": {
     "properties": {
      "code": {
-      "type": "string",
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
       "title": "Code"
      },
      "name": {
@@ -37256,13 +37348,15 @@
        }
       ],
       "title": "Known"
+     },
+     "device": {
+      "type": "boolean",
+      "title": "Device",
+      "default": false
      }
     },
     "additionalProperties": false,
     "type": "object",
-    "required": [
-     "code"
-    ],
     "title": "TestUserOut",
     "description": "This Friday as a test user (H224): the code typed in Settings \u2192 Updates, and what the site said of it."
    },
@@ -38649,6 +38743,76 @@
      "result"
     ],
     "title": "UpdateStopResult"
+   },
+   "UpdateTestInviteResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/UpdateStatusOut"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "UpdateTestInviteResult"
    },
    "UpdateTestJoinResult": {
     "properties": {
