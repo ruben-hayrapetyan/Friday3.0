@@ -127,7 +127,8 @@ export function Drawer() {
         </Dropdown>
         )}
       </div>
-      <div style={{ overflowY: "auto", minHeight: 0, flex: 1, display: "flex", flexDirection: "column", gap: 14, paddingBottom: 24 }}>
+      {/* it scrolls rather than squeezing its rows (20 Nov: a long list's rows shrank; the layout check found it) */}
+      <div className="fr-scroll-column" style={{ overflowY: "auto", minHeight: 0, flex: 1, display: "flex", flexDirection: "column", gap: 14, paddingBottom: 24 }}>
         {by === "Due" && !groups.length && <span style={{ fontSize: 12, color: "var(--color-neutral-500)", padding: "0 4px" }}>Nothing due in the next week, and nothing overdue that still matters.</span>}
         {groups.map((g) => (
           <div key={g.name} style={{ display: "flex", flexDirection: "column", ...(g.red ? { borderLeft: "2px solid var(--fr-now)", paddingLeft: 4 } : {}) }}>
