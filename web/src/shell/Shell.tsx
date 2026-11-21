@@ -100,7 +100,7 @@ export function Shell() {
             </div>
           </>
         )}
-        <main style={{ display: "grid", gridTemplateRows: "60px minmax(0,1fr)", minHeight: 0, minWidth: 0 }}>
+        <main style={{ display: "grid", gridTemplateRows: "minmax(60px, auto) minmax(0,1fr)", minHeight: 0, minWidth: 0 }}>
           <ErrorBoundary resetKey={location.pathname}>
           <Routes>
             <Route path="/" element={<PlanPage />} />
