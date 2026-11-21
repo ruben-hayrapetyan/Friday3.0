@@ -342,11 +342,12 @@ interface Timing {
   stop: () => void
 }
 
-/** A short piece's time, on its one line after the title. */
+/** A short piece's time, on its one line after the title. In a narrow column it gives way after the title, with an
+ * ellipsis: it couldn't shrink, and the box cut it mid-letter ("9:30an", 20 Nov, 320px, 3 days). */
 function Inline({ at, color, time }: { at: string; color: string; time?: Timing }) {
   if (time?.typing) return <TimeField time={time} />
   return (
-    <span className="tnum" onDoubleClick={retype(time)} title={time && "Double-click to change the time"} style={{ flex: "none", fontWeight: 400, color }}>
+    <span className="tnum" onDoubleClick={retype(time)} title={time && "Double-click to change the time"} style={{ flex: "0 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 400, color }}>
       {clock(at)}
     </span>
   )
