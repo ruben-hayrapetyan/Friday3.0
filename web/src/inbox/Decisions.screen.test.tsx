@@ -132,10 +132,13 @@ describe("steps waiting for one that has no room", () => {
     const cram = await add("Cram the whole thing", 120, { due: `${day(-1)}T23:00`, expires: true }) // its due gone: no room, never late
     await friday.c("step_any_time", { id: cram, any_time: true })
     const write = await add("Write it up", 120)
+    // planned now, as Replan does, rather than waiting on the replan its changes asked for: under the whole suite's
+    // load that one's search took 8-12 s against 1 s alone, and now and then past the 60 s this waited (20 Nov)
+    await friday.c("replan")
     await waitFor(async () => {
       const late = (await decisions()).find((d) => d.kind === "late")
       expect(late?.items?.find((i) => i.item_id === cram)?.waiting?.map((w) => w.title)).toEqual(["Write it up"])
-    }, { timeout: 60_000, interval: 500 })
+    }, { timeout: 10_000, interval: 500 })
     const { user } = await openInbox()
     await user.click(await findRow(/will be late/))
     expect(await screen.findByText("Write it up waits for it: it has no room before its due, so it isn't planned.")).toBeTruthy()
