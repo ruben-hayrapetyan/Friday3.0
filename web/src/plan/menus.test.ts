@@ -58,6 +58,15 @@ describe("replanning (3 Nov)", () => {
     const shell = readFileSync(join(__dirname, "..", "shell", "Shell.tsx"), "utf8")
     expect(shell).toContain('gridTemplateRows: "minmax(60px, auto) minmax(0,1fr)"') // the header row grows for it
   })
+  // 20 Nov: on phones the To-do button ran past the edge beside the lateness note (380 and 390px: the Breaks button
+  // came in at 380; the row needs 384 with it, measured). The layout check's "late work" states hold the note on
+  it("keeps a phone's row inside the screen with the lateness note showing", () => {
+    const breaksAt = Number(page.match(/const BREAKS_BUTTON_MIN = (\d+)/)?.[1])
+    expect(breaksAt).toBeGreaterThanOrEqual(392)
+    expect(header).toContain('className="fr-plan-head"')
+    const css = readFileSync(join(__dirname, "..", "theme", "friday.css"), "utf8")
+    expect(css).toMatch(/\[data-tight\] \.fr-plan-head \.btn-icon \{\s*width: 32px;/)
+  })
   it("leaves the view buttons to the Plan menu while What if's bar needs their room", () => {
     expect(header).toMatch(/const folded = layout\.tight \|\| \(trying && layout\.main < WHAT_IF_ROOM\)/)
     expect(header).toContain("{!folded && (")

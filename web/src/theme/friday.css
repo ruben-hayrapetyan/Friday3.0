@@ -195,6 +195,11 @@ body {
   grid-template-columns: minmax(0, 1fr) !important;
   gap: 8px !important;
 }
+/* a phone's Plan header: its icon buttons a little narrower, so the row holds them with the lateness note (20 Nov:
+   at 320 to 380px the To-do button ran past the edge) */
+[data-tight] .fr-plan-head .btn-icon {
+  width: 32px;
+}
 [data-tight] .fr-head-note {
   display: none !important;
 }

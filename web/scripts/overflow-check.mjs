@@ -40,6 +40,19 @@ const replanningNow = async (base) => {
   const status = await (await fetch(`${base}/api/q/status`)).json()
   return { status: { ...status, plan_generation: status.generation - 1 } }
 }
+/** Work that will be late and work slipping: the lateness note, with its count, in the Plan header (20 Nov: on phones
+ * the To-do button ran past the edge beside it, which a week with no late work never showed). */
+const lateNow = async (base) => {
+  const status = await (await fetch(`${base}/api/q/status`)).json()
+  const due = new Date(Date.now() + 86400000).toISOString().slice(0, 16)
+  return {
+    status: {
+      ...status,
+      late_items: [{ item_id: 1, title: "Problem set 7", due, hours: 2 }],
+      slipping: [{ item_id: 2, title: "Reading response", due, hours: 1, planned: false }],
+    },
+  }
+}
 const SETTINGS = ["appearance", "calendars", "tags", "schedule", "repeating", "breaks", "integrations", "phone", "tokens", "shortcuts", "updates", "advanced"]
 const STATES = [
   { name: "plan day", path: "/", keys: ["d"] },
@@ -58,6 +71,8 @@ const STATES = [
   { name: "what if, replanning", path: "/", answer: replanningNow, click: ["Plan…", "What if"] },
   { name: "what if tried, replanning", path: "/", answer: replanningNow, click: ["Plan…", "What if", "Show the changes?", "dinner with Sam", "Try"] },
   { name: "plan week, replanning", path: "/", answer: replanningNow, keys: ["w"] },
+  { name: "plan week, late work", path: "/", answer: lateNow, keys: ["w"] },
+  { name: "what if, late work", path: "/", answer: lateNow, click: ["Plan…", "What if"] },
   { name: "search", path: "/", keys: ["Meta+k"] },
   { name: "what's on this page", path: "/", click: ["Menu?", "What's on this page"] },
   { name: "tour", path: "/", click: ["Menu?", "What's on this page", "Take the tour"], then: ["Next", "Next", "Next"] },

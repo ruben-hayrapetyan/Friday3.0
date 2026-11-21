@@ -144,7 +144,7 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
   const below = layout.tight && trying
   return (
     <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: layout.tight ? 4 : 8, padding: "0 12px 0 var(--fr-head-inset)", minWidth: 0, height: 60 }}>
+      <div className="fr-plan-head" style={{ display: "flex", alignItems: "center", gap: layout.tight ? 3 : 8, padding: "0 12px 0 var(--fr-head-inset)", minWidth: 0, height: 60 }}>
         {/* Before the date, not after it: a date's length moved them, so clicking ahead many times missed (5 Nov). */}
         <div data-testid="day-arrows" style={{ display: "flex", gap: 0, flex: "none" }}>
           <button className="btn btn-icon btn-ghost" onClick={() => onStep(-1)} aria-label="Previous" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
@@ -214,7 +214,7 @@ function IconButton({ icon, label, onClick, tour }: { icon: string; label: strin
  * changed. Seven at most (3 Nov, the CS 2112 UI lecture's rule of seven; plan/menus.test.ts holds it). */
 // Below this width the title row has no room for the Breaks button: it's the Plan menu's first row instead, as the views
 // are in a narrow window (19 Nov: "make sure that all of the buttons at the top collapse nicely")
-const BREAKS_BUTTON_MIN = 380
+const BREAKS_BUTTON_MIN = 400 // the row needs 384px with it and the lateness note (20 Nov: at 380 and 390 the To-do button ran past the edge)
 // and below this one it's a square the size of the Inbox's tray it replaced, so the row fits as it did, whatever the
 // lateness note beside it says (19 Nov: the word made a phone's To-do button run off the edge, and a 700px row cut
 // "This month")
