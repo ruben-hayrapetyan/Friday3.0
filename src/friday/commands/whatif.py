@@ -21,6 +21,8 @@ from dataclasses import replace
 from datetime import date
 from typing import Any
 
+import numpy as np
+
 from friday.api.commands import Changed, RangeInput, WhatIfChange, WhatIfInput, WhatIfKeepInput
 from friday.api.views import FitLate, PlanOut, WhatIfChangeOut, WhatIfDay, WhatIfOut
 from friday.commands.fitting import deadlines, hours, late_minutes, listed, short_minutes, worst_first
@@ -33,7 +35,7 @@ from friday.core.settings import minutes_of
 from friday.core.time import clock_time, clock_times, parse_utc, planning_date, to_local
 from friday.planner.assemble import AssembledPlan, PlannedBlock
 from friday.planner.build import id_of
-from friday.planner.service import plan_snapshot, write_plan
+from friday.planner.service import plan_snapshot, trying, write_plan
 from friday.planner.snapshot import BlockRow, Snapshot, read_snapshot, take_snapshot
 from friday.planner.store import current_plan, load_settings
 
@@ -46,6 +48,9 @@ BEFORE: dict[tuple[str, int, int], tuple[int, AssembledPlan]] = {}  # (database,
 # One try at a time, and only the newest: changes made in quick succession (drag, drag, drag) each ask, and a try
 # still waiting when a newer one comes gives way rather than spend 20 seconds on an answer no one will see.
 LATEST: dict[tuple[str, int], int] = {}
+# and one still solving when a newer one comes stops at its next check (between the allocator's rounds, every 50k
+# steps of the search): it had run to the end, minutes on a user's week, while the newer one waited (20 Nov)
+STOPS: dict[tuple[str, int], np.ndarray] = {}
 SOLVING = threading.Lock()
 COUNTING = threading.Lock()
 KEPT_MIN = 10  # how long the plan without the changes stays good for the same generation
@@ -85,17 +90,29 @@ def whatif(ctx: Ctx, inp: WhatIfInput) -> WhatIfOut:
     who = (str(ctx.conn.execute("PRAGMA database_list").fetchone()[2]), ctx.user_id)
     with COUNTING:
         mine = LATEST[who] = LATEST.get(who, 0) + 1
+        if who in STOPS:
+            STOPS[who][0] = 1
     changes = staged(inp.changes)
     before = take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id)
     look = lambda conn, done: (done, read_snapshot(conn, ctx.now_utc, ctx.user_id))  # noqa: E731
     each = (lambda conn: read_snapshot(conn, ctx.now_utc, ctx.user_id)) if len(changes) <= EACH_UP_TO else None
     (done, after), steps = tried_many(ctx.conn, changes, look, now_utc=ctx.now_utc, user_id=ctx.user_id,
                                       each=each, resolve=resolver)  # fmt: skip
-    with SOLVING:
-        if LATEST.get(who) != mine:
+    with SOLVING, trying():
+        stop = np.zeros(1, dtype=np.int64)
+        with COUNTING:
+            if LATEST.get(who) != mine:
+                raise FieldError("changes", "a newer try replaced this one")
+            STOPS[who] = stop
+        try:
+            was = without(ctx, before, stop)
+            plan = planned_from(was, after, stop)
+        finally:
+            with COUNTING:
+                if STOPS.get(who) is stop:
+                    del STOPS[who]
+        if stop[0]:
             raise FieldError("changes", "a newer try replaced this one")
-        was = without(ctx, before)
-        plan = planned_from(was, after)
     shown, again = trial_plan(ctx, changes, after, plan, inp)
     if [t.created for t in again] != [t.created for t in done]:  # something was added meanwhile: ids moved on
         raise FieldError("changes", "your plan changed while Friday tried this; try again")
@@ -115,7 +132,7 @@ def whatif(ctx: Ctx, inp: WhatIfInput) -> WhatIfOut:
     return summed(ctx, before, after, was, plan, shown, outs, inp, began)
 
 
-def without(ctx: Ctx, before: Snapshot) -> AssembledPlan:
+def without(ctx: Ctx, before: Snapshot, stop: np.ndarray | None = None) -> AssembledPlan:
     """The week without the changes: your plan as it is when nothing has changed since it was made (what you see,
     and no solve), else planned now as a replan would, kept per generation."""
     saved = current_plan(ctx.conn, ctx.user_id)
@@ -130,13 +147,15 @@ def without(ctx: Ctx, before: Snapshot) -> AssembledPlan:
     found = BEFORE.get(key)
     if found is not None and abs(found[0] - ctx.now_utc) <= KEPT_MIN:
         return found[1]
-    plan = plan_snapshot(before, warm=True)
+    plan = plan_snapshot(before, True, stop)
+    if stop is not None and stop[0]:
+        return plan  # cut short by a newer try: never kept as the plan without the changes
     BEFORE.clear()  # one at a time: an older generation is no use again
     BEFORE[key] = (ctx.now_utc, plan)
     return plan
 
 
-def planned_from(was: AssembledPlan, after: Snapshot) -> AssembledPlan:
+def planned_from(was: AssembledPlan, after: Snapshot, stop: np.ndarray | None = None) -> AssembledPlan:
     """`after` planned starting from `was`, the plan without the changes, so what moves is what the changes move: two
     plans made apart on a full week wandered apart on their own (one dinner "moved" 49 blocks and slid overdue
     readings by days). What if and a command's full preview (`registry.full_preview`) both plan this way.
@@ -148,7 +167,9 @@ def planned_from(was: AssembledPlan, after: Snapshot) -> AssembledPlan:
     ahead = tuple(
         BlockRow(b.item_id, b.start_utc, b.end_utc, b.tentative) for b in was.blocks if b.start_utc >= after.now_utc
     )
-    return plan_snapshot(replace(after, plan_blocks=begun + ahead), warm=True)
+    if stop is not None and stop[0]:
+        return was  # a newer try came: not planned again
+    return plan_snapshot(replace(after, plan_blocks=begun + ahead), True, stop)
 
 
 def as_assembled(ctx: Ctx, saved: dict[str, Any]) -> AssembledPlan:

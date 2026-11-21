@@ -4,6 +4,7 @@ died once, twice, or with nothing in hand. The spawned process itself is in test
 
 import multiprocessing as mp
 import pickle
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -175,3 +176,20 @@ def test_a_stopping_supervisor_doesnt_restart_the_child(app: App, tmp_path: Path
     made.stopping.set()
     made.crashed(app.conn)
     assert made.spawned == 1  # type: ignore[attr-defined]
+
+
+def test_a_replan_waits_while_a_what_if_trial_solves() -> None:
+    """20 Nov: a What if trial and a replan solving at once each took 1.75 times as long, and the trial is what you're
+    waiting on. A replan that's due waits until the trial is done, then starts."""
+    from types import SimpleNamespace  # noqa: PLC0415
+
+    from friday.planner.service import TRIAL, trying  # noqa: PLC0415
+    from friday.server.worker import Supervisor  # noqa: PLC0415
+
+    started: list[str] = []
+    waiting = SimpleNamespace(lock=threading.Lock(), due=0.0, job=None, warm=True, reason="commands")
+    with trying():
+        assert TRIAL.is_set()
+        Supervisor.maybe_start(waiting, conn=None)  # type: ignore[arg-type]
+        assert waiting.due == 0.0 and not started  # still due: nothing taken, nothing sent
+    assert not TRIAL.is_set()

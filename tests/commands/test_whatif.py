@@ -117,7 +117,7 @@ def test_the_plan_without_the_changes_is_yours_or_planned_once_per_generation(
     essay_day(app)
     solves: list[int] = []
     real = whatif.plan_snapshot
-    monkeypatch.setattr(whatif, "plan_snapshot", lambda s, warm: (solves.append(1), real(s, warm))[1])
+    monkeypatch.setattr(whatif, "plan_snapshot", lambda s, warm, stop=None: (solves.append(1), real(s, warm, stop))[1])
     tried(app, coffee())
     assert len(solves) == 1 and not whatif.BEFORE  # your saved plan is the plan without it: only the trial is planned
     app.do("add", text="email prof ~15m")  # a change since the saved plan: the plan without the changes is planned
@@ -181,3 +181,42 @@ def test_a_kept_rule_undoes_after_the_plan_refreshed(app: App) -> None:
         replan(app.conn, app.now_utc)
         app.do("undo", command_id=out.command_id)
         assert not [r for r in app.do("rules") if r["name"].startswith("you:")]
+
+
+def test_a_newer_try_stops_the_one_still_solving(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
+    """20 Nov: on a user's week a try took minutes, and one replaced by a newer try (drag, drag) ran to its end while
+    the newer waited behind it. Now the newer raises the older's stop, which it checks as it solves."""
+    import threading  # noqa: PLC0415
+
+    essay_day(app)
+    real = whatif.plan_snapshot
+    first = threading.Event()
+    stopped: list[bool] = []
+
+    def solving(snapshot: object, warm: bool, stop: object = None) -> object:
+        if not first.is_set():  # the first try's solve: long, until something stops it (10 s at most)
+            first.set()
+            for _ in range(200):
+                if stop is not None and stop[0]:  # type: ignore[index]
+                    break
+                threading.Event().wait(0.05)
+            stopped.append(bool(stop is not None and stop[0]))  # type: ignore[index]
+        return real(snapshot, warm, stop)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(whatif, "plan_snapshot", solving)
+    older: list[object] = []
+    thread = threading.Thread(target=lambda: older.append(_try(app, coffee())))
+    thread.start()
+    assert first.wait(10)
+    newer = tried(app, coffee("15:00", "16:00"))
+    thread.join(20)
+    assert stopped == [True]
+    assert isinstance(older[0], Exception) and "a newer try replaced this one" in str(older[0])
+    assert newer["changes"][0]["error"] is None
+
+
+def _try(app: App, *changes: tuple[str, dict]) -> object:
+    try:
+        return tried(app, *changes)
+    except Exception as error:  # noqa: BLE001
+        return error
