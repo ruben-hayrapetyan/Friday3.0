@@ -269,6 +269,7 @@ class BuildContext:
         self.starts_requested: set[str] = set()
         self.cum_requested: set[str] = set()
         self.any_groups: dict[str, tuple[tuple[str, int], ...]] = {}
+        self._at: dict[int, list[EngineItem]] | None = None
 
     def x(self, key: str, s: int) -> Lin:
         return Lin.var(("x", key, s)) if s in self.problem.items[key].allowed_set else Lin()
@@ -300,7 +301,32 @@ class BuildContext:
         return Lin.var(("any", group))
 
     def busy_units(self, slots: Iterable[int], items: Iterable["EngineItem"] | None = None) -> Lin:
-        among = list(self.problem.items.values() if items is None else items)
+        """Units of work in `slots`: of every item, or of `items`. From each slot's items, as the problem lists them:
+        asking every item about every slot was 4.3 million questions a plan for a user's 330 items (20 Nov)."""
+        among = None if items is None else list(items)
+        keys = None if among is None else {item.key for item in among}
+        place = {key: n for n, key in enumerate(self.problem.items)}
+        if among is not None and [place.get(i.key, -1) for i in among] != sorted(place.get(i.key, -1) for i in among):
+            return self.busy_units_asking(slots, among)  # in another order than the problem's: terms in that order
+        at = self.allowed_at()
+        out = Lin()
+        for s in slots:
+            for item in at.get(s, ()):
+                if keys is None or item.key in keys:
+                    out.add_term(("x", item.key, s), int(self.grid.units[s]))
+        return out
+
+    def allowed_at(self) -> dict[int, list["EngineItem"]]:
+        """The items each slot is allowed to, in the problem's order; made once."""
+        if self._at is None:
+            at: dict[int, list[EngineItem]] = {}
+            for item in self.problem.items.values():
+                for s in sorted(item.allowed_set):
+                    at.setdefault(s, []).append(item)
+            self._at = at
+        return self._at
+
+    def busy_units_asking(self, slots: Iterable[int], among: list["EngineItem"]) -> Lin:
         out = Lin()
         for s in slots:
             for item in among:
