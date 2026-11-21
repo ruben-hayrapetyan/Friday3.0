@@ -16,7 +16,7 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict
 
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import MINUTES_PER_DAY, UNIT_MIN, WEEKDAYS
-from friday.engine.pwl import Lin, Measure, lin_sum
+from friday.engine.pwl import Lin, Measure
 
 if TYPE_CHECKING:
     from friday.engine.problem import EngineItem, FixedOcc, Problem
@@ -286,19 +286,6 @@ class BuildContext:
         """1 when a chunk of `key` begins at slot s."""
         self.starts_requested.add(key)
         return Lin.var(("start", key, s)) if s in self.problem.items[key].allowed_set else Lin()
-
-    def starts_at(self, members: list["EngineItem"], s: int) -> Lin:
-        """1 for each of `members` beginning a chunk at slot s: `lin_sum(self.start(m.key, s) for m in members)`, read
-        from the slot's own items. Asking every member about every slot was 906,000 questions a plan for a user's
-        travel and buffer rules (20 Nov); the same terms, in the same order, and every member's starts requested."""
-        place = {key: n for n, key in enumerate(self.problem.items)}
-        keys = {m.key for m in members}
-        if [place.get(m.key, -1) for m in members] != sorted(place.get(m.key, -1) for m in members) or len(keys) < len(
-            members
-        ):
-            return lin_sum(self.start(m.key, s) for m in members)  # in another order than the problem's: asked
-        self.starts_requested.update(keys)
-        return lin_sum(Lin.var(("start", item.key, s)) for item in self.allowed_at().get(s, ()) if item.key in keys)
 
     def cum(self, key: str, t: int) -> Lin:
         """Units of `key` placed strictly before slot t."""
