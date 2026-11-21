@@ -39,6 +39,7 @@ class Site:
         self.invites: dict[str, str] = {}  # invite → name; used ones leave
         self.keys: dict[str, str] = {}  # key → name
         self.joined: list[dict] = []  # each device that joined, as Friday described it
+        self.had: list[str | None] = []  # the key each joining Friday said it had
 
     def __call__(self, request: urllib.request.Request, timeout: int) -> io.BytesIO:
         sent = request.get_header("X-friday-test-user")
@@ -75,6 +76,7 @@ class Site:
             raise refuse(404, "none")
         body = json.loads(request.data or b"{}")
         if request.full_url.endswith("/test/join"):
+            self.had.append(request.get_header("X-friday-test-key"))
             name = self.invites.pop(body.get("invite", ""), None)
             if name is None:
                 raise refuse(409, "used" if body.get("invite") == "used-invite-0000000" else "none")
@@ -323,6 +325,28 @@ def test_a_code_from_before_is_swapped_for_a_key_on_the_next_look(app: App, site
     done = finish(app)
     assert done["test_user"] == {"code": None, "name": "Ana", "known": True, "device": True}
     assert site.asked[-2:] == [("https://site.example/test/swap", CODE), (FEED, "key")]
+
+
+def test_an_invite_opened_after_a_swap_says_which_key_this_mac_had(app: App, site: Site) -> None:
+    """21 Nov, the hub: a Mac that swapped its code and then opened an invite showed twice. Joining sends the key it
+    had, so the site puts the new one in its place."""
+    launch(app)
+    join(app)  # a code from before
+    site.invites_on, site.invites[INVITE] = True, "Ana"
+    app.do("update_check")
+    finish(app)  # swapped for a key
+    (swapped,) = site.keys
+    app.do("update_test_invite", invite=INVITE)
+    finish(app)
+    assert site.had == [swapped]
+
+
+def test_a_first_invite_says_no_key(app: App, site: Site) -> None:
+    launch(app)
+    site.invites_on, site.invites[INVITE] = True, "Ana"
+    app.do("update_test_invite", invite=INVITE)
+    finish(app)
+    assert site.had == [None]
 
 
 def test_a_removed_devices_key_is_no_longer_a_test_users(app: App, site: Site) -> None:

@@ -357,7 +357,7 @@ def update_test_invite(ctx: Ctx, inp: TestInviteInput) -> UpdateStatusOut:
     if token is None:
         raise FieldError("invite", "paste the whole invite link you were sent: it ends in # and the invite")
     try:
-        got = net.join(site(), token, this_device(), version=have())
+        got = net.join(site(), token, this_device(), version=have(), had=test_key(ctx.conn, ctx.user_id))
     except net.InviteError as refused:
         raise FieldError("invite", REFUSED.get(refused.state, REFUSED["none"])) from refused
     except net.UpdateError as wrong:

@@ -82,11 +82,11 @@ class InviteError(UpdateError):
 
 
 def post(url: str, body: dict, opener: Callable[..., Any] | None, version: str | None,
-         test_code: str | None = None) -> tuple[int, dict]:  # fmt: skip
+         test_code: str | None = None, test_key: str | None = None) -> tuple[int, dict]:  # fmt: skip
     """POST `body` to the site; its status and JSON answer (an error's too)."""
     opener = opener or urllib.request.urlopen
     try:
-        with opener(asking(url, version, test_code, body=body), timeout=TIMEOUT_S) as answer:
+        with opener(asking(url, version, test_code, test_key, body=body), timeout=TIMEOUT_S) as answer:
             return getattr(answer, "status", 200), json.loads(answer.read())
     except urllib.error.HTTPError as refused:
         try:
@@ -99,9 +99,11 @@ def post(url: str, body: dict, opener: Callable[..., Any] | None, version: str |
 
 
 def join(site: str, invite: str, device: dict, opener: Callable[..., Any] | None = None, *,
-         version: str | None = None) -> dict:  # fmt: skip
-    """Use an invite (H233): this device's key and whose it is ({"key", "name"}); InviteError if the site refused it."""
-    status, answer = post(f"{site}/test/join", {"invite": invite, "device": device}, opener, version)
+         version: str | None = None, had: str | None = None) -> dict:  # fmt: skip
+    """Use an invite (H233): this device's key and whose it is ({"key", "name"}); InviteError if the site refused it.
+    The key this device had (`had`, from a code or an invite before) goes with it, so the site lists the device
+    once, with its new key in that one's place (21 Nov: a Mac that swapped its code, then opened an invite, twice)."""
+    status, answer = post(f"{site}/test/join", {"invite": invite, "device": device}, opener, version, test_key=had)
     if status == 200 and isinstance(answer.get("key"), str):
         return answer
     raise InviteError(str(answer.get("state") or "none"))
