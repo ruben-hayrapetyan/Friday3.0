@@ -61,7 +61,7 @@ const STATES = [
   { name: "plan month", path: "/", keys: ["m"] },
   { name: "plan block card", path: "/", keys: ["w"], each: "[data-block-key]", most: 3 },
   // 16 Nov (IMG 4240): an event's Category list ran across the whole window, its left edge cut off
-  { name: "event category menu", path: "/", keys: ["w"], each: '[data-block-key^="F"]', most: 2, after: "Category of" },
+  { name: "event category menu", path: (base) => withEvent(base), keys: ["w"], each: '[data-block-key^="F"]', most: 2, after: "Category of" },
   { name: "plan to-do drawer", path: "/", click: ["To-do list"] },
   { name: "plan menu", path: "/", click: ["Plan…"] },
   // 19 Nov: the Breaks button where the Inbox tray was, and its panel; the header at every width (`--widths`)
@@ -174,6 +174,21 @@ async function onBreak(base) {
     if (!spring) await c("add", { title: "Spring break", when: "fixed", start: `${day(20)}T00:00`, end: `${day(27)}T00:00` })
     spring = true
     breakMade = made.result.vacation.id
+    await wait(1500) // planned
+  }
+  return "/"
+}
+
+// An event an hour from now, made once: on a weekend Alex's sample has none where a phone's week starts (21 Nov,
+// Saturday: the event category menu had no event to open at 390px).
+let eventMade = false
+async function withEvent(base) {
+  if (!eventMade) {
+    const at = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:00`
+    const start = new Date(Date.now() + 3_600_000)
+    const body = { title: "Study group", when: "fixed", start: at(start), end: at(new Date(start.getTime() + 3_600_000)) }
+    await fetch(`${base}/api/c/add`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+    eventMade = true
     await wait(1500) // planned
   }
   return "/"
