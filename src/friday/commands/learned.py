@@ -83,20 +83,39 @@ def keep(conn: sqlite3.Connection, user_id: int, name: str, value: dict[str, Any
     )
 
 
-def fit_durations(conn: sqlite3.Connection, settings: dict[str, Any], now_utc: int, user_id: int) -> dict | None:
+def timed_to_learn(conn: sqlite3.Connection, settings: dict[str, Any], now_utc: int, user_id: int) -> tuple[list, int]:
+    """The timed finished things lengths are learned from, oldest first, and how many timed ones are set aside: done
+    on a break or a day on another pace than your usual one. Insights counts these too (22 Nov: a tester with 14 timed
+    was told Friday needed a few more, the count reading every timed thing and the learner only these)."""
     est, tz, day_start = settings["estimate"], settings["time"].timezone, settings["time"].grid_spec().day_start
-    is_default = default_pace_days(conn, settings, user_id)
     since = format_utc(now_utc - est.window_days * 1440)
-    found = [
-        r
-        for r in rows(
-            conn,
-            f"SELECT * FROM completions WHERE user_id = ? AND completed_utc >= ? AND actual_source IN "
-            f"({', '.join('?' * len(LEARNED_SOURCES))}) ORDER BY completed_utc",
-            [user_id, since, *LEARNED_SOURCES],
-        )
-        if is_default(planning_date(parse_utc(r["completed_utc"]), tz, day_start))
-    ]
+    timed = rows(
+        conn,
+        f"SELECT * FROM completions WHERE user_id = ? AND completed_utc >= ? AND actual_source IN "
+        f"({', '.join('?' * len(LEARNED_SOURCES))}) ORDER BY completed_utc",
+        [user_id, since, *LEARNED_SOURCES],
+    )
+    if tz is None:
+        return timed, 0
+    is_default = default_pace_days(conn, settings, user_id)
+    found = [r for r in timed if is_default(planning_date(parse_utc(r["completed_utc"]), tz, day_start))]
+    return found, len(timed) - len(found)
+
+
+def learn_lengths_soon(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> bool:
+    """Lengths learned as soon as there are enough timed finished things, not the night after (22 Nov); refitted
+    nightly from then on. Whether it learned them now."""
+    settings = load_settings(conn, user_id)
+    if settings["learn"].durations == "off" or kv_get(conn, "learned_durations", None, user_id) is not None:
+        return False
+    fitted = fit_durations(conn, settings, now_utc, user_id)
+    keep(conn, user_id, "learned_durations", fitted)
+    return fitted is not None
+
+
+def fit_durations(conn: sqlite3.Connection, settings: dict[str, Any], now_utc: int, user_id: int) -> dict | None:
+    est = settings["estimate"]
+    found, _ = timed_to_learn(conn, settings, now_utc, user_id)
     if len(found) < MIN_DONE:
         return None
     kind = kinds([r["norm_title"] for r in found], est.min_similarity)

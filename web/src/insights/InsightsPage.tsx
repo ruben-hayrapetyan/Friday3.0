@@ -24,6 +24,7 @@ import { addDays, shortHour } from "@/lib/time"
 import { dockRoom } from "@/now/dockRoom"
 import { LightenDialog } from "@/dialogs/Dialogs"
 import { overSentence, weekLabel } from "@/lib/load"
+import { switchWords } from "./lengthsWords"
 
 export { Section }
 
@@ -165,7 +166,7 @@ function Accuracy({ kinds }: { kinds: { kind: string; n: number; median: number;
         <Switch on={!!durations?.in_use} onToggle={() => use({ module: "durations", use: !durations?.in_use })} label="Adjust estimates" />
         <span style={{ display: "flex", flexDirection: "column" }}>
           <span>Adjust new estimates automatically</span>
-          <span className="fr-kicker">{durations ? `Learned from ${durations.n} finished things.` : "Friday needs a few more finished things before it can."}</span>
+          <span className="fr-kicker">{durations ? `Learned from ${durations.n} finished things.` : switchWords(learning?.progress?.lengths ?? {})}</span>
         </span>
       </div>
     </>
