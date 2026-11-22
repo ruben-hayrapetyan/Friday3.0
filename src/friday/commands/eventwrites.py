@@ -288,6 +288,21 @@ def write_events(
     return written
 
 
+def deleted_meanwhile(conn: sqlite3.Connection, item_id: int, user_id: int, now_utc: int) -> bool:
+    """A new event just made on its calendar, for an item deleted or skipped while it was being made: its delete,
+    queued now that there's an event to delete (21 Nov, a user's Friday: Climbing made and deleted in the same minute;
+    the Mac app had been handed "make it", the delete found no event yet and queued nothing, and the event it made
+    stayed on the calendar). Whether it queued one."""
+    item = load_item(conn, item_id, user_id)
+    if item is None or item.status not in ("dropped", "skipped"):
+        return False
+    conn.execute(
+        "INSERT INTO event_writes (user_id, item_id, op, queued_utc) VALUES (?, ?, 'delete', ?)",
+        [user_id, item_id, format_utc(now_utc)],
+    )
+    return True
+
+
 def on_mac(link: Any) -> bool:
     return link is not None and link.kind == "mac"
 
@@ -374,6 +389,7 @@ def send(
     # next change patches this event (instead of making another) and a delete finds it.
     source_id = source["id"] if source is not None else quiet_source(conn, calendar, user_id)
     remember(conn, source_id, made, tz, settings, now_utc, user_id, item)
+    deleted_meanwhile(conn, item.id or 0, user_id, now_utc)  # deleted here while Google made it: gone there too
 
 
 def new_event_id(job: dict[str, Any], user_id: int) -> str:

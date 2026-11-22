@@ -24,6 +24,7 @@ from friday.api.views import GoogleCalendarOut, MacWriteOut
 from friday.commands.calendars import editable, natural, source_of
 from friday.commands.eventwrites import (
     MAX_TRIES,
+    deleted_meanwhile,
     event_body,
     event_digest,
     let_go,
@@ -181,6 +182,7 @@ def mac_written(ctx: Ctx, inp: MacWrittenInput) -> Changed:
             settle(ctx, job["item_id"], inp.event)
         else:
             adopt(ctx, job, inp.event)
+            deleted_meanwhile(ctx.conn, job["item_id"], ctx.user_id, ctx.now_utc)  # deleted while the Mac made it
     ctx.db.update("event_writes", {"id": inp.id}, {"done_utc": ctx.now_text, "error": None})
     said = {"save": "Saved to your calendar", "repeat": "Repeats in your calendar"}
     return Changed(message=said.get(job["op"], "Deleted from your calendar"))

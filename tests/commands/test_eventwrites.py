@@ -156,3 +156,25 @@ def test_a_new_event_on_a_calendar_friday_doesnt_read_gets_a_source_of_its_own_n
     assert write_events(app.conn, app.now_utc, google=google) == 1
     made = next(s for s in app.table("sources") if json.loads(s["config"]).get("calendar") == "Other@group")
     assert (made["name"], made["enabled"]) == ("Classes 2", 0)
+
+
+def test_an_event_deleted_while_google_was_making_it_goes_from_google(
+    app: App, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """21 Nov (found on the Mac's side): a delete while the new event was being made found no event to delete; the
+    event, made, stayed on the calendar. Here Google takes the time it does and you delete it meanwhile."""
+    google = lecture()
+    read(app, google, new_events_to="Classes@group")
+    climbing = app.do("add", title="Climbing", when="fixed", start="2026-10-21T16:30", end="2026-10-21T18:00")["item"]
+    real = eventwrites.gcal.insert_once
+
+    def slow(service, calendar, event_id, body):  # noqa: ANN001, ANN202
+        made = real(service, calendar, event_id, body)
+        app.conn.execute("UPDATE items SET status = 'dropped' WHERE id = ?", [climbing["id"]])  # deleted meanwhile
+        return made
+
+    monkeypatch.setattr(eventwrites.gcal, "insert_once", slow)
+    write_events(app.conn, app.now_utc, google=google)
+    assert "Climbing" in [e["summary"] for e in google.calendars_by_id["Classes@group"]]
+    write_events(app.conn, app.now_utc, google=google)  # the next minute's sending
+    assert "Climbing" not in [e["summary"] for e in google.calendars_by_id["Classes@group"]]

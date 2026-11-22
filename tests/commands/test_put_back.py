@@ -130,3 +130,24 @@ def test_through_the_macs_calendars(app: App) -> None:
     (again,) = app.do("mac_writes")
     assert (again["op"], again["calendar"], again["title"]) == ("create", "home", "Vet")
     assert (again["start"], again["end"]) == ("2026-10-22T13:00:00Z", "2026-10-22T14:00:00Z")  # 9 to 10am
+
+
+def test_an_event_deleted_while_the_mac_was_making_it_goes_from_the_calendar(app: App) -> None:
+    """21 Nov, a user's Friday: Climbing made and deleted in the same minute. The Mac app had been handed "make it";
+    with no event to delete yet, the delete queued nothing, and the event it made stayed on the calendar."""
+    home = {"id": "home", "name": "Home", "account": "iCloud", "type": "caldav", "color": "#3a5a8c", "writable": True}
+    app.do(
+        "mac_sync", calendars=[home], events=[], since="2026-10-18T00:00:00-04:00", until="2026-12-14T00:00:00-05:00"
+    )
+    app.do("settings_set", key="gcal", value={"new_events_to": "home"})
+    item = app.do("add", title="Climbing", when="fixed", start="2026-10-21T16:30", end="2026-10-21T18:00")["item"]["id"]
+    (make,) = app.do("mac_writes")
+    assert make["op"] == "create"
+    app.do("drop", id=item)  # while the Mac app makes it
+    made = {"id": "c1", "calendar": "home", "title": "Climbing", "start": "2026-10-21T16:30:00-04:00",
+            "end": "2026-10-21T18:00:00-04:00"}  # fmt: skip
+    app.do("mac_written", id=make["id"], ok=True, event=made)
+    (gone,) = app.do("mac_writes")
+    assert (gone["op"], gone["calendar"], gone["event"].split("@")[0]) == ("delete", "home", "c1")  # that time of it
+    app.do("mac_written", id=gone["id"], ok=True)
+    assert app.do("mac_writes") == []
