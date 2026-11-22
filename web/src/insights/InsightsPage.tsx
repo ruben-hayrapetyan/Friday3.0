@@ -2,8 +2,8 @@
 // adjusts estimates for you), when you get things done, what Friday learned for you to approve (sleep and meals
 // too), one comparison question, and the load ahead against what you can do. Sleep and Meals are tabs here, with
 // their timelines, their switches and the nights and meals to log or put right (8 Nov: one cohesive page, where they
-// had a page of their own). This week, the week's look back, moved here from Review (27 Oct); it's suggested on the
-// week's last day. The tab is in the address (`?tab=sleep`), so a link can open one.
+// had a page of their own). This week, the week's look back, moved here from Review (27 Oct); Insights opens on it on the
+// week's last day, which it says inside (22 Nov: a "suggested" tag on the tab was "super vague"). The tab is in the address (`?tab=sleep`), so a link can open one.
 
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
@@ -52,21 +52,12 @@ export function InsightsPage() {
   const setTab = (next: Tab) => setParams({ tab: next }, { replace: true })
   const [weeks, setWeeks] = useState(4)
   const data = useQuery({ queryKey: ["insights", weeks], queryFn: () => query("insights", { weeks }) }).data
-  const suggested: Tab | null = lastDay ? "week" : null
   return (
     <>
       <div className="fr-page-head">
         <span className="fr-h fr-title">Insights</span>
         <Seg
-          options={TABS.map((t) => ({
-            value: t.value,
-            label: (
-              <>
-                {t.label}
-                {t.value === suggested && <span style={{ fontSize: 11, color: "var(--color-accent-300)" }}>suggested</span>}
-              </>
-            ),
-          }))}
+          options={TABS.map((t) => ({ value: t.value, label: t.label }))}
           value={tab}
           onPick={setTab}
           label="Insights"

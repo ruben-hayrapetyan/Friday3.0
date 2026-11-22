@@ -156,6 +156,29 @@ describe("Insights → This week", () => {
     await waitFor(() => expect(window.location.hash).toContain("/todo?item="))
   })
 
+  // 22 Nov: "suggested" on the tab was "super vague - and i have no idea what it means or what i'm supposed to do"
+  it("says what the review is for and what to do, each step going to its choice; no tab says suggested", async () => {
+    const went: string[] = []
+    const scroll = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element) {
+      went.push(this.id)
+    }
+    try {
+      const { user } = await openFriday("/insights?tab=week")
+      expect(await screen.findByText(/^Week of /, {}, { timeout: 15_000 })).toBeTruthy()
+      expect(within(tabs()).queryByText("suggested")).toBeNull()
+      const steps = screen.getByRole("list", { name: "What to do" })
+      expect(screen.getByText(/^(Your week ends today: see how it went and choose what changes next week\.|See how your week is going\. On \w+, choose what changes next week\.)$/)).toBeTruthy()
+      for (const [step, id] of [["Say how the week felt", "review-feel"], ["Pick next week's pace", "review-pace"]] as const) {
+        await user.click(within(steps).getByRole("button", { name: step }))
+        expect(went.at(-1)).toBe(id)
+      }
+      expect(within(steps).getByText(/Finish review and plan the week/)).toBeTruthy()
+    } finally {
+      Element.prototype.scrollIntoView = scroll
+    }
+  })
+
   it("saves how the week felt and a note, and suggests a pace from the feeling", async () => {
     const { user } = await openFriday("/insights?tab=week")
     await screen.findByText(/^Week of /, {}, { timeout: 15_000 })

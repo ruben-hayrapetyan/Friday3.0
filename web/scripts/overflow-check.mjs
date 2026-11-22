@@ -100,6 +100,7 @@ const STATES = [
   { name: "inbox", path: "/inbox" },
   { name: "inbox messages", path: "/inbox", each: '[aria-label="Waiting for you"] [role="listitem"], [aria-label="Waiting for you"] > button', most: 12 },
   { name: "insights", path: "/insights" },
+  { name: "insights this week", path: "/insights?tab=week" }, // 22 Nov: what the review is for, and its steps
   { name: "sleep & meals", path: "/body" },
   { name: "rules", path: "/rules" },
   { name: "rules why", path: "/rules", click: ["Why?"] },

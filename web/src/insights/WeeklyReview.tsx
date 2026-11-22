@@ -27,6 +27,36 @@ export function WeeklyReview() {
   return <Week key={week.start} week={full} />
 }
 
+/** What the review is for and what to do in it, each step going to its choice (22 Nov: the tab's "suggested" was
+ * "super vague - and i have no idea what it means or what i'm supposed to do"). */
+function Steps({ end, carried }: { end: string; carried: number }) {
+  const { today } = useShell()
+  const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  const steps = [
+    ...(carried ? [{ id: "review-carried", label: "Decide what carries over", more: ": keep it, move it to next week or drop it" }] : []),
+    { id: "review-feel", label: "Say how the week felt", more: "" },
+    { id: "review-pace", label: "Pick next week's pace", more: "" },
+  ]
+  return (
+    <div className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 10, padding: "16px 18px", borderRadius: "var(--radius-lg)", maxWidth: 640 }}>
+      <span style={{ fontWeight: 500, textWrap: "pretty" }}>
+        {end <= today ? "Your week ends today: see how it went and choose what changes next week." : `See how your week is going. On ${weekday(end)}, choose what changes next week.`}
+      </span>
+      <ol aria-label="What to do" style={{ margin: 0, paddingLeft: 22, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 4, color: "var(--color-neutral-300)" }}>
+        {steps.map((s) => (
+          <li key={s.id}>
+            <button className="fr-link" onClick={() => go(s.id)}>
+              {s.label}
+            </button>
+            {s.more}
+          </li>
+        ))}
+        <li>Then press Finish review and plan the week, at the bottom.</li>
+      </ol>
+    </div>
+  )
+}
+
 type Full = Schemas["WeekOut"] & Required<Pick<Schemas["WeekOut"], "finished" | "carried" | "coming" | "note">>
 
 function Week({ week }: { week: Full }) {
@@ -89,6 +119,7 @@ function Week({ week }: { week: Full }) {
             {week.carried.length ? ` ${week.carried.length} carry over.` : " Nothing carries over."}
           </span>
         </div>
+        {!finished && <Steps end={week.end} carried={week.carried.length} />}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <H size={18}>Where the time went</H>
@@ -148,7 +179,7 @@ function Week({ week }: { week: Full }) {
             {!week.finished.length && <span className="fr-kicker">Nothing yet.</span>}
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <H size={18} style={{ paddingBottom: 8 }}>
+            <H size={18} id="review-carried" style={{ paddingBottom: 8, scrollMarginTop: 16 }}>
               Carried over
             </H>
             {week.carried.map((c) => (
@@ -185,7 +216,9 @@ function Week({ week }: { week: Full }) {
         </div>
         <div className="fr-row fr-stack" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 40, alignItems: "start", paddingTop: 8 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 22 }}>
-            <H size={18}>How did the week feel?</H>
+            <H size={18} id="review-feel" style={{ scrollMarginTop: 16 }}>
+              How did the week feel?
+            </H>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0,1fr))", gap: 6 }}>
               {FEELS.map((f) => (
                 <button
@@ -206,7 +239,7 @@ function Week({ week }: { week: Full }) {
                 </button>
               ))}
             </div>
-            <H size={18} style={{ paddingTop: 12 }}>
+            <H size={18} id="review-pace" style={{ paddingTop: 12, scrollMarginTop: 16 }}>
               Pace for next week
             </H>
             {paces && (
