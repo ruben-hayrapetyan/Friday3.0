@@ -12,6 +12,7 @@ TABLES = {
     "source_writes", "reviews", "completions", "day_overrides", "pace_periods", "settings", "command_log",
     "notifications", "comparisons", "learned_profile", "checkins", "push_subscriptions", "job_runs", "kv", "sources",
     "raw_inputs", "suggestions", "event_writes", "sleep_marks", "meals", "naps", "vacations", "vacation_ticks",
+    "schema_migrations",
 }  # fmt: skip
 NOW = "2026-10-18T10:00Z"
 
@@ -35,7 +36,7 @@ def test_schema_creates_every_table(conn: sqlite3.Connection) -> None:
 
 
 def test_every_table_is_strict_and_has_a_user(conn: sqlite3.Connection) -> None:
-    for table in TABLES - {"users"}:
+    for table in TABLES - {"users", "schema_migrations"}:  # which migrations ran: the database's, not a user's
         columns = {r["name"] for r in rows(conn, f"PRAGMA table_info({table})")}
         assert "user_id" in columns, table
         assert "STRICT" in one(conn, "SELECT sql FROM sqlite_master WHERE name = ?", [table])["sql"], table
@@ -439,3 +440,34 @@ def test_migration_28_gives_an_empty_category_list_the_starter_set_and_keeps_you
     mine = {"categories": [{"name": "Clubs", "slug": "club", "color": "orange", "pattern": "club", "note": None}]}
     kept = migrated_from(tmp_path / "b", 27, {"categories": mine})
     assert json.loads(one(kept, "SELECT value FROM settings WHERE key = 'categories'")["value"]) == mine
+
+
+# 22 Nov (H236): two lines of versions at once. A fix's migration for everyone (say 044_fix) reaches test users whose
+# line already ran its own 044 and 045: it still runs for them, once, though its number is below theirs.
+def test_a_migration_numbered_below_one_already_run_still_runs_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    folder = tmp_path / "migrations"
+    folder.mkdir()
+    for path in db.MIGRATIONS.glob("*.sql"):
+        (folder / path.name).write_text(path.read_text())
+    (folder / "900_test_line.sql").write_text("CREATE TABLE test_line (x INTEGER) STRICT;\n")
+    (folder / "901_test_line_more.sql").write_text("CREATE TABLE test_line_more (x INTEGER) STRICT;\n")
+    monkeypatch.setattr(db, "MIGRATIONS", folder)
+    connect(tmp_path / "friday.db").close()  # a test user's Friday, ahead
+    (folder / "900_fix_for_everyone.sql").write_text("CREATE TABLE fixed (x INTEGER) STRICT;\n")
+    conn = connect(tmp_path / "friday.db")  # the test line with the fix merged in
+    assert conn.execute("SELECT 1 FROM sqlite_master WHERE name = 'fixed'").fetchone() is not None
+    assert schema_version(conn) == 901
+    conn.close()
+    connect(tmp_path / "friday.db").close()  # and only once
+
+
+def test_a_database_from_before_counts_every_migration_up_to_its_version_as_run(tmp_path: Path) -> None:
+    connect(tmp_path / "friday.db").close()
+    old = sqlite3.connect(tmp_path / "friday.db", isolation_level=None)
+    old.execute("DROP TABLE schema_migrations")  # as every database was before 22 Nov
+    old.close()
+    conn = connect(tmp_path / "friday.db")  # 001 isn't run again: it would fail on tables already there
+    ran = {r[0] for r in conn.execute("SELECT name FROM schema_migrations")}
+    assert ran == {p.name for p in db.MIGRATIONS.glob("*.sql")}

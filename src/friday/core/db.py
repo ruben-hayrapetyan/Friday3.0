@@ -59,15 +59,34 @@ def schema_version(conn: sqlite3.Connection) -> int:
     return conn.execute("PRAGMA user_version").fetchone()[0]
 
 
+def number_of(path: Path) -> int:
+    return int(path.name.split("_")[0])
+
+
 def migrate(conn: sqlite3.Connection) -> None:
-    for path in sorted(MIGRATIONS.glob("*.sql")):
-        number = int(path.name.split("_")[0])
-        if number > schema_version(conn):
+    """Every migration file not yet run, in order, each once. What ran is kept by name (`schema_migrations`), not only
+    as the highest number (`user_version`, still kept): with two lines of versions (H236, 22 Nov), a fix's migration for
+    everyone reaches test users whose line already ran higher numbers, and must still run for them."""
+    files = sorted(MIGRATIONS.glob("*.sql"), key=lambda p: (number_of(p), p.name))
+    conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY) STRICT")
+    ran = {r[0] for r in conn.execute("SELECT name FROM schema_migrations")}
+    if not ran and schema_version(conn):  # a database from before: every file up to its number ran
+        ran = {p.name for p in files if number_of(p) <= schema_version(conn)}
+        with transaction(conn):
+            conn.executemany("INSERT INTO schema_migrations (name) VALUES (?)", [[name] for name in sorted(ran)])
+    for path in files:
+        number = number_of(path)
+        if path.name not in ran:
+            assert all(c.isalnum() or c in "_." for c in path.name), path.name
+            version = max(number, schema_version(conn))
             # Rebuilding a table (SQLite can't alter a CHECK) drops it while rows still point at it, so foreign
             # keys are off for the migration and checked once it is done (SQLite's documented procedure).
             conn.execute("PRAGMA foreign_keys = OFF")
             try:
-                conn.executescript(f"BEGIN;\n{path.read_text()}\nPRAGMA user_version = {number};\nCOMMIT;")
+                conn.executescript(
+                    f"BEGIN;\n{path.read_text()}\nINSERT INTO schema_migrations (name) VALUES ('{path.name}');\n"
+                    f"PRAGMA user_version = {version};\nCOMMIT;"
+                )
             except BaseException:
                 # A statement that fails stops the script inside its transaction: none of it is kept (audit, 12 Nov)
                 if conn.in_transaction:
