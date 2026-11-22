@@ -108,6 +108,8 @@ const STATES = [
   // Breaks (breaks/): a break this week with a long name, its band, its days' lines, a day's list, its popup and the
   // chooser of what pauses; Take a break from Pace; and a suggested one in the Inbox.
   { name: "plan break week", path: (base) => onBreak(base), keys: ["3"] },
+  // 22 Nov, the user's screenshot: the week, a break and the To-do list open: the band wrapped over five lines
+  { name: "plan break week with to-do", path: (base) => onBreak(base), keys: ["w"], click: ["To-do list"] },
   { name: "break day list", path: (base) => onBreak(base), keys: ["3"], each: ".fr-break-line", most: 2 },
   { name: "break popup", path: (base) => onBreak(base), keys: ["3"], each: ".fr-break-band", most: 1 },
   { name: "break popup pauses", path: (base) => onBreak(base), keys: ["3"], each: ".fr-break-band", most: 1, after: "Every repeating event" },

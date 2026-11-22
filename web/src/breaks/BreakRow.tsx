@@ -1,6 +1,8 @@
 // A break on the calendar (18 Nov): a band with its name across its days, and under it one line a day saying what's
 // left on that day's list, which opens it. The line never grows with the list, so the calendar keeps its height ("the
-// longest task list dictates how few of the calendar is seen").
+// longest task list dictates how few of the calendar is seen"). The band is one line too (22 Nov, the user's
+// screenshot: the week with the To-do list open wrapped it over five lines): its note shows whole or not at all, and a
+// name longer than the band ends in an ellipsis, as the all-day events beside it do.
 
 import type { Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
@@ -56,6 +58,7 @@ export function BreakRow({ days, dates }: { days: Day[]; dates: string[] }) {
           <button
             key={`band${vacation.id}`}
             className="fr-plain fr-break-band"
+            data-one-line
             onClick={() => setBreakEdit({ id: vacation.id })}
             title={`${vacation.name}, ${rangeWords(span.first, span.last)}: click to change it`}
             style={{
@@ -66,11 +69,13 @@ export function BreakRow({ days, dates }: { days: Day[]; dates: string[] }) {
               borderRadius: `${clippedStart ? 0 : 4}px ${clippedEnd ? 0 : 4}px ${clippedEnd ? 0 : 4}px ${clippedStart ? 0 : 4}px`,
             }}
           >
-            {clippedStart && <span aria-hidden>‹ </span>}
-            <Icon name={BREAK_ICON} size={12} style={{ flex: "none" }} />
-            <span style={{ fontWeight: 600 }}>{vacation.name}</span>
+            <span className="fr-break-band-head">
+              {clippedStart && <span aria-hidden>‹</span>}
+              <Icon name={BREAK_ICON} size={12} style={{ flex: "none" }} />
+              <span className="fr-break-band-name">{vacation.name}</span>
+              {clippedEnd && <span aria-hidden>›</span>}
+            </span>
             <span className="fr-break-band-note">{vacation.mode === "off" ? "Off" : `Light · about ${dur(vacation.work_min)} a day`}</span>
-            {clippedEnd && <span aria-hidden> ›</span>}
           </button>
         )
       })}

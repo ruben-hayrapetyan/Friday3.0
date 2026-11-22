@@ -667,7 +667,7 @@ kbd.fr-kbd {
   align-items: center;
   gap: 0 6px;
   min-width: 0;
-  min-height: 22px;
+  height: 22px;
   padding: 3px 8px;
   font-size: 12px;
   line-height: 16px;
@@ -675,15 +675,40 @@ kbd.fr-kbd {
   text-align: left;
   background: color-mix(in srgb, var(--fr-break) 16%, transparent);
   border-left: 3px solid var(--fr-break);
-  overflow-wrap: anywhere; /* a long name wraps, never cut (UI-PRINCIPLES) */
+  overflow: hidden; /* a note with no room for all of it wraps out of sight (below) */
   cursor: pointer;
 }
 .fr-break-band .ph {
   color: var(--fr-break);
 }
-.fr-break-band-note {
-  color: var(--color-neutral-400);
+/* One line, whatever the room (22 Nov: the week with the To-do list open wrapped it over five lines, and the hours
+   started a third of the way down). The note is whole or not there: without room for all of it, it wraps onto a
+   second line the band doesn't show (no word cut, UI-PRINCIPLES); a name longer than the band ends in an ellipsis, as
+   the all-day events beside it do. The whole of both is in the band's title and its popup. */
+.fr-break-band-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 auto; /* first on the line, so never wrapped away: it shrinks instead */
   min-width: 0;
+}
+.fr-break-band-head > span {
+  flex: none;
+}
+.fr-break-band-head > .fr-break-band-name {
+  flex: 0 1 auto;
+}
+.fr-break-band-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.fr-break-band-note {
+  flex: none;
+  white-space: nowrap;
+  color: var(--color-neutral-400);
 }
 .fr-break-band:hover,
 .fr-break-line:hover {
