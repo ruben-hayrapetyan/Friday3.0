@@ -82,6 +82,24 @@ describe("a task's detail", () => {
     expect(window.location.hash).not.toContain("item=")
   })
 
+  // 22 Nov: "make it such that I can edit the name of a task in the to-do sidebar when I click the big title"
+  it("renames the task from its big title: Enter saves, Escape leaves it as it was", async () => {
+    const task = await assignment(2)
+    const { user, aside, item } = await detailOf(task.title)
+    await user.click(within(aside).getByRole("button", { name: task.title }))
+    const field = within(aside).getByRole("textbox", { name: "Title" })
+    await user.clear(field)
+    await user.type(field, "Renamed problem set{Escape}")
+    expect(within(aside).queryByRole("textbox", { name: "Title" })).toBeNull()
+    expect(within(aside).getByRole("button", { name: task.title })).toBeTruthy()
+    await user.click(within(aside).getByRole("button", { name: task.title }))
+    await user.clear(within(aside).getByRole("textbox", { name: "Title" }))
+    await user.type(within(aside).getByRole("textbox", { name: "Title" }), "  Renamed problem set {Enter}")
+    expect((await waitForSent("edit")).body).toEqual({ id: item.id, title: "Renamed problem set" })
+    expect(await within(aside).findByRole("button", { name: "Renamed problem set" })).toBeTruthy()
+    await friday.c("edit", { id: item.id, title: task.title }) // as it was, for the tests after
+  })
+
   it("changes the tag and the kind from their pickers", async () => {
     await assignment(1)
     const [task] = (await openAssignments()).filter((i) => i.area !== "Rocketry").slice(-1)
