@@ -113,3 +113,14 @@ def test_no_leaves_no_rule_and_isnt_asked_again_for_the_same_habit(app: App) -> 
 def test_too_little_undated_work_asks_nothing(app: App) -> None:
     worked_afternoons(app, days=2)
     assert "learned:undated:window" not in asked(app)
+
+
+def test_a_projects_steps_are_due_with_it_not_undated(app: App) -> None:
+    """21 Nov, a user's notes: "You do work with no due date between 16:00 and 22:00" — "I have never had any tasks
+    that had no due date". The work was on a project's steps left to Friday to time: due with the project, as the
+    planner holds them, not undated."""
+    thesis = app.do("add", title="Thesis", preset="Project", due="2026-12-19T23:59")["item"]["id"]
+    draft = app.do("add", title="Preliminary draft", duration_min=20 * 60, parent_id=thesis)["item"]["id"]
+    for d in range(5):
+        app.do("log", id=draft, start=f"2026-10-{12 + d}T14:00", end=f"2026-10-{12 + d}T16:00")
+    assert "learned:undated:window" not in asked(app)

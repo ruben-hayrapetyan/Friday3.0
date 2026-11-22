@@ -16,12 +16,16 @@ SOURCES = ("timer", "review", "retro")  # work you recorded, not what a plan ass
 
 
 def sittings(ctx: Ctx) -> list[tuple]:
-    """Your recorded sittings on work with no due date, in local time."""
+    """Your recorded sittings on work with no due date, in local time. A project's step with no due of its own is due
+    with its project, as the planner holds it (planner/build.py), not undated (21 Nov, a user's notes: "I have never
+    had any tasks that had no due date"; the steps of a project left to Friday to time had been asked about)."""
     found = rows(
         ctx.conn,
         "SELECT p.start_utc, p.end_utc FROM progress p JOIN items i ON i.id = p.item_id AND i.user_id = p.user_id "
+        "LEFT JOIN items par ON par.id = i.parent_id "
         f"WHERE p.user_id = ? AND p.source IN ({', '.join('?' * len(SOURCES))}) AND p.start_utc IS NOT NULL "
-        "AND p.end_utc IS NOT NULL AND p.start_utc >= ? AND i.due_utc IS NULL AND i.when_kind != 'fixed'",
+        "AND p.end_utc IS NOT NULL AND p.start_utc >= ? AND COALESCE(i.due_utc, par.due_utc) IS NULL "
+        "AND i.when_kind != 'fixed'",
         [ctx.user_id, *SOURCES, format_utc(ctx.now_utc - WINDOW_DAYS * 1440)],
     )
     return [
