@@ -209,5 +209,6 @@ def learn_module(ctx: Ctx, inp: LearnModuleInput) -> Changed:
     if kept is None:
         return Changed(message="Nothing learned yet")
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": name}, {"value": json.dumps(kept | {"approved": inp.use})})
+    ctx.plan_unchanged = inp.module == "durations"  # learned lengths are for new items: nothing planned moves
     what = "durations" if inp.module == "durations" else "good and bad hours"
     return Changed(message=f"Using learned {what}" if inp.use else f"Stopped using learned {what}")

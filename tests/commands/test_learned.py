@@ -123,3 +123,27 @@ def test_nothing_is_learned_before_friday_knows_your_timezone(tmp_path: Path) ->
 
 def test_using_what_isnt_learned_yet_says_so(app: App) -> None:
     assert app.do("learn_module", module="energy", use=True)["message"] == "Nothing learned yet"
+
+
+# 22 Nov (a user's tester): "Adjust new estimates automatically" with too few finished things changed nothing, and
+# Friday replanned anyway. A change that writes nothing, or only how new items are estimated, asks for no new plan.
+def test_the_switch_with_nothing_learned_doesnt_replan(app: App) -> None:
+    out = app.full("learn_module", payload={"module": "durations", "use": True}, provisional=False)
+    assert out.result["message"] == "Nothing learned yet"
+    assert out.generation is None and out._placing is None
+
+
+def test_learned_lengths_change_new_items_only_so_no_replan(app: App) -> None:
+    for n in range(8):
+        finish(app, f"problem set {n + 1}", 180, n + 1)
+    app.at("2026-10-12T09:00")
+    learn_nightly(app.conn, app.now_utc)
+    out = app.full("learn_module", payload={"module": "durations", "use": True}, provisional=False)
+    assert out.result["message"] == "Using learned durations" and out.generation is None
+    assert kv_get(app.conn, "learned_durations")["approved"]  # still kept: new items use them
+
+
+def test_learned_hours_do_replan(app: App) -> None:
+    kv_set(app.conn, "learned_energy", {"prices": [[0.0] * 48 for _ in range(7)], "observations": 1})
+    out = app.full("learn_module", payload={"module": "energy", "use": True}, provisional=False)
+    assert out.generation is not None and out._placing is not None
