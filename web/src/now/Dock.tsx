@@ -110,7 +110,7 @@ export function Dock() {
             <Alongside key={t.item_id} timer={t} />
           ))}
           {!nowRow({ onBreak, timing: !!timer, inEvent: !!cur?.fixed }) ? null : cur && timing && timer ? (
-            <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} started={timer.started ?? null} next={next} dot={color(cur.area, cur.preset)} menu={menu} onMenu={toggle} onFold={fold} />
+            <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} started={timer.started ?? null} next={next} thenSame={!!now.then_same} dot={color(cur.area, cur.preset)} menu={menu} onMenu={toggle} onFold={fold} />
           ) : cur?.fixed ? (
             <InEvent cur={cur} next={next} dot={color(cur.area, cur.preset)} onFold={fold} />
           ) : cur ? (
@@ -354,12 +354,16 @@ const clamp = (x: number) => Math.max(0, Math.min(100, x))
 const share = (cur: Block, nowMin: number) => clamp(((nowMin - toMin(cur.start)) / Math.max(1, toMin(cur.end) - toMin(cur.start))) * 100)
 
 /** The timer running on what you're doing: the seconds, the plan's room for it, then what's next. */
-function Timing({ cur, elapsed, started, next, dot, menu, onMenu, onFold }: State & { elapsed: number; started: string | null }) {
+function Timing({ cur, elapsed, started, next, thenSame, dot, menu, onMenu, onFold }: State & { elapsed: number; started: string | null; thenSame: boolean }) {
   const seconds = useElapsed(elapsed)
   const nowMin = useClock()
   const pause = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
   const finish = useCommand("stop", { label: (o) => o.result.message ?? "Done" })
-  const left = toMin(cur.end) - nowMin
+  // What's also planned next is this work (21 Nov, a user's notes: "0:09 left · then Preliminary Thesis 20:00" over
+  // "48m left"): how long it has left in all, as the estimate below says, not this block; "then" is the next other.
+  const item = useItem(thenSame ? cur.item_id : null).data?.item
+  const all = item && item.amount === "fixed" && item.duration_min != null ? item.duration_min - item.done_min - Math.floor(seconds / 60) : null
+  const left = all ?? toMin(cur.end) - nowMin
   const [forgot, setForgot] = useState(false)
   return (
     <>

@@ -8311,6 +8311,11 @@ export interface components {
             fits: components["schemas"]["Swap"][];
             /** Gap Minutes */
             gap_minutes: number;
+            /**
+             * Then Same
+             * @default false
+             */
+            then_same?: boolean;
         };
         /**
          * OccurrenceChange

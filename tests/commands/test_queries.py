@@ -24,6 +24,23 @@ def test_the_task_being_timed_runs_until_its_own_block_ends(app: App) -> None:
     assert now["current"]["item_id"] == essay and now["current"]["end"] == "2026-10-19T10:30"
 
 
+def test_timing_what_is_also_planned_next_then_names_the_next_other_thing(app: App) -> None:
+    """21 Nov, a user's notes: timing Preliminary Thesis, "0:09 left · then Preliminary Thesis 20:00" over "48m left"
+    for it. Its later block isn't what comes next: the next other thing is, and the bar is told so."""
+    essay = app.do("add", text="essay due wed ~4h")["item"]["id"]
+    lab = app.do("add", title="Lab report", duration_min=60, due="2026-10-21T17:00")["item"]["id"]
+    app.do("pin", id=essay, start="2026-10-19T09:00", end="2026-10-19T09:30", kind="locked")
+    app.do("pin", id=essay, start="2026-10-19T09:45", end="2026-10-19T11:00", kind="locked")
+    app.do("pin", id=lab, start="2026-10-19T11:15", end="2026-10-19T12:15", kind="locked")
+    replan(app.conn, app.now_utc)
+    app.do("start", id=essay)
+    now = app.do("now")
+    assert now["current"]["item_id"] == essay and now["then_same"] is True
+    assert now["next"]["item_id"] == lab
+    app.do("stop")
+    assert app.do("now")["then_same"] is False  # not timing: the next block, whatever it is
+
+
 def test_what_fits_a_gap_is_what_can_be_done_in_it(app: App) -> None:
     app.do("add", title="Laundry", duration_min=30)
     app.do("add", title="Thesis", duration_min=600, due="2026-10-21T17:00")

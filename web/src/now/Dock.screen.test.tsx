@@ -7,6 +7,7 @@ import type { QueryClient } from "@tanstack/react-query"
 import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
 import { addDays } from "@/lib/time"
+import { span } from "@/lib/format"
 import { friday, openFriday, sent, waitForSent } from "@/test/friday"
 import { RING } from "./Dock"
 
@@ -71,6 +72,25 @@ async function setting(key: string, value: Record<string, unknown>) {
 }
 
 describe("timing something", () => {
+  // 21 Nov, a user's notes: "0:09 left · then Preliminary Thesis 20:00" over "48m left" for Preliminary Thesis itself
+  it("planned next as well, says how long the work has left in all, then the next other thing", async () => {
+    const [a] = await work()
+    await friday.c("start", { id: a.item_id })
+    const { client } = await openDock()
+    expect(await inDock().findByText(a.title, {}, { timeout: 20_000 })).toBeTruthy()
+    const { item } = await friday.q<{ item: { duration_min: number; done_min: number } }>("item", { id: String(a.item_id) })
+    const all = item.duration_min - item.done_min
+    await sayNow(client, (was, local) => ({
+      then_same: true,
+      current: was.current && { ...was.current, end: at(local, 9) },
+      next: was.next && { ...was.next, title: "Lab report", item_id: -1 },
+    }))
+    expect(await inDock().findByText(new RegExp(`· ${span(all).replace(":", "\\:")} left · then Lab report`))).toBeTruthy()
+    await sayNow(client, (was, local) => ({ then_same: false, current: was.current && { ...was.current, end: at(local, 9) } }))
+    expect(await inDock().findByText(/· 0:09 left · then Lab report/)).toBeTruthy() // something else next: this block's end
+    await friday.c("stop", { id: a.item_id })
+  })
+
   it("ticks, says what's next, and stops with Done or Pause", async () => {
     const [a] = await work()
     await friday.c("start", { id: a.item_id })

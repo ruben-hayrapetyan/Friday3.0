@@ -54,6 +54,7 @@ class NowOut(Model):
     alerts: list[Alert]
     fits: list[Swap]
     gap_minutes: int
+    then_same: bool = False  # timing what's also planned next: `next` is the next other thing
 
 
 class ReviewOut(Model):

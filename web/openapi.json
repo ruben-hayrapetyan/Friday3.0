@@ -26823,6 +26823,11 @@
      "gap_minutes": {
       "type": "integer",
       "title": "Gap Minutes"
+     },
+     "then_same": {
+      "type": "boolean",
+      "title": "Then Same",
+      "default": false
      }
     },
     "additionalProperties": false,

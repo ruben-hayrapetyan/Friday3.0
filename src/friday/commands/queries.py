@@ -143,6 +143,13 @@ def now(ctx: Ctx, inp: Empty) -> NowOut:
         current = event_out(ctx, happening)
     after = parse_utc(ctx.utc(current.end)) if current else ctx.now_utc
     block = min((b for b in planned if b.start_utc >= after), key=lambda b: b.start_utc, default=None)
+    # Timing what Friday has planned next as well: "then" is the next other thing, and the bar says how long the work
+    # has left in all, not this block (21 Nov, a user's notes: "0:09 left · then Preliminary Thesis 20:00" over "48m
+    # left" for Preliminary Thesis itself).
+    then_same = timer is not None and current is not None and block is not None and block.item_id == current.item_id
+    if then_same and current is not None:
+        block = min((b for b in planned if b.start_utc >= after and b.item_id != current.item_id),
+                    key=lambda b: b.start_utc, default=None)  # fmt: skip
     event = next((e for e in taking if parse_utc(e["start_utc"]) >= after), None)
     coming = None  # the next thing, work or class: "free until 15:45" had walked past a 13:25 discussion
     if block is not None and (event is None or block.start_utc < parse_utc(event["start_utc"])):
@@ -168,6 +175,7 @@ def now(ctx: Ctx, inp: Empty) -> NowOut:
         current_source="timer" if timer else "block" if covering else "event" if happening else "free",
         timer_minutes=elapsed_seconds(ctx, timer) // 60 if timer else 0,
         next=coming[1] if coming else None,
+        then_same=then_same,
         swaps=[swap_out(ctx, w) for w in shown.swaps],
         alerts=alerts,
         # How long each would take of the gap (what's left of it, or the gap), not the gap itself on every one.
