@@ -6,7 +6,11 @@
 # the admin hub for you to edit and approve the notes and press
 # Release to test users or Release to everyone (H224–H227). Nothing is released here.
 #
-#   scripts/prepare-release.sh VERSION NOTES.json
+#   scripts/prepare-release.sh VERSION NOTES.json [--with EVERYONES_VERSION]
+#
+# Two lines at once (H236): on test users' line, --with names the fix for everyone this version brings them (prepared
+# from main first, then main merged into their line); the hub sends this one to test users when that one goes to
+# everyone. It refuses unless main is merged in.
 #
 # NOTES.json: {"summary": "one sentence", "new": [lines], "changed": [lines], "fixed": [lines]} (H143).
 # Where the hub is comes from ~/.config/friday/release.env, kept off git: FRIDAY_RELEASE_HOST (the machine over ssh)
@@ -35,12 +39,30 @@ assert isinstance(notes.get("summary"), str) and notes["summary"].strip()
 assert all(isinstance(notes.get(k, []), list) for k in ("new", "changed", "fixed"))
 assert any(line.strip() for k in ("new", "changed", "fixed") for line in notes.get(k, []))
 PY
+WITH=""
+shift 2
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --with) [[ "${2:-}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+              || die "--with names everyone's version this goes to test users with, like 0.6.6"
+            WITH="$2"; shift 2 ;;
+    *) die "unknown option $1" ;;
+  esac
+done
+if [ -n "$WITH" ]; then
+  python3 -I -c 'import sys; key = lambda v: tuple(map(int, v.split("."))); sys.exit(key(sys.argv[1]) >= key(sys.argv[2]))' \
+    "$WITH" "$VERSION" || die "$WITH isn't older than $VERSION: test users' version of a fix is numbered on their line, above it"
+fi
 unset FRIDAY_GOOGLE_CLIENT  # downloads leave Google's client out (C77): Google lets in only listed test users
 export FRIDAY_RELEASE=1  # downloads carry Friday's own app keys (Mac/app_keys.json): Trello, Microsoft, TickTick,
                         # Slack sign in for anyone (11 Nov); a release without the file says so and stops
 [ -f "$REPO/Mac/app_keys.json" ] || { echo "No Mac/app_keys.json: downloads would have no Trello, Microsoft, TickTick or Slack" >&2; exit 1; }
 cd "$REPO"
 git diff --quiet HEAD -- || die "commit or set aside your changes first: a version is built from a commit"
+EVERYONE_BRANCH="${FRIDAY_EVERYONE_BRANCH:-main}"
+if [ -n "$WITH" ] && ! git merge-base --is-ancestor "$EVERYONE_BRANCH" HEAD; then
+  die "merge $EVERYONE_BRANCH into this line first: test users' version of $WITH needs its fix"
+fi
 
 # Every download is signed and notarized (C88, your choice: every prepare-release build): checked before the build,
 # which takes minutes, so a missing certificate or profile is said at once.
@@ -99,12 +121,13 @@ spctl --assess --type open --context context:primary-signature "$DMG" \
 SHA="$(shasum -a 256 "$DMG" | cut -d' ' -f1)"
 BYTES="$(stat -f %z "$DMG")"
 
-python3 - "$NOTES" "$VERSION" "$SHA" "$BYTES" "$COMMIT" > "$WORK/candidate.json" <<'PY'
+python3 - "$NOTES" "$VERSION" "$SHA" "$BYTES" "$COMMIT" "$WITH" > "$WORK/candidate.json" <<'PY'
 import json, sys
 from datetime import datetime
-notes, version, sha, size, commit = sys.argv[1:]
+notes, version, sha, size, commit, with_ = sys.argv[1:]
 print(json.dumps({"version": version, "prepared": datetime.now().isoformat(timespec="seconds"), "sha256": sha,
-                  "bytes": int(size), "commit": commit, "notes": json.load(open(notes)), "approved": False}, indent=2))
+                  "bytes": int(size), "commit": commit, "notes": json.load(open(notes)), "approved": False}
+                 | ({"with": with_} if with_ else {}), indent=2))
 PY
 
 echo "==> Uploading to the laptop ($HOST)"

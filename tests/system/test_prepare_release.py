@@ -87,13 +87,17 @@ def apple_calls(setup: dict[str, Path]) -> list[str]:
 
 
 def prepare(
-    setup: dict[str, Path], version: str, notes: Path | None = None, extra: dict[str, str] | None = None
+    setup: dict[str, Path],
+    version: str,
+    notes: Path | None = None,
+    extra: dict[str, str] | None = None,
+    more: tuple[str, ...] = (),
 ) -> subprocess.CompletedProcess:
     env = {"PATH": f"{setup['bin']}:/usr/bin:/bin:/usr/sbin:/sbin", "HOME": str(setup["laptop"]),
            "FRIDAY_PREPARE_APP": str(setup["app"]), "FRIDAY_RELEASE_HOST": "laptop"} | (extra or {})  # fmt: skip
     script = str(setup["repo"] / "scripts" / "prepare-release.sh")
-    return subprocess.run([script, version, str(notes or setup["notes"])], env=env, capture_output=True, text=True,
-                          timeout=300)  # fmt: skip
+    return subprocess.run([script, version, str(notes or setup["notes"]), *more], env=env, capture_output=True,
+                          text=True, timeout=300)  # fmt: skip
 
 
 def test_a_prepared_version_waits_on_the_laptop_with_its_notes_and_checksum(setup: dict[str, Path]) -> None:
@@ -206,3 +210,36 @@ def test_a_release_without_the_app_keys_stops_before_building(setup: dict[str, P
     (setup["repo"] / "Mac" / "app_keys.json").unlink()
     done = prepare(setup, "0.2.0")
     assert done.returncode != 0 and "No Mac/app_keys.json" in done.stderr
+
+
+# Two lines at once (H236, 22 Nov): test users' version of a fix for everyone is prepared on their line with --with,
+# once that line has taken in main (the fix): the hub sends it to test users when the fix goes to everyone.
+def test_test_users_version_of_a_fix_says_which_fix_it_goes_with(setup: dict[str, Path]) -> None:
+    repo = setup["repo"]
+    git(repo, "branch", "-M", "main")
+    git(repo, "checkout", "-qb", "next")
+    (repo / "breaks.txt").write_text("a feature only test users have\n")
+    git(repo, "add", "breaks.txt")
+    git(repo, "commit", "-qm", "Breaks")
+    done = prepare(setup, "0.3.1", more=("--with", "0.2.1"))
+    assert done.returncode == 0, done.stderr
+    waiting = json.loads((setup["laptop"] / "friday-releases" / "candidates" / "0.3.1" / "candidate.json").read_text())
+    assert waiting["with"] == "0.2.1" and waiting["version"] == "0.3.1"
+
+
+def test_test_users_version_of_a_fix_needs_main_taken_in_first(setup: dict[str, Path]) -> None:
+    repo = setup["repo"]
+    git(repo, "branch", "-M", "main")
+    git(repo, "checkout", "-qb", "next")
+    git(repo, "checkout", "-q", "main")
+    (repo / "fix.txt").write_text("the fix\n")
+    git(repo, "add", "fix.txt")
+    git(repo, "commit", "-qm", "The fix")
+    git(repo, "checkout", "-q", "next")
+    done = prepare(setup, "0.3.1", more=("--with", "0.2.1"))
+    assert done.returncode != 0 and "merge main into this line first" in done.stderr
+    assert apple_calls(setup) == [] and not (setup["laptop"] / "friday-releases").exists()
+    for more, said in ((("--with", "0.4.0"), "0.4.0 isn't older than 0.3.1"), (("--with",), "--with names"),
+                       (("--and",), "unknown option --and")):  # fmt: skip
+        done = prepare(setup, "0.3.1", more=more)
+        assert done.returncode != 0 and said in done.stderr, done.stderr
