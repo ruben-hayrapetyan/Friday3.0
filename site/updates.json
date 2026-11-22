@@ -1,6 +1,31 @@
 {
-  "current": "0.6.4",
+  "current": "0.6.5",
   "versions": [
+    {
+      "version": "0.6.5",
+      "released": "2026-11-22",
+      "url": "https://friday-scheduler.com/get/Friday-0.6.5.dmg?via=update",
+      "sha256": "ec83cf8339817020b193412cd925384e050380c1ef5efc4e9d8ec51d5916c4bb",
+      "bytes": 239861573,
+      "minimum_macos": "14.0",
+      "notes": {
+        "summary": "Fixes from your notes: what you're doing at once shows side by side, breaks leave your errands alone, and a sleep-in or a quick delete no longer leaves things behind.",
+        "new": [
+          "Breaks: repeating tasks, like errands and chores, aren't planned on break days unless you say so, in Settings → Breaks or in the break itself."
+        ],
+        "changed": [
+          "The Now bar's minimal style shows everything you're timing, and a meal you're eating, side by side, each with its own time.",
+          "Timing work that's also planned next, the Now bar says how long it has left in all, then the next other thing.",
+          "The question about when you do work with no due date leaves out a project's steps: they're due with their project."
+        ],
+        "fixed": [
+          "An event deleted right after you made it could still appear on your calendar. It's now deleted there too.",
+          "Up later than planned, what the plan had while you slept or got ready stayed on the day, and could count as done. It now goes, and is planned again.",
+          "On a break, a daily errand was late all through an Off break and on every Light day's list.",
+          "A test user's Mac could be listed twice in Friday's list of test devices after joining with an invite."
+        ]
+      }
+    },
     {
       "version": "0.6.4",
       "released": "2026-11-21",
