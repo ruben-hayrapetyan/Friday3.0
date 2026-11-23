@@ -78,3 +78,44 @@ def test_two_meals_are_two_questions(app: App) -> None:
         "You skip breakfast on most days, but your rule says it's never skipped",
         "You skip lunch on most days, but your rule says it's never skipped",
     ]
+
+
+def rule(app: App, name: str) -> dict:
+    return next(r for r in app.do("settings")["rules"] if r["name"] == name)
+
+
+def test_breakfast_can_leave_the_rule_and_lunch_and_dinner_stay_kept(app: App) -> None:
+    """23 Nov, your answer ("Offer both"): turning the rule off stopped keeping lunch and dinner too, which you never
+    skip; now breakfast can leave the rule, or the whole rule can go, each said for what it does."""
+    app.do("rule_add", text="Meals are never skipped for work", strength="Always")
+    breakfasts(app)
+    [question] = asked(app)
+    options = {o["id"]: o for o in question["options"]}
+    assert list(options) == ["keep", "leave", "off"]
+    assert options["leave"]["label"] == "Leave breakfast out of the rule"
+    assert options["leave"]["detail"] == "The rule becomes “Lunch and dinner are never skipped for work”."
+    assert options["off"]["label"] == "Turn the whole rule off"
+    assert options["off"]["detail"] == "Work may take any meal's time when it needs it, lunch and dinner too."
+    app.do("conflict_resolve", key=question["key"].removeprefix("learned:"), option="leave")
+    kept = rule(app, "you:meals-are-never-skipped-for-work")
+    assert kept["enabled"] is True and kept["reason"] == "Lunch and dinner are never skipped for work"
+    import re  # noqa: PLC0415
+
+    [pattern] = kept["scope"]["title_regex"]
+    assert re.search(pattern, "Lunch") and re.search(pattern, "Dinner") and not re.search(pattern, "Breakfast")
+    assert asked(app) == []
+
+
+def test_the_whole_rule_can_go(app: App) -> None:
+    app.do("rule_add", text="Meals are never skipped for work", strength="Always")
+    breakfasts(app)
+    [question] = asked(app)
+    app.do("conflict_resolve", key=question["key"].removeprefix("learned:"), option="off")
+    assert rule(app, "you:meals-are-never-skipped-for-work")["enabled"] is False
+
+
+def test_a_rule_for_that_meal_alone_has_no_leave_answer(app: App) -> None:
+    app.do("rule_add", text="Breakfast is never skipped for work", strength="Always")
+    breakfasts(app)
+    [question] = asked(app)
+    assert [o["id"] for o in question["options"]] == ["keep", "off"]

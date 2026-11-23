@@ -153,7 +153,8 @@ class TestMeals:
         monkeypatch.setattr(eating, "learned", lambda ctx: [lunch])
         (d,) = learned(app)
         assert d["title"] == "You skip lunch on most weekdays, but your rule says it's never skipped"
-        assert [o["id"] for o in d["options"]] == ["keep", "off"]
+        # the rule keeps dinner too: lunch can leave it, or the whole rule can go (23 Nov, "Offer both")
+        assert [o["id"] for o in d["options"]] == ["keep", "leave", "off"]
         answer(app, d, "off")
         rule = next(r for r in app.do("settings")["rules"] if r["name"] == "you:lunch-and-dinner-are-never-skipped")
         assert rule["enabled"] is False

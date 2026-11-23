@@ -30,7 +30,7 @@ from friday.commands.registry import Ctx, command
 from friday.commands.settings import write_setting
 from friday.core.db import one
 from friday.core.items import FieldError
-from friday.core.rule_text import days_spoken
+from friday.core.rule_text import MEAL_NAMES, days_spoken, meals_in, meals_said
 from friday.core.time import WEEKDAYS, clock_time, parse_utc, to_local
 from friday.learn import guard
 from friday.planner.store import kv_get
@@ -377,11 +377,8 @@ def meals(ctx: Ctx) -> list[Clash]:
                 evidence=(("Your rule", rule_said(ctx, rule)), ("What Friday saw", skips_said(ctx, meal.kind, groups))),
                 update="learned",
                 about=f"{meal.kind}:{meal.group}",
-                options=(
-                    Option("keep", f"Keep planning {meal.kind}", "The rule stands; Friday keeps its time.", True),
-                    Option("off", "Turn the rule off", "Work may take meal times when it needs them."),
-                ),
-                apply=lambda ctx_, option, name=rule.name: answer_meal(ctx_, option, name),
+                options=meal_answers(meal.kind, rule),
+                apply=lambda ctx_, option, name=rule.name, kind=meal.kind: answer_meal(ctx_, option, name, kind),
             )
         )
     return out
@@ -420,11 +417,49 @@ def skips_said(ctx: Ctx, kind: str, groups: list[str]) -> str:
     return f"{kind.capitalize()} skipped on {' and '.join(parts)}, {seen[0]:%a %-d %b} to {seen[-1]:%a %-d %b}"
 
 
-def answer_meal(ctx: Ctx, option: str, name: str) -> str:
+def kept_meals(rule: Any) -> tuple[str, ...]:
+    """The meals a rule keeps, as its words name them ("Meals" is all three)."""
+    return meals_in(str(rule.reason or "").lower()) or MEAL_NAMES
+
+
+def without(rule: Any, kind: str) -> tuple[tuple[str, ...], str]:
+    """What a rule keeps once a meal leaves it, and its words then."""
+    left = tuple(m for m in kept_meals(rule) if m != kind)
+    return left, f"{meals_said(left)} {'is' if len(left) == 1 else 'are'} never skipped for work" if left else ""
+
+
+def meal_answers(kind: str, rule: Any) -> tuple[Option, ...]:
+    """Keep the meal planned; leave just this meal out when the rule keeps others (23 Nov, your answer: "Offer both":
+    turning the rule off stopped keeping lunch and dinner too, which you never skip); or the whole rule off, said."""
+    left, words = without(rule, kind)
+    keep = Option("keep", f"Keep planning {kind}", "The rule stands; Friday keeps its time.", True)
+    if not left:
+        return keep, Option("off", "Turn the rule off", "Work may take meal times when it needs them.")
+    others = " and ".join([", ".join(left[:-1]), left[-1]] if len(left) > 1 else left)
+    return (
+        keep,
+        Option("leave", f"Leave {kind} out of the rule", f"The rule becomes “{words}”."),
+        Option("off", "Turn the whole rule off", f"Work may take any meal's time when it needs it, {others} too."),
+    )
+
+
+ALIASES = {"lunch": ("lunch", "brunch"), "dinner": ("dinner", "supper"), "breakfast": ("breakfast",)}
+
+
+def answer_meal(ctx: Ctx, option: str, name: str, kind: str = "") -> str:
     if option == "keep":
         return "Kept the rule"
     rules = [r.model_dump() for r in ctx.settings["rules"]]
-    next(r for r in rules if r["name"] == name)["enabled"] = False
+    found = next(r for r in rules if r["name"] == name)
+    spec = next(r for r in ctx.settings["rules"] if r.name == name)
+    left, words = without(spec, kind)
+    if option == "leave" and left:
+        names = [w for m in left for w in ALIASES[m]]
+        found["scope"] = {**(found.get("scope") or {}), "title_regex": [rf"(?i)\b({'|'.join(names)})s?\b"]}
+        found["reason"] = words
+        write_setting(ctx, "rules", rules)
+        return f"Left {kind} out: {words}"
+    found["enabled"] = False
     write_setting(ctx, "rules", rules)
     return "Turned the rule off"
 
