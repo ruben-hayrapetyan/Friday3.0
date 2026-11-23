@@ -379,6 +379,13 @@ test("Friday Test refuses every change to the Mac's calendars, saying why") {
     check(TestCalendars.refuse(["op": "delete"]).isEmpty, "a job without an id: nothing to answer")
 }
 
+test("Friday Test doesn't send this Mac's calendars unless switched on; your Friday does unless switched off") {
+    check(!CalendarBridge.sends(stored: nil, isTest: true), "Friday Test, never set: not sent (a demo to show people)")
+    check(CalendarBridge.sends(stored: true, isTest: true), "Friday Test, switched on: sent")
+    check(CalendarBridge.sends(stored: nil, isTest: false), "your Friday, never set: sent")
+    check(!CalendarBridge.sends(stored: false, isTest: false), "your Friday, switched off: not sent")
+}
+
 test("Friday Test opens as a new user each time, unless kept and not started over") {
     check(TestUser.startsNew(keep: false, asked: false), "not kept: new")
     check(!TestUser.startsNew(keep: true, asked: false), "kept: the same user")

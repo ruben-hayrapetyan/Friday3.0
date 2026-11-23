@@ -18,8 +18,15 @@ final class CalendarBridge {
     private var planning = false
     static let weeks = 12
 
+    /// Whether this Mac's calendars go to Friday: as you set it in Friday's settings, else yes in your Friday and no in
+    /// Friday Test (23 Nov: Friday Test is a demo to show people, "i don't like how it automatically connects to my
+    /// calendar"; it can still be switched on there).
+    nonisolated static func sends(stored: Any?, isTest: Bool = TestUser.isTest) -> Bool {
+        stored as? Bool ?? !isTest
+    }
+
     func start() {
-        guard UserDefaults.standard.object(forKey: "macCalendars") as? Bool ?? true else { return }
+        guard CalendarBridge.sends(stored: UserDefaults.standard.object(forKey: "macCalendars")) else { return }
         store.requestFullAccessToEvents { granted, _ in
             guard granted else { return }
             Task { @MainActor in self.watch() }

@@ -199,7 +199,7 @@ struct FridayMenus: Commands {
 struct MacSettings: View {
     @AppStorage("hotkeys") private var hotkeys = true
     @AppStorage("menuBarTimer") private var menuBarTimer = true
-    @AppStorage("macCalendars") private var macCalendars = true
+    @AppStorage("macCalendars") private var macCalendars = CalendarBridge.sends(stored: nil)
     @AppStorage("fridaydPath") private var fridaydPath = ""
     @State private var opensAtLogin = LoginItem.isEnabled
 
@@ -207,7 +207,8 @@ struct MacSettings: View {
         Form {
             if TestUser.isTest {
                 Text("Friday Test leaves the global shortcuts and opening at login to your Friday, and never changes a "
-                     + "real calendar: this Mac's and Google's are only read.")
+                     + "real calendar: this Mac's and Google's are only read. It doesn't read this Mac's calendars "
+                     + "unless you switch them on below.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Toggle("Global shortcuts: ⌃⌥Space Friday, ⌥Space new event, ⌃Space Ask Claude", isOn: $hotkeys)
