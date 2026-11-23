@@ -466,7 +466,8 @@ def learned(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any], us
     if found is None:
         return {}
     held, freed = kv_get(conn, guard.HELD, [], user_id) or [], kv_get(conn, guard.FREED, [], user_id) or []
-    theta = guard.guarded(json.loads(found["theta"]), settings["rules"], held, freed)  # never past what you said
+    # never past what you said; none learned (a profile saved null before 23 Nov's fix) is the weights as you set them
+    theta = guard.guarded(json.loads(found["theta"]) or {}, settings["rules"], held, freed)
     state = json.loads(found["state"]) if found["state"] else None
     today = planning_date(now_utc, settings["time"].timezone, minutes_of(settings["time"].day_start))
     paced = any(

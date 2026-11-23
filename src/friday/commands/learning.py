@@ -178,7 +178,9 @@ def learn_reset(ctx: Ctx, inp: ResetInput) -> Changed:
     # The weights in use, not the newest profile's: that may be a suggestion still waiting for your yes, or one you
     # turned down, and starting another module over isn't approving it (audit, 12 Nov).
     active = profile(ctx.conn, ctx.user_id, "active")
-    theta = dict.fromkeys(learnable(ctx.settings), 1.0) if "weights" in reset else (active or {}).get("theta")
+    # None learned yet is the weights as you set them (23 Nov: saved as null, every plan then failed reading it)
+    kept = None if "weights" in reset else (active or {}).get("theta")
+    theta = kept or dict.fromkeys(learnable(ctx.settings), 1.0)
     ctx.db.insert(
         "learned_profile",
         {
