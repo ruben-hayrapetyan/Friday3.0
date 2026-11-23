@@ -27,6 +27,16 @@ export function WeeklyReview() {
   return <Week key={week.start} week={full} />
 }
 
+/** Which pace is picked for next week and why, in place of a "suggested" mark beside one (22 Nov, as on the tab:
+ * "suggested is super vague"). */
+export function paceWords(picked: string | null, suggested: string, feel: string | null, usual: string): string {
+  if (picked) return `${picked} for the seven days after you finish. Deadlines hold whatever you pick.`
+  if (feel === "Rough" || feel === "Heavy")
+    return `${suggested} is picked because the week felt ${feel.toLowerCase()}: a lighter week to recover. Pick another to change it. Deadlines still hold.`
+  if (feel === "Great") return `${suggested} is picked because the week felt great. Pick another to change it. Deadlines hold whatever you pick.`
+  return `${usual}, your usual pace, is picked. Pick another to change it. It applies for seven days when you finish; deadlines hold whatever you pick.`
+}
+
 /** What the review is for and what to do in it, each step going to its choice (22 Nov: the tab's "suggested" was
  * "super vague - and i have no idea what it means or what i'm supposed to do"). */
 function Steps({ end, carried }: { end: string; carried: number }) {
@@ -244,21 +254,13 @@ function Week({ week }: { week: Full }) {
             </H>
             {paces && (
               <Seg
-                options={Object.keys(paces.paces).map((p) => ({
-                  value: p,
-                  label: (
-                    <>
-                      {p}
-                      {p === suggested && <span style={{ fontSize: 11, color: "var(--color-accent-300)" }}>suggested</span>}
-                    </>
-                  ),
-                }))}
+                options={Object.keys(paces.paces).map((p) => ({ value: p, label: p }))}
                 value={pace ?? suggested}
                 onPick={setPace}
               />
             )}
             <span className="fr-kicker" style={{ textWrap: "pretty" }}>
-              {feel === "Rough" || feel === "Heavy" ? "A lighter week to recover. Deadlines still hold." : "Applies for seven days when you finish. Deadlines hold whatever you pick."}
+              {paceWords(pace, suggested, feel, paces?.default ?? "Normal")}
             </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 22 }}>

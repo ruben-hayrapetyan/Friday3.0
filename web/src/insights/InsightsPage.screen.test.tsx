@@ -182,12 +182,18 @@ describe("Insights → This week", () => {
   it("saves how the week felt and a note, and suggests a pace from the feeling", async () => {
     const { user } = await openFriday("/insights?tab=week")
     await screen.findByText(/^Week of /, {}, { timeout: 15_000 })
+    // 22 Nov: no "suggested" beside a pace (as on the tab, H237): the line under them says which is picked and why
+    const pace = () => screen.getByText("Pace for next week").parentElement as HTMLElement
+    expect(within(pace()).queryByText("suggested")).toBeNull()
+    expect(within(pace()).getByText(/^\w+, your usual pace, is picked\. Pick another to change it\./)).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Rough" }))
     expect((await waitForSent("week_note")).body).toMatchObject({ feel: "Rough" })
-    expect(await screen.findByText("A lighter week to recover. Deadlines still hold.")).toBeTruthy()
+    expect(await screen.findByText("Easy is picked because the week felt rough: a lighter week to recover. Pick another to change it. Deadlines still hold.")).toBeTruthy()
     expect(screen.getByText(/pace Easy$/)).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Great" }))
     expect(await screen.findByText(/pace Push$/)).toBeTruthy()
+    expect(within(pace()).getByText(/^Push is picked because the week felt great\./)).toBeTruthy()
+    expect(within(pace()).queryByText("suggested")).toBeNull()
     const notes = screen.getByPlaceholderText(/A note for next Sunday/)
     await user.type(notes, "Start problem sets on Mondays")
     await user.click(screen.getByText("Anything to remember?"))
