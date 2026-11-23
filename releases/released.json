@@ -1,6 +1,29 @@
 {
-  "current": "0.6.5",
+  "current": "0.6.6",
   "versions": [
+    {
+      "version": "0.6.6",
+      "released": "2026-11-22",
+      "sha256": "f17eacde3a184906e5f1aed8df3eddcadbd76c823fcb87b332ae7deb04f5c391",
+      "bytes": 238171885,
+      "commit": "2621b46106a377e098f9d9991d6649b7fa57cea0",
+      "notes": {
+        "summary": "Rename a task from its name, an Inbox that keeps up when you answer quickly, and estimates learned as soon as you've timed enough.",
+        "new": [
+          "Click a task's name at the top of its details on the To-do page to rename it. Enter saves; Escape leaves it as it was."
+        ],
+        "changed": [
+          "Insights → This week says what it's for and what to do, step by step, instead of marking the tab \"suggested\".",
+          "Learned estimates: Insights counts the timed tasks Friday learns from and says how many don't count (timed on a break or at another pace). Friday learns from them as soon as there are five, not the night after.",
+          "A change that leaves your plan as it was, like turning on estimate adjustment before anything is learned, no longer replans."
+        ],
+        "fixed": [
+          "Start or Resume showed what was planned in the Now bar until Friday answered, so it could look like the wrong task had started. The bar now shows the task you started at once.",
+          "Accepting Inbox suggestions quickly could leave them looking unanswered, bring them back after you left the Inbox, and then say they weren't waiting. They now stay answered.",
+          "In the week view with a break and the To-do list open, the break's name wrapped over several lines and pushed the calendar down. It now takes one line."
+        ]
+      }
+    },
     {
       "version": "0.6.5",
       "released": "2026-11-22",
