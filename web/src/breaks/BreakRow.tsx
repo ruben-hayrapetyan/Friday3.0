@@ -90,23 +90,27 @@ export function BreakRow({ days, dates }: { days: Day[]; dates: string[] }) {
           <button
             key={`line${date}`}
             className="fr-plain fr-break-line"
+            data-whole-words
             aria-pressed={breakDay === date}
             data-quiet={quiet || undefined}
+            aria-label={quiet ? words : `${words}, ${ticked} of ${v.things} done`}
             onClick={() => setBreakDay(breakDay === date ? null : date)}
             title={quiet ? `${words}: open the day` : `${words}, ${ticked} of ${things(v.things ?? 0)} done: open the day's list`}
             style={{ gridColumn: n + 1, gridRow: 2, margin: "0 6px" }}
           >
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{words}</span>
+            {/* the count first, laid right to left: it always shows; the words show whole or wrap out of sight
+                (22 Nov: "2 thin… 0/2" in a narrow column) */}
             {!quiet && (
               <>
+                <span className="tnum fr-break-line-count">
+                  {ticked}/{v.things}
+                </span>
                 <span className="fr-break-bar" aria-hidden>
                   <span style={{ width: `${Math.round(share * 100)}%` }} />
                 </span>
-                <span className="tnum" style={{ flex: "none" }}>
-                  {ticked}/{v.things}
-                </span>
               </>
             )}
+            <span className="fr-break-line-words">{words}</span>
           </button>
         )
       })}

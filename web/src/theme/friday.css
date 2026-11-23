@@ -714,8 +714,14 @@ kbd.fr-kbd {
 .fr-break-line:hover {
   background: color-mix(in srgb, var(--fr-break) 24%, transparent);
 }
+/* Laid right to left so the count comes first and always shows; the words are whole on the line or wrap onto a second
+   one it doesn't show (22 Nov: "2 thin… 0/2" in a narrow column; no word cut, UI-PRINCIPLES). */
 .fr-break-line {
   display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  overflow: hidden;
   align-items: center;
   gap: 6px;
   min-width: 0;
@@ -726,6 +732,22 @@ kbd.fr-kbd {
   border-radius: 4px;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fr-break) 45%, transparent);
   cursor: pointer;
+}
+.fr-break-line > span {
+  line-height: 22px;
+}
+.fr-break-line-count {
+  flex: none;
+}
+.fr-break-line-words {
+  flex: 0 0 auto;
+  margin-right: auto; /* at the line's left, the bar between */
+  white-space: nowrap;
+}
+.fr-break-line[data-quiet] .fr-break-line-words {
+  white-space: normal; /* alone on its line: whole words, a second line out of sight */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .fr-break-line[data-quiet] {
   color: var(--color-neutral-400);
