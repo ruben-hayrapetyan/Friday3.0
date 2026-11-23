@@ -15,7 +15,7 @@ from friday.core.guess import fallback_kind
 from friday.core.items import FieldError, Item, apply_preset, validate, with_defaults
 from friday.core.rows import item_to_row
 from friday.core.textnorm import plain_words
-from friday.core.time import UNIT_MIN, format_utc
+from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.cushion import cushion
 from friday.planner.hidden import written_to
 from friday.planner.progress import remaining_minutes
@@ -186,8 +186,10 @@ def going_to(ctx: Ctx, item_id: int | None) -> str | None:
     return ctx.memo["going_to"].get(item_id)
 
 
-def held_task(ctx: Ctx, event_id: int | None) -> dict[str, Any] | None:
-    """The task an event's time is for (`event_hold`), while it's still to do."""
+def held_task(ctx: Ctx, event_id: int | None, event: Item | None = None) -> dict[str, Any] | None:
+    """The task an event's time is for (`event_hold`), while it's still to do, with what the plan did with it: its
+    time inside the event (`here`), else its first planned time anywhere (`elsewhere`). The event says that, not a
+    promise (23 Nov: "Planned here first" while the plan had it the next afternoon)."""
     if "event_holds" not in ctx.memo:
         ctx.memo["event_holds"] = kv_get(ctx.conn, "event_holds", {}, ctx.user_id) or {}
     task_id = ctx.memo["event_holds"].get(str(event_id))
@@ -198,7 +200,27 @@ def held_task(ctx: Ctx, event_id: int | None) -> dict[str, Any] | None:
         return None
     if "event_holds_loose" not in ctx.memo:
         ctx.memo["event_holds_loose"] = set(kv_get(ctx.conn, "event_holds_loose", [], ctx.user_id) or [])
-    return {"id": found["id"], "title": found["title"], "loose": event_id in ctx.memo["event_holds_loose"]}
+    out = {"id": found["id"], "title": found["title"], "loose": event_id in ctx.memo["event_holds_loose"]}
+    if event is None or not event.start_utc or not event.end_utc:
+        return out
+    if "plan_id" not in ctx.memo:
+        plan = one(ctx.conn, "SELECT id FROM plans WHERE user_id = ? AND status = 'current'", [ctx.user_id])
+        ctx.memo["plan_id"] = plan["id"] if plan else None
+    times = rows(
+        ctx.conn,
+        "SELECT start_utc, end_utc FROM blocks WHERE plan_id = ? AND item_id = ? AND end_utc > ? ORDER BY start_utc",
+        [ctx.memo["plan_id"], found["id"], format_utc(ctx.now_utc)],
+    )
+    # the task's time inside the event, clipped to it: a block from 9:00 isn't "here" before a 9:05 class starts
+    inside = [
+        (max(t["start_utc"], event.start_utc), min(t["end_utc"], event.end_utc))
+        for t in times
+        if t["start_utc"] < event.end_utc and t["end_utc"] > event.start_utc
+    ]
+    inside = [(a, b) for a, b in inside if parse_utc(b) - parse_utc(a) >= UNIT_MIN]  # more than a sliver of it
+    if inside:
+        return out | {"here": [ctx.local(inside[0][0]), ctx.local(inside[-1][1])]}
+    return out | {"elsewhere": ctx.local(times[0]["start_utc"]) if times else None}
 
 
 def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
@@ -242,7 +264,7 @@ def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
         "category_by": placed.by,
         "category_like": placed.like,
         "category_hint": placed.hint,
-        "holds": held_task(ctx, item.id),
+        "holds": held_task(ctx, item.id, item),
         "left_out": reason,
         "filtered": is_filtered(item.title, ctx.settings["categories"]),
         "hidden_calendar": ctx.hidden.calendar(item.id),

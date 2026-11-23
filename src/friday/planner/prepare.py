@@ -243,7 +243,7 @@ def break_tags(snapshot: Snapshot) -> dict[tuple[str, ...], list[str]]:
 
 def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
     done, on_today = progress_minutes(snapshot)
-    pins = [Pin(p.item_id, p.start_utc, p.end_utc, p.kind, p.id) for p in snapshot.pins]  # type: ignore[arg-type]
+    pins = [Pin(p.item_id, p.start_utc, p.end_utc, p.kind, p.id, p.want_min) for p in snapshot.pins]  # type: ignore[arg-type]
     current: dict[int, list[tuple[int, int]]] = {}
     for block in snapshot.plan_blocks:
         current.setdefault(block.item_id, []).append((block.start_utc, block.end_utc))

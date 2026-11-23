@@ -46,6 +46,7 @@ class PinRow:
     start_utc: int
     end_utc: int
     kind: str
+    want_min: int = 0  # an event's hold: the task's minutes, taken as whole slots from the first inside the span
 
 
 @dataclass(frozen=True)

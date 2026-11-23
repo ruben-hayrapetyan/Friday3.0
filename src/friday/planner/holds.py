@@ -12,6 +12,7 @@ from friday.planner.progress import remaining_minutes
 from friday.planner.snapshot import PinRow
 
 UNIT = 15  # minutes; the grid's quarter hour
+WIDEST = 30  # minutes; the grid's widest slot, past its first days
 
 
 def held(
@@ -49,11 +50,16 @@ def held(
             continue
         length = min(-(-left[task.id] // UNIT) * UNIT, end - start)
         left[task.id] -= length
-        extra.append(PinRow(-event.id, task.id, start, start + length, "preferred" if event.id in loose else "locked"))
-        # What the task doesn't need stays the event's, without the gap its kind keeps before it (the task is there).
+        # the whole event, and how much of it the task wants: the planner takes whole grid slots inside it from the
+        # first (23 Nov: 9:05 + 45 minutes held no half-hour slot a week out, and the task was planned a week early)
+        kind = "preferred" if event.id in loose else "locked"
+        extra.append(PinRow(-event.id, task.id, start, end, kind, want_min=length))
+        # What the task doesn't need stays the event's, without the gap its kind keeps before it (the task is there),
+        # from where the task's whole slots end: from start + length exactly, it took back the task's last slot
+        rest = start + length + (-(start + length) % WIDEST)
         changed[event.id] = (
-            replace(event, start_utc=format_utc(start + length), buffer_before_min=0, buffer_after_min=0)
-            if start + length < end
+            replace(event, start_utc=format_utc(rest), buffer_before_min=0, buffer_after_min=0)
+            if rest < end
             else replace(event, blocks_time=False)
         )
     return tuple(changed.get(i.id or 0, i) for i in items), pins + tuple(extra)

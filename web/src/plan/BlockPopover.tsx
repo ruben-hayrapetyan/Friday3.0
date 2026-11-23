@@ -423,6 +423,17 @@ function ChoiceCard({ label, note, on, onClick }: { label: string; note: string;
   )
 }
 
+/** What the plan did with the task an event holds, as the plan has it (23 Nov, a test user's screenshot: "Planned
+ * here first" while the plan had it the next afternoon and called it late): its time here, or where it is instead. */
+export function heldSaid(held: { loose?: boolean; here?: [string, string]; elsewhere?: string | null }, open: boolean, today: string): string {
+  if (held.loose) return "Planned here when it can: you let it move when holding it made work late. Yes again holds it."
+  const rest = open ? "any work can have the rest." : "other work keeps off the rest."
+  if (held.here) return `Planned here, ${clock(held.here[0])}–${clock(held.here[1])}; ${rest}`
+  if (held.elsewhere) return `Not planned here: Friday has it ${when(held.elsewhere, today)}.`
+  if (held.elsewhere === null) return "Not planned here, and not planned anywhere yet."
+  return open ? "Planned here first; any work can have the rest." : "Planned here first; other work keeps off it."
+}
+
 /** The task an event's time is for. `only` "work": under Work through it, where a to-do is optional (it's there first,
  * any work has the rest); "likely": only the question whether it's for the task its name suggests. */
 function HeldFor({ event, only, open = event.left_out === "skipped" || event.left_out === "through" }: { event: Item; only?: "work" | "likely"; open?: boolean }) {
@@ -440,7 +451,8 @@ function HeldFor({ event, only, open = event.left_out === "skipped" || event.lef
     // refused: what it was holds again, not the pick (the audit, 12 Nov)
     void saveHold(task_id == null ? { id } : { id, task_id }).then((out) => out || setPicked((now) => (now === shown ? undefined : now)))
   }
-  const held = (picked !== undefined ? picked : event.holds) as { id: number; title: string; loose?: boolean } | null | undefined
+  const held = (picked !== undefined ? picked : event.holds) as { id: number; title: string; loose?: boolean; here?: [string, string]; elsewhere?: string | null } | null | undefined
+  const { today } = useShell()
   const likely = held ? null : likelyTask(event.title, tasks)
   const found = ranked(event.title, tasks.filter((t) => t.title.toLowerCase().includes(text.trim().toLowerCase()))).slice(0, 6)
   const box = { display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: "var(--radius-md)", background: "var(--color-bg)" } as const
@@ -472,7 +484,7 @@ function HeldFor({ event, only, open = event.left_out === "skipped" || event.lef
         <span style={{ flex: "1 1 160px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
           <span>Time for {held.title}</span>
           <span className="fr-kicker">
-            {held.loose ? "Planned here when it can: you let it move when holding it made work late. Yes again holds it." : open ? "Planned here first; any work can have the rest." : "Planned here first; other work keeps off it."}
+            {heldSaid(held, open, today)}
           </span>
         </span>
         {held.loose && (

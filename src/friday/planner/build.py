@@ -83,6 +83,7 @@ class Pin:
     end_utc: int
     kind: Literal["preferred", "locked"] = "locked"
     created: int = 0  # creation order; the newer of two overlapping locks wins
+    want_min: int = 0  # an event's hold: this many minutes of whole slots inside the span, from the first
 
 
 @dataclass(frozen=True)
@@ -744,7 +745,22 @@ def pin_slots(inp: BuildInput, grid: Grid, items: Mapping[str, EngineItem]) -> d
     for pin in sorted(inp.pins, key=lambda p: p.created):
         key = key_of(pin.item_id)
         if key in out:
-            out[key][pin.kind].update(grid.slots_in(pin.start_utc, pin.end_utc))
+            out[key][pin.kind].update(wanted(grid, pin))
+    return out
+
+
+def wanted(grid: Grid, pin: Pin) -> list[int]:
+    """The slots a pin holds: every whole one inside it; an event's hold, as many of those from the first as cover
+    what the task wants (the grid's slots are quarter or half hours, an event may start at 9:05)."""
+    inside = grid.slots_in(pin.start_utc, pin.end_utc)
+    if not pin.want_min:
+        return inside
+    out, got = [], 0
+    for s in inside:
+        if got >= pin.want_min:
+            break
+        out.append(s)
+        got += int(grid.end[s]) - int(grid.start[s])
     return out
 
 

@@ -37,7 +37,10 @@ def test_the_task_is_planned_in_the_event_and_nothing_else_is(app: App) -> None:
     assert blocks(app, doc) == [("2026-10-20T21:00", "2026-10-20T23:00")]
     assert not any(b[0] < "2026-10-20T23:00" and b[1] > "2026-10-20T21:00" for b in blocks(app, other))
     event = next(f for f in app.do("plan")["fixed"] if f["id"] == a4dd)
-    assert event["holds"] == {"id": doc, "title": "CS A4 Design Doc", "loose": False}  # the event shows as it is
+    # the event shows as it is, with the plan's time for the task in it (23 Nov: it said "Planned here first" whatever
+    # the plan did)
+    assert event["holds"] == {"id": doc, "title": "CS A4 Design Doc", "loose": False,
+                              "here": ["2026-10-20T21:00", "2026-10-20T23:00"]}  # fmt: skip
     assert (event["start"], event["end"]) == ("2026-10-20T21:00", "2026-10-20T23:00")
 
 
@@ -118,21 +121,23 @@ def item(
 
 
 def test_held_gives_the_start_of_the_event_and_keeps_the_rest_busy() -> None:
+    # the whole event, wanting 45 minutes of its slots from the first (23 Nov: a hold measured in minutes from a 9:05
+    # start held no whole slot); the rest stays busy from the half hour the task's slots end by
     items, pins = held((item(1, minutes=45), item(9, "fixed", 21 * H, 23 * H)), (), {9: 1}, {}, DAY)
-    assert pins == (PinRow(-9, 1, DAY + 21 * H, DAY + 21 * H + 45, "locked"),)
+    assert pins == (PinRow(-9, 1, DAY + 21 * H, DAY + 23 * H, "locked", want_min=45),)
     event = next(i for i in items if i.id == 9)
     assert (event.start_utc, event.end_utc, event.blocks_time, event.buffer_before_min) == (
-        at(21 * H + 45), at(23 * H), True, 0)  # fmt: skip
+        at(22 * H), at(23 * H), True, 0)  # fmt: skip
 
 
 def test_held_counts_what_is_done_and_starts_from_now_in_an_event_under_way() -> None:
     _, pins = held((item(1, minutes=120), item(9, "fixed", 21 * H, 23 * H)), (), {9: 1}, {1: 60}, DAY + 21 * H + 20)
-    assert pins == (PinRow(-9, 1, DAY + 21 * H + 15, DAY + 22 * H + 15, "locked"),)
+    assert pins == (PinRow(-9, 1, DAY + 21 * H + 15, DAY + 23 * H, "locked", want_min=60),)
 
 
 def test_held_takes_all_of_a_short_event_which_then_blocks_nothing() -> None:
     items, pins = held((item(1, minutes=180), item(9, "fixed", 21 * H, 22 * H)), (), {9: 1}, {}, DAY)
-    assert pins == (PinRow(-9, 1, DAY + 21 * H, DAY + 22 * H, "locked"),)
+    assert pins == (PinRow(-9, 1, DAY + 21 * H, DAY + 22 * H, "locked", want_min=60),)
     assert next(i for i in items if i.id == 9).blocks_time is False
 
 
@@ -140,7 +145,7 @@ def test_held_shares_a_task_across_two_events_earliest_first_and_skips_what_is_o
     task = item(1, minutes=90)
     first, second = item(8, "fixed", 9 * H, 10 * H), item(9, "fixed", 21 * H, 23 * H)
     _, pins = held((task, second, first), (), {9: 1, 8: 1}, {}, DAY)
-    assert [(p.id, p.end_utc - p.start_utc) for p in pins] == [(-8, 60), (-9, 30)]
+    assert [(p.id, p.want_min) for p in pins] == [(-8, 60), (-9, 30)]
     assert held((task, second), (), {9: 1}, {}, DAY + 23 * H)[1] == ()  # over
     assert held((item(1, status="done"), second), (), {9: 1}, {}, DAY)[1] == ()
     assert held((task,), (), {9: 1}, {}, DAY)[1] == ()  # the event isn't in range
