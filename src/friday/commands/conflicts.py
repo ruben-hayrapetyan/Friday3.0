@@ -387,6 +387,11 @@ def meals(ctx: Ctx) -> list[Clash]:
 def rule_said(ctx: Ctx, rule: Any) -> str:
     """A rule in its own words, and when you added it, from what Friday did when you did (the command log)."""
     words = f"“{rule.reason}”" if rule.reason else "A rule of yours"
+    # and the words you typed, when Friday read them as something else (23 Nov: "Things that can happen during other
+    # events can't happen during meals" was saved as "Meals are never skipped for work", and asked about as such)
+    typed = ((kv_get(ctx.conn, "rule_readings", {}, ctx.user_id) or {}).get(rule.name) or {}).get("text") or ""
+    if typed.strip() and typed.strip().rstrip(".").lower() != str(rule.reason or "").strip().rstrip(".").lower():
+        words += f", from your words “{typed.strip()}”"
     added = one(
         ctx.conn,
         "SELECT at_utc, actor FROM command_log WHERE user_id = ? AND command = 'rule_add' AND undone_by IS NULL "

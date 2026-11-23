@@ -53,6 +53,9 @@ def against(new: dict[str, Any], rules: list[dict[str, Any]]) -> list[Conflict]:
 
 def conflict(a: dict[str, Any], b: dict[str, Any]) -> Conflict | None:
     """How b stands against a: its contradiction, its overlap, or None. The Conflict names b."""
+    meal = meals_clash(a, b)
+    if meal is not None or kept_meals(a) is not None or learned_meals(a) is not None:
+        return meal  # a rule about meals is compared by its meals, not its hours (23 Nov)
     subject = shared(a.get("scope"), b.get("scope"))
     if subject is None:
         return None
@@ -69,6 +72,43 @@ def conflict(a: dict[str, Any], b: dict[str, Any]) -> Conflict | None:
         return None
     on = "" if days == DAYS else f" on {days_spoken(days)}"
     return Conflict(b["name"], f"together they leave no time for {subject}{on}", days if days != DAYS else ())
+
+
+MEALS = ("breakfast", "lunch", "dinner")
+
+
+def kept_meals(rule: dict[str, Any]) -> set[str] | None:
+    """The meals a rule says are never skipped for work (an elastic_shortfall over meal routines), or None."""
+    pattern = " ".join((rule.get("scope") or {}).get("title_regex") or [])
+    if rule.get("type") != "elastic_shortfall" or not pattern:
+        return None
+    found = {m for m in MEALS if m in pattern}
+    return found or None
+
+
+def learned_meals(rule: dict[str, Any]) -> set[str] | None:
+    """The meals a rule lets Friday decide from your habits, or None."""
+    if rule.get("type") != "meal_learned":
+        return None
+    return set((rule.get("params") or {}).get("meals") or MEALS)
+
+
+def meals_clash(a: dict[str, Any], b: dict[str, Any]) -> Conflict | None:
+    """Rules about the same meals (23 Nov: "Meals are never skipped for work" was added over "Let Friday decide
+    breakfast from your habits" and "Lunch and dinner are never skipped", and nothing said so): kept against learned
+    is a contradiction, kept against kept an overlap."""
+    ka, kb, la, lb = kept_meals(a), kept_meals(b), learned_meals(a), learned_meals(b)
+    if ka and kb and ka & kb:
+        return Conflict(b["name"], f"both keep {said(ka & kb)}", overlap=True)
+    both = (ka & lb if ka and lb else set()) | (la & kb if la and kb else set())
+    if both:
+        return Conflict(b["name"], f"one keeps {said(both)} whatever your habits, the other lets your habits decide")
+    return None
+
+
+def said(meals: set[str]) -> str:
+    names = [m for m in MEALS if m in meals]
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
 
 
 def amounts(a: dict[str, Any], b: dict[str, Any], subject: str) -> Conflict | None:

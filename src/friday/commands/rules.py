@@ -197,8 +197,6 @@ NOT_COMPARED = {
     "late_cutoff",
     "pace",
     "deadlines",
-    "meals_kept",
-    "meals_learned",
     "exam_focus",
 }  # settings, not rules: a pace replaces that day's, and deadlines are built in
 
