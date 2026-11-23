@@ -327,10 +327,22 @@ def changes(snapshot: Snapshot, problem: Problem, blocks: list[PlannedBlock]) ->
 
 
 def per_item(blocks: Any) -> dict[int, list[tuple[int, int]]]:
+    """Each item's time as stretches: sessions back to back are one, so the same time cut another way isn't a change
+    (23 Nov, Friday Notes: Pace listed "HW 12: Sun 19:45 → Sun 19:45" among "9 items change")."""
     out: dict[int, list[tuple[int, int]]] = {}
     for b in blocks:
         out.setdefault(b.item_id, []).append((b.start_utc, b.end_utc))
-    return {k: sorted(v) for k, v in out.items()}
+    return {k: joined(sorted(v)) for k, v in out.items()}
+
+
+def joined(spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    out: list[tuple[int, int]] = []
+    for start, end in spans:
+        if out and start <= out[-1][1]:
+            out[-1] = (out[-1][0], max(out[-1][1], end))
+        else:
+            out.append((start, end))
+    return out
 
 
 def spans(found: list[tuple[int, int]]) -> list[list[str]]:

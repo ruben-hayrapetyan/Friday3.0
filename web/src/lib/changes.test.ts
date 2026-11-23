@@ -34,6 +34,19 @@ describe("change list", () => {
   })
 })
 
+describe("a moved item's line names what actually moved (23 Nov, Friday Notes: \"HW 12: Sun 19:45 → Sun 19:45\")", () => {
+  const move = (before: string[][], after: string[][]) => lines({ moved: [{ item_id: 7, title: "HW 12", before, after }] }, "2026-10-20")[0].text
+  it("its start, when that moves", () => {
+    expect(move([["2026-10-25T19:45", "2026-10-25T21:00"]], [["2026-10-25T20:30", "2026-10-25T21:45"]])).toBe("Sun 7:45pm → Sun 8:30pm")
+  })
+  it("where its first stretch ends, when only that moves", () => {
+    expect(move([["2026-10-25T19:45", "2026-10-25T21:00"]], [["2026-10-25T19:45", "2026-10-25T20:30"]])).toBe("Sun 7:45pm, until 8:30pm instead of 9pm")
+  })
+  it("its later times, when only those move", () => {
+    expect(move([["2026-10-25T19:45", "2026-10-25T21:00"], ["2026-10-26T09:00", "2026-10-26T10:00"]], [["2026-10-25T19:45", "2026-10-25T21:00"], ["2026-10-27T09:00", "2026-10-27T10:00"]])).toBe("Sun 7:45pm; its later times move")
+  })
+})
+
 describe("because (What changed, 3 Nov)", () => {
   it("says what you did, each kind once, in order", () => {
     expect(because([{ actor: "you", command: "drop" }, { actor: "you", command: "settings_set" }, { actor: "you", command: "drop" }])).toBe("After you deleted something and changed a setting.")

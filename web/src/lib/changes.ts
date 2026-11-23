@@ -1,7 +1,7 @@
 // A full preview's change list, read for people: one summary line and a line per changed item.
 
 import type { Schemas } from "@/api/client"
-import { when } from "./format"
+import { clock, when } from "./format"
 
 type Changes = Schemas["ChangeOut"]
 
@@ -28,12 +28,21 @@ interface Line {
   text: string
 }
 
+/** What moved, as the first thing that differs (23 Nov, Friday Notes: "HW 12: Sun 19:45 → Sun 19:45" when only a
+ * later session or the end had moved): its start, else where its first stretch ends, else its later times. */
+function moved(before: string[][], after: string[][], today: string): string {
+  const [[from, fromEnd], [to, toEnd]] = [before[0], after[0]]
+  if (from !== to) return `${when(from, today)} → ${when(to, today)}`
+  if (fromEnd !== toEnd) return `${when(to, today)}, until ${clock(toEnd)} instead of ${clock(fromEnd)}`
+  return `${when(to, today)}; its later times move`
+}
+
 /** Each item once: where its first block goes, or that it joins or leaves the plan. */
 export function lines(changes: Changes, today: string): Line[] {
   const out = new Map<number, Line>()
   for (const m of changes.moved ?? []) {
     const [before, after] = [m.before as string[][], m.after as string[][]]
-    const text = after.length ? `${when(before[0][0], today)} → ${when(after[0][0], today)}` : "off the plan"
+    const text = after.length ? moved(before, after, today) : "off the plan"
     out.set(Number(m.item_id), { title: String(m.title), text })
   }
   for (const b of changes.added ?? []) {
