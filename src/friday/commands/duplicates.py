@@ -88,6 +88,28 @@ def candidates(conn: sqlite3.Connection, settings: dict, user_id: int, now_utc: 
     ]
 
 
+def turned_down(conn: sqlite3.Connection, settings: dict, user_id: int, now_utc: int) -> list[Candidate]:
+    """Suggestions to add something that you turned down lately: the same thing read again isn't asked again, as what
+    you have isn't (23 Nov: "don't ask duplicates for rejected events too (similar to how friday does this for
+    accepted events)"). Remembered as long as what you finished is."""
+    rules, tz = settings["text"].rules(), settings["time"].timezone
+    since = format_utc(now_utc - REMEMBERED_DAYS * 1440)
+    found = rows(
+        conn,
+        "SELECT id, input FROM suggestions WHERE user_id = ? AND status = 'rejected' AND command = 'add' "
+        "AND decided_utc >= ?",
+        [user_id, since],
+    )
+    out = []
+    for r in found:
+        fields = json.loads(r["input"] or "{}")
+        if fields.get("title"):
+            event = is_event(fields, settings)
+            title = str(fields["title"])
+            out.append(Candidate(r["id"], title, event, moment(fields, event, tz), False, read_title(title, rules)))
+    return out
+
+
 def is_event(fields: dict[str, Any], settings: dict) -> bool:
     preset = settings["presets"].get(fields.get("preset"))
     return bool(fields.get("start")) or fields.get("when") == "fixed" or (preset is not None and preset.when == "fixed")
@@ -145,6 +167,7 @@ def set_aside_waiting(conn: sqlite3.Connection, settings: dict, user_id: int, no
         [user_id],
     )
     rules, tz = settings["text"].rules(), settings["time"].timezone
+    refused = turned_down(conn, settings, user_id, now_utc)
     twins = dict(kv_get(conn, "set_aside_twins", {}, user_id) or {})
     seen: list[tuple[int, Candidate]] = []
     gone = 0
@@ -159,6 +182,10 @@ def set_aside_waiting(conn: sqlite3.Connection, settings: dict, user_id: int, no
         same = duplicate_of(fields, settings, [c for c in found if c.held] if repeat else found)
         if same is not None and not same.update:
             write(s["id"], {"status": "superseded", "duplicate_of": same.item_id})
+            gone += 1
+            continue
+        if same is None and not repeat and duplicate_of(fields, settings, refused) is not None:
+            write(s["id"], {"status": "rejected", "decided_utc": format_utc(now_utc)})  # you said no to it already
             gone += 1
             continue
         if same is not None and s["duplicate_of"] != same.item_id:

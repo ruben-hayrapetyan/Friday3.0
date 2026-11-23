@@ -250,12 +250,19 @@ def suggest(
     made_before = made_items(conn, raw_id)
     conn.execute("UPDATE suggestions SET status = 'superseded' WHERE raw_input_id = ? AND status = 'pending'", [raw_id])
     found: list[duplicates.Candidate] | None = None
+    refused: list[duplicates.Candidate] | None = None
 
     def mine() -> list[duplicates.Candidate]:
         nonlocal found
         if found is None:
             found = duplicates.candidates(conn, settings, user_id, now_utc)
         return found
+
+    def turned_down() -> list[duplicates.Candidate]:
+        nonlocal refused
+        if refused is None:
+            refused = duplicates.turned_down(conn, settings, user_id, now_utc)
+        return refused
 
     made = 0
     for p in proposals:
@@ -281,6 +288,13 @@ def suggest(
         same = duplicates.duplicate_of(fields, settings, have) if command == "add" and not repeat_task else None
         duplicate = same.item_id if same is not None else None
         aside = same is not None and not same.update
+        # what you turned down lately isn't asked again, from this source or another (23 Nov)
+        said_no = (
+            command == "add"
+            and same is None
+            and not p.series
+            and bool(duplicates.duplicate_of(fields, settings, turned_down()))
+        )
         cursor = conn.execute(
             "INSERT INTO suggestions (user_id, raw_input_id, batch, command, input, quotes, confidence, duplicate_of, "
             "created_utc, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -295,7 +309,7 @@ def suggest(
                 duplicate,
                 format_utc(now_utc),
                 # kept, so switching the repeat on finds it
-                "rejected" if said == "rejected" else "superseded" if aside else "pending",
+                "rejected" if said == "rejected" or said_no else "superseded" if aside else "pending",
             ],
         )
         made += said != "rejected" and not aside

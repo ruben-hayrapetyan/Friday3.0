@@ -379,7 +379,11 @@ def suggestion_reject(ctx: Ctx, inp: SuggestionInput) -> Changed:
     if found is None or found["status"] != "pending":
         raise FieldError("id", f"no pending suggestion {inp.id}")
     ctx.db.update("suggestions", {"id": inp.id}, {"status": "rejected", "decided_utc": ctx.now_text})
-    return Changed(message="Rejected")
+    # its copies waiting from other sources go with it: you said no to the thing, not to one letter about it (23 Nov)
+    gone = set_aside_waiting(
+        ctx.conn, ctx.settings, ctx.user_id, ctx.now_utc, lambda i, f: ctx.db.update("suggestions", {"id": i}, f)
+    )
+    return Changed(message=f"Rejected, with {gone} more of the same" if gone else "Rejected")
 
 
 @command("batch_accept", affects_plan=True)
