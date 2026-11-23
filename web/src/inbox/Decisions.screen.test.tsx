@@ -174,6 +174,23 @@ describe("sleep and what Friday learned from it", () => {
     expect((await waitForSent("conflict_resolve")).body).toEqual({ key: "wind_down", option: "rule" })
   })
 
+  it("asks about a meal you skip once, weekdays and weekends together, with where it comes from", { timeout: 60_000 }, async () => {
+    // 23 Nov, a user's screenshot: breakfast asked twice (weekdays, then weekends) about a rule they didn't recognize;
+    // "include evidence (like in emails) of the two rules that conflict and when"
+    await friday.c("settings_set", { key: "meal_tracking", value: { on: true } })
+    await friday.c("rule_add", { text: "Meals are never skipped for work", strength: "Always" })
+    for (let n = 1; n <= 14; n++) await friday.c("meal_skip", { kind: "breakfast", date: day(-n) })
+    await waitFor(async () => expect((await decisions()).some((d) => d.title.startsWith("You skip breakfast"))).toBe(true), { timeout: 30_000, interval: 500 })
+    expect((await decisions()).filter((d) => d.title.startsWith("You skip breakfast"))).toHaveLength(1)
+    const { user } = await openInbox()
+    await user.click(await findRow("You skip breakfast on most days, but your rule says it's never skipped"))
+    const lines = (await screen.findAllByText("Your rule")).map((el) => el.closest("[data-evidence]") as HTMLElement).filter(Boolean)
+    const box = lines[lines.length - 1]
+    expect(within(box).getByText(/^“Meals are never skipped for work”, which you added on /)).toBeTruthy()
+    expect(within(box).getByText("What Friday saw")).toBeTruthy()
+    expect(within(box).getByText(/^Breakfast skipped on \d+ of \d+ weekdays and \d+ of \d+ weekend days, /)).toBeTruthy()
+  })
+
   it("asks to use your real bedtimes and wake times", async () => {
     const { user } = await openInbox()
     await user.click(await findRow("Your real times differ from your schedule"))

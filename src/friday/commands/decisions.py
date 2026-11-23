@@ -14,7 +14,7 @@ hour later; your choice "A day, then only if later"). It's kept until the work i
 import json
 
 from friday.api.commands import Changed, LateAcceptInput, LockKeepInput
-from friday.api.views import Decision, DecisionOption, LateItem, WaitingStep
+from friday.api.views import Decision, DecisionOption, EvidenceLine, LateItem, WaitingStep
 from friday.commands.registry import Ctx, command
 from friday.core.items import FieldError
 from friday.core.time import clock_time, parse_utc, to_local
@@ -83,6 +83,7 @@ def decisions(ctx: Ctx, report: dict, late: list[LateItem]) -> list[Decision]:
                 title=c.title,
                 detail=c.detail,
                 update=c.update,
+                evidence=[EvidenceLine(label=label, text=text) for label, text in c.evidence],
                 options=[
                     DecisionOption(id=o.id, label=o.label, detail=o.detail, recommended=o.recommended)
                     for o in c.options

@@ -5331,6 +5331,11 @@ export interface components {
             options?: components["schemas"]["DecisionOption"][];
             /** Update */
             update?: ("rule" | "learned") | null;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence?: components["schemas"]["EvidenceLine"][];
         };
         /** DecisionOption */
         DecisionOption: {
@@ -5951,6 +5956,13 @@ export interface components {
             repeated?: boolean;
             /** Generation */
             generation?: number | null;
+        };
+        /** EvidenceLine */
+        EvidenceLine: {
+            /** Label */
+            label: string;
+            /** Text */
+            text: string;
         };
         /**
          * ExamFocusFor

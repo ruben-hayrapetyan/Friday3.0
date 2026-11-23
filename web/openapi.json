@@ -17941,6 +17941,14 @@
        }
       ],
       "title": "Update"
+     },
+     "evidence": {
+      "items": {
+       "$ref": "#/components/schemas/EvidenceLine"
+      },
+      "type": "array",
+      "title": "Evidence",
+      "default": []
      }
     },
     "additionalProperties": false,
@@ -19962,6 +19970,25 @@
      "result"
     ],
     "title": "EventsToCalendarResult"
+   },
+   "EvidenceLine": {
+    "properties": {
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "text": {
+      "type": "string",
+      "title": "Text"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "label",
+     "text"
+    ],
+    "title": "EvidenceLine"
    },
    "ExamFocusFor": {
     "properties": {

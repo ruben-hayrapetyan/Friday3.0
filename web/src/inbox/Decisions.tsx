@@ -144,6 +144,22 @@ function Late({ decision, onDone }: { decision: Decision; onDone: Done }) {
   )
 }
 
+/** Where a question comes from, as an email's header lines show what it answers (23 Nov: "include evidence (like in
+ * emails) of the two rules that conflict and when"): each line a label and what it says. */
+function Evidence({ lines }: { lines: { label: string; text: string }[] }) {
+  if (!lines.length) return null
+  return (
+    <dl data-evidence style={{ display: "grid", gridTemplateColumns: "max-content minmax(0,1fr)", gap: "4px 12px", margin: 0, padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg)", fontSize: 13 }}>
+      {lines.map((l) => (
+        <div key={l.label} style={{ display: "contents" }}>
+          <dt style={{ color: "var(--color-neutral-400)" }}>{l.label}</dt>
+          <dd style={{ margin: 0, color: "var(--color-neutral-200)", textWrap: "pretty", overflowWrap: "anywhere" }}>{l.text}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 /** What Friday learned against a rule of yours (29 Oct: "make sure that there is guards against any of friday's
  * learned behaviors and the rules contradicting (and whether the rules need to be updated or the behaviors)"): which
  * side Friday would change, and each answer with what it does. */
@@ -153,6 +169,7 @@ function Learned({ decision, onDone }: { decision: Decision; onDone: Done }) {
   return (
     <>
       <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>{decision.detail}</span>
+      <Evidence lines={decision.evidence ?? []} />
       <span style={{ fontSize: 13, color: "var(--color-neutral-400)" }}>{decision.update === "rule" ? "Friday would update the rule." : "Friday would keep your rule and change what it learned."}</span>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {options.map((o) => (

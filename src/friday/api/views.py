@@ -118,6 +118,13 @@ class Decision(Model):
     # Friday would change: the rule, or what it learned
     options: list["DecisionOption"] = []
     update: Literal["rule", "learned"] | None = None
+    # where it comes from, as an email shows what it answers (23 Nov): "Your rule", "What Friday saw"
+    evidence: list["EvidenceLine"] = []
+
+
+class EvidenceLine(Model):
+    label: str
+    text: str
 
 
 class DecisionOption(Model):

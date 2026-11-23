@@ -22,7 +22,7 @@ from an early event you go to (planner/build.py), and learning stays within half
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from friday.api.commands import Changed, ConflictInput
@@ -31,7 +31,7 @@ from friday.commands.settings import write_setting
 from friday.core.db import one
 from friday.core.items import FieldError
 from friday.core.rule_text import days_spoken
-from friday.core.time import WEEKDAYS, clock_time
+from friday.core.time import WEEKDAYS, clock_time, parse_utc, to_local
 from friday.learn import guard
 from friday.planner.store import kv_get
 
@@ -57,6 +57,12 @@ class Clash:
     about: str  # what it's about: asked again when this changes
     options: tuple[Option, ...]
     apply: Callable[[Ctx, str], str] = field(compare=False, repr=False)
+    # What it's about, as one thing (23 Nov: breakfast skipped weekdays and breakfast skipped weekends were asked
+    # twice): questions with the same subject are asked once, as `whole` says it, with their evidence together.
+    subject: str = ""
+    whole: str = ""
+    evidence: tuple[tuple[str, str], ...] = ()  # (label, text): where it comes from, as an email shows what it answers
+    keys: tuple[str, ...] = ()  # the questions it settles, when it's several asked as one
 
 
 def clashes(ctx: Ctx) -> list[Clash]:
@@ -66,7 +72,40 @@ def clashes(ctx: Ctx) -> list[Clash]:
     from friday.commands.undated import offers as undated  # noqa: PLC0415 (the same)
 
     found = [*weights(ctx), *sleep_short(ctx), *wind_down(ctx), *meals(ctx), *offers(ctx), *undated(ctx)]
-    return [c for c in found if answered.get(c.key) != c.about]
+    return one_each([c for c in found if answered.get(c.key) != c.about])
+
+
+def one_each(found: list[Clash]) -> list[Clash]:
+    """Each subject asked once: questions about the same thing are one, said as the whole thing, with every part's
+    evidence (each line once), and answering it answers them all."""
+    out: list[Clash] = []
+    by: dict[str, int] = {}
+    for c in found:
+        if not c.subject or c.subject not in by:
+            if c.subject:
+                by[c.subject] = len(out)
+            out.append(c)
+            continue
+        first = out[by[c.subject]]
+        parts = first.keys or (first.key,)
+        out[by[c.subject]] = replace(
+            first,
+            title=first.whole or first.title,
+            evidence=tuple(dict.fromkeys([*first.evidence, *c.evidence])),
+            keys=(*parts, c.key),
+            about="+".join([first.about, c.about]),
+            apply=both(first.apply, c.apply),
+        )
+    return out
+
+
+def both(a: Callable[[Ctx, str], str], b: Callable[[Ctx, str], str]) -> Callable[[Ctx, str], str]:
+    def apply(ctx: Ctx, option: str) -> str:
+        said = a(ctx, option)
+        b(ctx, option)
+        return said
+
+    return apply
 
 
 @command("conflict_resolve", affects_plan=True)
@@ -80,7 +119,8 @@ def conflict_resolve(ctx: Ctx, inp: ConflictInput) -> Changed:
         raise FieldError("option", f"no answer {inp.option!r} to that")
     message = found.apply(ctx, inp.option)
     answered = kv_get(ctx.conn, ANSWERED, {}, ctx.user_id) or {}
-    put(ctx, ANSWERED, answered | {found.key: found.about})
+    abouts = found.about.split("+") if found.keys else [found.about]
+    put(ctx, ANSWERED, answered | dict(zip(found.keys or (found.key,), abouts, strict=True)))
     return Changed(message=message)
 
 
@@ -320,18 +360,21 @@ def meals(ctx: Ctx) -> list[Clash]:
     from friday.commands.eating import learned  # noqa: PLC0415
 
     out = []
-    for meal in learned(ctx):
-        if meal.skip_share is None or meal.skip_share < SKIPPED_MOSTLY:
-            continue
+    found = learned(ctx)
+    skipped = [m for m in found if m.skip_share is not None and m.skip_share >= SKIPPED_MOSTLY]
+    for meal in skipped:
         rule = next((r for r in kept if any(re.search(p, meal.kind) for p in r.scope["title_regex"])), None)
         if rule is None:
             continue
+        groups = [m.group for m in skipped if m.kind == meal.kind]
         out.append(
             Clash(
                 key=f"meal:{meal.kind}:{meal.group}",
                 title=f"You skip {meal.kind} on most {meal.group}, but your rule says it's never skipped",
-                detail=f"Skipped on {round(meal.skip_share * 100)}% of {meal.days} {meal.group} Friday recorded. "
-                "The rule keeps planning it; turning it off lets work take its time.",
+                detail="The rule keeps planning it; turning it off lets work take its time.",
+                subject=f"meal:{meal.kind}:{rule.name}",
+                whole=f"You skip {meal.kind} on most days, but your rule says it's never skipped",
+                evidence=(("Your rule", rule_said(ctx, rule)), ("What Friday saw", skips_said(ctx, meal.kind, groups))),
                 update="learned",
                 about=f"{meal.kind}:{meal.group}",
                 options=(
@@ -342,6 +385,39 @@ def meals(ctx: Ctx) -> list[Clash]:
             )
         )
     return out
+
+
+def rule_said(ctx: Ctx, rule: Any) -> str:
+    """A rule in its own words, and when you added it, from what Friday did when you did (the command log)."""
+    words = f"“{rule.reason}”" if rule.reason else "A rule of yours"
+    added = one(
+        ctx.conn,
+        "SELECT at_utc, actor FROM command_log WHERE user_id = ? AND command = 'rule_add' AND undone_by IS NULL "
+        "AND json_extract(result, '$.message') = ? ORDER BY id DESC LIMIT 1",
+        [ctx.user_id, f"Added: {rule.reason}"],
+    )
+    if added is None:
+        return words
+    by = "you" if added["actor"] in ("you", "cli") else "Claude" if added["actor"].startswith("agent:") else "Friday"
+    return f"{words}, which {by} added on {to_local(parse_utc(added['at_utc']), ctx.tz):%a %-d %b}"
+
+
+def skips_said(ctx: Ctx, kind: str, groups: list[str]) -> str:
+    """How often a meal was skipped, in the groups of days it's mostly skipped on, and over which days."""
+    from friday.commands.eating import LEARN_DAYS, recorded  # noqa: PLC0415
+    from friday.learn.meals import group_of  # noqa: PLC0415
+
+    days: dict[str, dict[Any, bool]] = {g: {} for g in groups}
+    for m in recorded(ctx, LEARN_DAYS):
+        g = group_of(m.date)
+        if m.kind == kind and g in days:
+            days[g][m.date] = days[g].get(m.date, True) and m.skipped  # a meal eaten counts over a skip
+    named = {"weekdays": "weekdays", "weekends": "weekend days"}
+    parts = [f"{sum(d.values())} of {len(d)} {named[g]}" for g, d in days.items() if d]
+    seen = sorted(day for d in days.values() for day in d)
+    if not seen:
+        return f"{kind.capitalize()} mostly skipped"
+    return f"{kind.capitalize()} skipped on {' and '.join(parts)}, {seen[0]:%a %-d %b} to {seen[-1]:%a %-d %b}"
 
 
 def answer_meal(ctx: Ctx, option: str, name: str) -> str:
