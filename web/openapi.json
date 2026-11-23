@@ -27854,6 +27854,17 @@
        }
       ],
       "title": "Until"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start"
      }
     },
     "additionalProperties": false,

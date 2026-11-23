@@ -73,7 +73,10 @@ function Week({ week }: { week: Full }) {
       if (carry[c.item_id] === "Next week" && canWait(c)) failed = !(await edit({ id: c.item_id, release: `${nextMonday}T00:00` })) || failed
     }
     const chosen = pace ?? suggested
-    if (paces && chosen !== paces.now_label) failed = !(await setPaceCmd({ name: chosen, for_days: 7 })) || failed
+    // next week's pace from next week (23 Nov: it started today, so the rest of the week reviewed ran at it), and
+    // always: the same as this week's, it still has to carry on past Sunday
+    const from = nextMonday > today ? nextMonday : today
+    if (paces) failed = !(await setPaceCmd({ name: chosen, for_days: 7, start: from })) || failed
     if (!failed) setFinished(true) // a refusal is said in its toast; the review stays open to try again
   }
   // "26 October – 1 November" across two months, "19–25 October" within one

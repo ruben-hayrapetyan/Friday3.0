@@ -8643,6 +8643,8 @@ export interface components {
             for_days?: number | null;
             /** Until */
             until?: string | null;
+            /** Start */
+            start?: string | null;
         };
         /** PaceOut */
         PaceOut: {

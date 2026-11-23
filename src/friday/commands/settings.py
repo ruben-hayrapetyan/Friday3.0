@@ -126,11 +126,11 @@ def dials_now(ctx: Ctx, periods: list[PacePeriod]) -> Dials:
     return dials_on(ctx.today, periods, ctx.settings["paces"], pace.default, pace.weekly)
 
 
-def end_date(ctx: Ctx, inp: PaceInput) -> date | None:
+def end_date(ctx: Ctx, inp: PaceInput, start: date | None = None) -> date | None:
     if inp.for_days is not None:
         if inp.for_days < 1:
             raise FieldError("for_days", "must be at least 1")
-        return ctx.today + timedelta(days=inp.for_days - 1)
+        return (start or ctx.today) + timedelta(days=inp.for_days - 1)
     if inp.until is not None:
         found = read_date(inp.until.lower().split(), 0, ctx.today)
         if found is None:
@@ -162,26 +162,43 @@ def pace(ctx: Ctx, inp: PaceInput) -> PaceOut:
     except ValueError as error:
         raise FieldError("dials", str(error)) from error
     label = pace_label(dials, paces)
-    until = end_date(ctx, inp)
+    start = start_date(ctx, inp)
+    until = end_date(ctx, inp, start)
     default = ctx.settings["pace"].default
-    after = switch_pace(periods, ctx.today, dials, None if label == "Custom" else label, until, default)
+    after = switch_pace(periods, start, dials, None if label == "Custom" else label, until, default)
     write_periods(ctx, after)
     loosen_next_replan(ctx, ctx.settings["pace"].switch_stability)
     return PaceOut(
         label=label,
         dials=dials.model_dump(),
-        start_date=ctx.today.isoformat(),
+        start_date=start.isoformat(),
         end_date=until.isoformat() if until else None,
-        message=pace_message(label, until, default),
+        message=pace_message(label, until, default, None if start == ctx.today else start),
     )
 
 
-def pace_message(label: str, until: date | None, default: str) -> str:
+def start_date(ctx: Ctx, inp: PaceInput) -> date:
+    """When the pace starts: today, or the day given (the weekly review's next week starts next week, 23 Nov: it set
+    next week's pace from today, so the rest of the week being reviewed ran at it)."""
+    if inp.start is None:
+        return ctx.today
+    try:
+        start = date.fromisoformat(inp.start[:10])
+    except ValueError as error:
+        raise FieldError("start", f"{inp.start!r} isn't a date") from error
+    if start < ctx.today:
+        raise FieldError("start", f"{start:%a %b} {start.day} is before today")
+    return start
+
+
+def pace_message(label: str, until: date | None, default: str, start: date | None = None) -> str:
+    when = f"from {start:%a %b} {start.day}" if start else "from today"
     if label == default:
-        return f"{label} pace from today."
+        return f"{label} pace {when}."
     if until is None:
-        return f"{label} pace from today until you change it."
-    return f"{label} pace, today through {until:%a %b} {until.day}. Then back to {default}."
+        return f"{label} pace {when} until you change it."
+    first = f"{start:%a %b} {start.day}" if start else "today"
+    return f"{label} pace, {first} through {until:%a %b} {until.day}. Then back to {default}."
 
 
 def write_periods(ctx: Ctx, after: list[PacePeriod]) -> None:

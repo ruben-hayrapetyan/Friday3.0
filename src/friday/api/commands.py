@@ -447,6 +447,7 @@ class PaceInput(Model):
     growth: float | None = None
     for_days: int | None = None
     until: str | None = None  # a date or weekday
+    start: str | None = None  # a date; today when left out (the review's next week starts next week, 23 Nov)
 
 
 class PaceOut(Model):
