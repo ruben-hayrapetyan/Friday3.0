@@ -1,6 +1,24 @@
 {
-  "current": "0.6.6",
+  "current": "0.6.7",
   "versions": [
+    {
+      "version": "0.6.7",
+      "released": "2026-11-23",
+      "url": "https://friday-scheduler.com/get/Friday-0.6.7.dmg?via=update",
+      "sha256": "13f021f98414024e65a7ee4fa5df577a90250b420dd9c67ab729e95ac0691163",
+      "bytes": 245497487,
+      "minimum_macos": "14.0",
+      "notes": {
+        "summary": "Friday works as it did in 0.6.5 again: 0.6.6 broke things that worked before, so its changes are taken out until they're fixed.",
+        "new": [],
+        "changed": [
+          "Taken out until they're fixed, as before 0.6.6: renaming a task from its name in the To-do details, the step-by-step Insights → This week, Insights' count of the timed tasks estimates are learned from (learned the night after again), and skipping the replan when a change leaves your plan as it was."
+        ],
+        "fixed": [
+          "What 0.6.6 broke works as it did in 0.6.5."
+        ]
+      }
+    },
     {
       "version": "0.6.6",
       "released": "2026-11-22",
