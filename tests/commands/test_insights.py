@@ -92,15 +92,3 @@ def test_without_early_or_late_work_the_hours_are_8am_to_11pm(app: App) -> None:
     app.at("2026-10-19T12:00").do("log", id=item, start="2026-10-19T09:00", end="2026-10-19T10:00")
     out = app.do("insights", weeks=4)
     assert out["heat_hours"] == list(range(8, 24)) and all(len(row) == 16 for row in out["heat"])
-
-
-# 22 Nov: "31 things finished" over rows made of 14: "it is very unclear where the discrepancy is between the two".
-# Insights says how many of the finished things were timed (the rows are only those).
-def test_it_counts_how_many_finished_things_were_timed(app: App) -> None:
-    timed = app.do("add", title="PS1", preset="Assignment", duration_min=60, due="2026-10-23T17:00")["item"]["id"]
-    app.at("2026-10-19T12:00").do("log", id=timed, start="2026-10-19T09:00", end="2026-10-19T10:00")
-    app.do("done", id=timed)
-    ticked = app.do("add", title="PS2", preset="Assignment", duration_min=60, due="2026-10-23T17:00")["item"]["id"]
-    app.do("done", id=ticked)  # checked off without a time
-    out = app.do("insights", weeks=4)
-    assert (out["done"], out["timed"]) == (2, 1)

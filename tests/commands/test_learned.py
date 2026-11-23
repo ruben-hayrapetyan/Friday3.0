@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from friday.commands.learned import learn_lengths_soon, learn_nightly
+from friday.commands.learned import learn_nightly
 from friday.core.db import connect
 from friday.planner.service import replan
 from friday.planner.snapshot import take_snapshot
@@ -89,12 +89,12 @@ def test_a_reset_forgets_both(app: App) -> None:
 def test_the_learning_query_says_how_many_timed_things_lengths_wait_for(app: App) -> None:
     """Insights' "So far" (27 Oct): lengths are learned from five finished things you timed; done without a time
     teaches nothing."""
-    assert app.do("learning")["progress"]["lengths"] == {"have": 0, "need": 5, "aside": 0}
+    assert app.do("learning")["progress"]["lengths"] == {"have": 0, "need": 5}
     for n in range(3):
         finish(app, f"problem set {n + 1}", 90, n + 1)
     untimed = app.do("add", text="essay #CS ~1h")["item"]["id"]
     app.do("done", id=untimed)
-    assert app.do("learning")["progress"]["lengths"] == {"have": 3, "need": 5, "aside": 0}
+    assert app.do("learning")["progress"]["lengths"] == {"have": 3, "need": 5}
     assert app.do("learning")["progress"]["order"] == {"have": 0, "need": 4}
 
 
@@ -123,51 +123,3 @@ def test_nothing_is_learned_before_friday_knows_your_timezone(tmp_path: Path) ->
 
 def test_using_what_isnt_learned_yet_says_so(app: App) -> None:
     assert app.do("learn_module", module="energy", use=True)["message"] == "Nothing learned yet"
-
-
-# 22 Nov (a user's tester): "Adjust new estimates automatically" with too few finished things changed nothing, and
-# Friday replanned anyway. A change that writes nothing, or only how new items are estimated, asks for no new plan.
-def test_the_switch_with_nothing_learned_doesnt_replan(app: App) -> None:
-    out = app.full("learn_module", payload={"module": "durations", "use": True}, provisional=False)
-    assert out.result["message"] == "Nothing learned yet"
-    assert out.generation is None and out._placing is None
-
-
-def test_learned_lengths_change_new_items_only_so_no_replan(app: App) -> None:
-    for n in range(8):
-        finish(app, f"problem set {n + 1}", 180, n + 1)
-    app.at("2026-10-12T09:00")
-    learn_nightly(app.conn, app.now_utc)
-    out = app.full("learn_module", payload={"module": "durations", "use": True}, provisional=False)
-    assert out.result["message"] == "Using learned durations" and out.generation is None
-    assert kv_get(app.conn, "learned_durations")["approved"]  # still kept: new items use them
-
-
-def test_learned_hours_do_replan(app: App) -> None:
-    kv_set(app.conn, "learned_energy", {"prices": [[0.0] * 48 for _ in range(7)], "observations": 1})
-    out = app.full("learn_module", payload={"module": "energy", "use": True}, provisional=False)
-    assert out.generation is not None and out._placing is not None
-
-
-# 22 Nov: a tester with 14 timed things was told Friday needed a few more. The count read every timed thing, the
-# learner only those on usual-pace days (not a break, not another pace), and it learned only overnight.
-def test_the_count_is_what_the_learner_learns_from(app: App) -> None:
-    app.do("pace", name="Easy", for_days=14)
-    for n in range(8):
-        finish(app, f"problem set {n + 1}", 400, n + 1)
-    app.at("2026-10-12T09:00")
-    assert app.do("learning")["progress"]["lengths"] == {"have": 0, "need": 5, "aside": 8}
-    learn_nightly(app.conn, app.now_utc)
-    assert kv_get(app.conn, "learned_durations") is None  # what it said: nothing to learn from
-
-
-def test_enough_timed_is_learned_at_once_not_overnight(app: App) -> None:
-    for n in range(4):
-        finish(app, f"problem set {n + 1}", 180, n + 1)
-    learn_lengths_soon(app.conn, app.now_utc)
-    assert kv_get(app.conn, "learned_durations") is None  # four: not yet
-    finish(app, "problem set 5", 180, 5)
-    assert app.do("learning")["progress"]["lengths"] == {"have": 5, "need": 5, "aside": 0}
-    learn_lengths_soon(app.conn, app.now_utc)
-    assert kv_get(app.conn, "learned_durations")["model"]["n"] == 5
-    assert app.do("learning")["durations"]["n"] == 5 and not app.do("learning")["durations"]["in_use"]  # still asks

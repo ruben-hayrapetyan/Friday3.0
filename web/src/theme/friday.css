@@ -667,7 +667,7 @@ kbd.fr-kbd {
   align-items: center;
   gap: 0 6px;
   min-width: 0;
-  height: 22px;
+  min-height: 22px;
   padding: 3px 8px;
   font-size: 12px;
   line-height: 16px;
@@ -675,53 +675,22 @@ kbd.fr-kbd {
   text-align: left;
   background: color-mix(in srgb, var(--fr-break) 16%, transparent);
   border-left: 3px solid var(--fr-break);
-  overflow: hidden; /* a note with no room for all of it wraps out of sight (below) */
+  overflow-wrap: anywhere; /* a long name wraps, never cut (UI-PRINCIPLES) */
   cursor: pointer;
 }
 .fr-break-band .ph {
   color: var(--fr-break);
 }
-/* One line, whatever the room (22 Nov: the week with the To-do list open wrapped it over five lines, and the hours
-   started a third of the way down). The note is whole or not there: without room for all of it, it wraps onto a
-   second line the band doesn't show (no word cut, UI-PRINCIPLES); a name longer than the band ends in an ellipsis, as
-   the all-day events beside it do. The whole of both is in the band's title and its popup. */
-.fr-break-band-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 1 auto; /* first on the line, so never wrapped away: it shrinks instead */
-  min-width: 0;
-}
-.fr-break-band-head > span {
-  flex: none;
-}
-.fr-break-band-head > .fr-break-band-name {
-  flex: 0 1 auto;
-}
-.fr-break-band-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-}
 .fr-break-band-note {
-  flex: none;
-  white-space: nowrap;
   color: var(--color-neutral-400);
+  min-width: 0;
 }
 .fr-break-band:hover,
 .fr-break-line:hover {
   background: color-mix(in srgb, var(--fr-break) 24%, transparent);
 }
-/* Laid right to left so the count comes first and always shows; the words are whole on the line or wrap onto a second
-   one it doesn't show (22 Nov: "2 thin… 0/2" in a narrow column; no word cut, UI-PRINCIPLES). */
 .fr-break-line {
   display: flex;
-  flex-direction: row-reverse;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  overflow: hidden;
   align-items: center;
   gap: 6px;
   min-width: 0;
@@ -732,22 +701,6 @@ kbd.fr-kbd {
   border-radius: 4px;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fr-break) 45%, transparent);
   cursor: pointer;
-}
-.fr-break-line > span {
-  line-height: 22px;
-}
-.fr-break-line-count {
-  flex: none;
-}
-.fr-break-line-words {
-  flex: 0 0 auto;
-  margin-right: auto; /* at the line's left, the bar between */
-  white-space: nowrap;
-}
-.fr-break-line[data-quiet] .fr-break-line-words {
-  white-space: normal; /* alone on its line: whole words, a second line out of sight */
-  flex: 1 1 auto;
-  min-width: 0;
 }
 .fr-break-line[data-quiet] {
   color: var(--color-neutral-400);

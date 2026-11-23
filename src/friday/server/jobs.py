@@ -12,8 +12,6 @@ after downtime. `job_runs` remembers when each job last ran.
 - `publish` (every minute): put a changed plan on the "Friday" Google calendar, debounced (`commands/google.py`).
 - `meals` (every minute, acting once a day): what's learned of the meals your rules leave to Friday, applied
   (`commands/eating.decide`).
-- `lengths` (every minute, acting once): lengths learned as soon as there are enough timed finished things, not the
-  night after (`commands/learned.learn_lengths_soon`); nightly refits them from then on.
 - `updates` (every minute, acting at launch and once a day): a downloaded Friday looks for a newer version
   (`commands/updates.py`).
 """
@@ -31,7 +29,7 @@ from friday.commands.eating import decide
 from friday.commands.eventwrites import failed_writes, write_events
 from friday.commands.fetching import failing_sources, sync
 from friday.commands.google import publish_plan
-from friday.commands.learned import learn_lengths_soon, learn_nightly
+from friday.commands.learned import learn_nightly
 from friday.commands.pointless import archive_pointless
 from friday.commands.rating import rate_upcoming
 from friday.commands.refit import prepare_questions
@@ -110,7 +108,6 @@ def run_due(
         ("event_writes", every_minute, send_event_writes),
         ("ratings", every_minute, rate_events),
         ("meals", every_minute, decide_meals),
-        ("lengths", every_minute, learn_lengths),
         ("pointless", every_minute, archive_pointless_work),
         ("updates", every_minute, look_for_updates),
     )
@@ -326,19 +323,6 @@ def rate_events(
 ) -> None:
     """How much each new event needs attending, for triage's skips."""
     rate_upcoming(conn, now_utc, user_id, SAMPLE_APIS.get("client"))
-
-
-def learn_lengths(
-    conn: sqlite3.Connection,
-    now_utc: int,
-    settings: dict[str, Any],
-    hub: Hub,
-    supervisor: Supervisor | None,
-    backups: Path,
-    user_id: int,
-) -> None:
-    if learn_lengths_soon(conn, now_utc, user_id):
-        hub.publish("items.changed")  # Insights' "So far" and the switch read it again
 
 
 def decide_meals(

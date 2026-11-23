@@ -28,40 +28,6 @@ const FIRMNESS = [
   { value: "none", label: "None" },
 ]
 
-/** The task's name, big: click it to rename it, Enter or clicking away saves, Escape leaves it as it was (22 Nov: "edit
- * the name of a task in the to-do sidebar when I click the big title"). */
-function BigTitle({ title, onRename }: { title: string; onRename: (title: string) => void }) {
-  const [naming, setNaming] = useState(false)
-  const [text, setText] = useState(title)
-  const big = { fontSize: 30, lineHeight: 1 } as const
-  const rename = () => {
-    const name = text.trim()
-    if (name && name !== title) onRename(name)
-    setNaming(false)
-  }
-  if (naming)
-    return (
-      <input
-        autoFocus
-        className="fr-h"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={rename}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.preventDefault(), rename())
-          if (e.key === "Escape") (e.preventDefault(), e.stopPropagation(), setText(title), setNaming(false))
-        }}
-        aria-label="Title"
-        style={{ ...big, lineHeight: 1.15, width: "100%", minWidth: 0, color: "var(--color-text)", background: "transparent", border: 0, outline: 0, boxShadow: "inset 0 -2px 0 var(--color-accent)", padding: 0 }}
-      />
-    )
-  return (
-    <button className="fr-plain fr-h fr-hover-text" onClick={() => (setText(title), setNaming(true))} title="Click to rename" style={{ ...big, textAlign: "left", overflowWrap: "anywhere", padding: 0 }}>
-      {title}
-    </button>
-  )
-}
-
 /** This Mac's clock, "HH:MM". */
 const clockNow = () => new Date().toTimeString().slice(0, 5)
 
@@ -127,7 +93,9 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
             <span style={{ width: 10, height: 10, borderRadius: 3, background: color(item.area, item.preset) }} />
             {item.area ?? "No tag"}
           </span>
-          <BigTitle title={item.title} onRename={(title) => edit({ id, title })} />
+          <span className="fr-h" style={{ fontSize: 30, lineHeight: 1 }}>
+            {item.title}
+          </span>
           <StepOf item={item} />
         </div>
         <button className="btn btn-icon btn-ghost" onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, color: "var(--color-neutral-400)" }}>

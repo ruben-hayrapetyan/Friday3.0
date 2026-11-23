@@ -211,25 +211,5 @@
     if (hint - room > SLACK) report("a box's hint cut off", el, `${Math.round(hint - room)}px`, ` ("${el.placeholder}")`)
   }
   ruler.remove()
-  // 7. what the calendar keeps to one line taller than one (22 Nov, the user's screenshot: the week with a break and the
-  // To-do list open, the break's band wrapped its name and "Light · about 3h a day" over five lines, and the hours
-  // started a third of the way down)
-  for (const el of document.querySelectorAll("[data-one-line]")) {
-    if (!shown(el)) continue
-    const s = getComputedStyle(el)
-    const line = parseFloat(s.lineHeight) || parseFloat(s.fontSize) * 1.3
-    const inside = el.getBoundingClientRect().height - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom)
-    if (inside > line * 1.5) report("kept to one line, but wraps", el, `${Math.round(inside / line)} lines`)
-  }
-  // 8. words cut by an ellipsis where they must show whole or not at all (22 Nov: a break day's line read "2 thin…
-  // 0/2" in a narrow column)
-  for (const box of document.querySelectorAll("[data-whole-words]")) {
-    if (!shown(box)) continue
-    for (const el of [box, ...box.querySelectorAll("*")]) {
-      if (getComputedStyle(el).textOverflow === "ellipsis" && el.scrollWidth > el.clientWidth + 1) {
-        report("words cut by an ellipsis", el, `${el.scrollWidth - el.clientWidth}px`)
-      }
-    }
-  }
   return findings
 })()

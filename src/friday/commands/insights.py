@@ -46,7 +46,6 @@ def insights(ctx: Ctx, inp: InsightsInput) -> InsightsOut:
     return InsightsOut(
         weeks=inp.weeks,
         done=len(done),
-        timed=len(timed),
         hours=round(sum(r["actual_minutes"] for r in timed) / 60, 1),
         estimate_ratio=round(statistics.median(all_ratios), 2) if all_ratios else None,
         by_kind=[accuracy(kind, xs) for kind, xs in sorted(ratios.items(), key=lambda kv: -len(kv[1]))],

@@ -1,8 +1,6 @@
 // A break on the calendar (18 Nov): a band with its name across its days, and under it one line a day saying what's
 // left on that day's list, which opens it. The line never grows with the list, so the calendar keeps its height ("the
-// longest task list dictates how few of the calendar is seen"). The band is one line too (22 Nov, the user's
-// screenshot: the week with the To-do list open wrapped it over five lines): its note shows whole or not at all, and a
-// name longer than the band ends in an ellipsis, as the all-day events beside it do.
+// longest task list dictates how few of the calendar is seen").
 
 import type { Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
@@ -58,7 +56,6 @@ export function BreakRow({ days, dates }: { days: Day[]; dates: string[] }) {
           <button
             key={`band${vacation.id}`}
             className="fr-plain fr-break-band"
-            data-one-line
             onClick={() => setBreakEdit({ id: vacation.id })}
             title={`${vacation.name}, ${rangeWords(span.first, span.last)}: click to change it`}
             style={{
@@ -69,13 +66,11 @@ export function BreakRow({ days, dates }: { days: Day[]; dates: string[] }) {
               borderRadius: `${clippedStart ? 0 : 4}px ${clippedEnd ? 0 : 4}px ${clippedEnd ? 0 : 4}px ${clippedStart ? 0 : 4}px`,
             }}
           >
-            <span className="fr-break-band-head">
-              {clippedStart && <span aria-hidden>‹</span>}
-              <Icon name={BREAK_ICON} size={12} style={{ flex: "none" }} />
-              <span className="fr-break-band-name">{vacation.name}</span>
-              {clippedEnd && <span aria-hidden>›</span>}
-            </span>
+            {clippedStart && <span aria-hidden>‹ </span>}
+            <Icon name={BREAK_ICON} size={12} style={{ flex: "none" }} />
+            <span style={{ fontWeight: 600 }}>{vacation.name}</span>
             <span className="fr-break-band-note">{vacation.mode === "off" ? "Off" : `Light · about ${dur(vacation.work_min)} a day`}</span>
+            {clippedEnd && <span aria-hidden> ›</span>}
           </button>
         )
       })}
@@ -90,27 +85,23 @@ export function BreakRow({ days, dates }: { days: Day[]; dates: string[] }) {
           <button
             key={`line${date}`}
             className="fr-plain fr-break-line"
-            data-whole-words
             aria-pressed={breakDay === date}
             data-quiet={quiet || undefined}
-            aria-label={quiet ? words : `${words}, ${ticked} of ${v.things} done`}
             onClick={() => setBreakDay(breakDay === date ? null : date)}
             title={quiet ? `${words}: open the day` : `${words}, ${ticked} of ${things(v.things ?? 0)} done: open the day's list`}
             style={{ gridColumn: n + 1, gridRow: 2, margin: "0 6px" }}
           >
-            {/* the count first, laid right to left: it always shows; the words show whole or wrap out of sight
-                (22 Nov: "2 thin… 0/2" in a narrow column) */}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{words}</span>
             {!quiet && (
               <>
-                <span className="tnum fr-break-line-count">
-                  {ticked}/{v.things}
-                </span>
                 <span className="fr-break-bar" aria-hidden>
                   <span style={{ width: `${Math.round(share * 100)}%` }} />
                 </span>
+                <span className="tnum" style={{ flex: "none" }}>
+                  {ticked}/{v.things}
+                </span>
               </>
             )}
-            <span className="fr-break-line-words">{words}</span>
           </button>
         )
       })}

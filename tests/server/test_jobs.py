@@ -60,7 +60,6 @@ def test_nightly_closes_yesterday_backs_up_and_asks_for_a_cold_replan(app: App, 
         "event_writes",
         "ratings",
         "meals",
-        "lengths",
         "pointless",
         "updates",
     ]
@@ -106,7 +105,6 @@ def test_tick_replans_when_a_block_boundary_passed_and_not_for_a_timer(app: App,
             "event_writes",
             "ratings",
             "meals",
-            "lengths",
             "pointless",
             "updates",
         ]  # fmt: skip
@@ -220,18 +218,3 @@ def test_the_loop_wakes_when_a_read_is_asked_for_and_still_stops_at_once(tmp_pat
     began = time.monotonic()
     loop.rest()
     assert time.monotonic() - began < 0.2, "waited to let a command commit while stopping"
-
-
-# 22 Nov: lengths were learned only overnight, so a tester past the five timed things was still told to time more.
-def test_lengths_are_learned_within_the_minute_once_there_are_enough(app: App, tmp_path: Path) -> None:
-    from friday.planner.store import kv_get
-
-    replan(app.conn, app.now_utc)
-    app.conn.execute("INSERT INTO job_runs (name, last_run_utc) VALUES ('nightly', '2026-10-19T13:00Z')")
-    for n in range(5):
-        item = app.do("add", text=f"problem set {n + 1} ~1h")["item"]["id"]
-        app.do("log", id=item, start=f"2026-10-1{n}T10:00", end=f"2026-10-1{n}T13:00")
-        app.do("done", id=item)
-    assert kv_get(app.conn, "learned_durations") is None
-    assert "lengths" in run_jobs(app, Worker(), tmp_path)
-    assert kv_get(app.conn, "learned_durations")["model"]["n"] == 5

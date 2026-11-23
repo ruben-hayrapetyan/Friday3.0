@@ -6458,11 +6458,6 @@ export interface components {
             weeks: number;
             /** Done */
             done: number;
-            /**
-             * Timed
-             * @default 0
-             */
-            timed?: number;
             /** Hours */
             hours: number;
             /** Estimate Ratio */

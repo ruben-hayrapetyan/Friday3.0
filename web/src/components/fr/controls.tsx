@@ -195,9 +195,9 @@ export function Box({ on }: { on: boolean }) {
 }
 
 /** A heading in the design's display face. */
-export function H({ size, children, style, id }: { size: number; children: ReactNode; style?: CSSProperties; id?: string }) {
+export function H({ size, children, style }: { size: number; children: ReactNode; style?: CSSProperties }) {
   return (
-    <span id={id} className="fr-h" style={{ fontSize: size, lineHeight: size >= 26 ? 1 : 1.2, ...style }}>
+    <span className="fr-h" style={{ fontSize: size, lineHeight: size >= 26 ? 1 : 1.2, ...style }}>
       {children}
     </span>
   )

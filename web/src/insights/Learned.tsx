@@ -11,7 +11,6 @@ import { useMeals, useSleep } from "@/hooks/queries"
 import { useAsks } from "@/inbox/asks"
 import { dur } from "@/lib/format"
 import { clockTime } from "@/lib/time"
-import { soFarWords } from "./lengthsWords"
 
 const many = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`
 
@@ -55,7 +54,7 @@ function SoFar({ learning }: { learning?: Schemas["LearningOut"] }) {
       ...(durations ? {} : { have: progress.lengths?.have ?? 0, need: progress.lengths?.need ?? 5 }),
       text: durations
         ? `${durations.in_use ? "In use" : "Learned"} from ${many(durations.n, "finished thing")} you timed`
-        : soFarWords(progress.lengths ?? {}),
+        : `${progress.lengths?.have ?? 0} of ${progress.lengths?.need ?? 5} finished things timed. Use Start on a task to time it.`,
     },
     {
       icon: "sort-ascending",

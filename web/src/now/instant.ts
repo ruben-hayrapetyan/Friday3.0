@@ -6,7 +6,7 @@
 import type { QueryClient } from "@tanstack/react-query"
 import type { Schemas } from "@/api/client"
 import { nowMin } from "@/hooks/useClock"
-import { fromMin, toMin } from "@/lib/time"
+import { fromMin } from "@/lib/time"
 
 type Status = Schemas["StatusOut"]
 type Now = Schemas["NowOut"]
@@ -19,47 +19,12 @@ type Timer = Schemas["TimerOut"]
 export function timerStarted(client: QueryClient, input: { id?: number; alongside?: boolean } | null): void {
   const id = input?.id
   if (typeof id !== "number") return
-  const it = known(client, id)
-  client.setQueryData<Status>(["status"], (s) => s && started(s, id, !!input?.alongside, it?.title ?? null))
-  // The bar's main row is the Now query's current: the started one, not what was planned, before the server answers
-  // (22 Nov: Resume on "Math read 17.5" showed Math 1920 HW 11, planned then, for the seconds a busy Mac took).
-  client.setQueryData<Now>(["now"], (n) => {
-    if (!n) return n
-    if (n.current?.item_id === id || !it) return { ...n, current_source: "timer" }
-    // until its own block ends when one is on now, else until what's left of it runs out, as the server says
-    const nowAt = nowMin()
-    const own = it.blocks.find((b) => toMin(b.start) <= nowAt + 15 && toMin(b.end) > nowAt)
-    const end = own ? own.end : fromMin(nowAt + Math.max(15, it.left ?? 60))
-    const current = { key: `T${id}@${fromMin(nowAt)}`, item_id: id, title: it.title, area: it.area, preset: it.preset, start: fromMin(nowAt), end, fixed: false }
-    return { ...n, current, current_source: "timer" }
-  })
+  client.setQueryData<Status>(["status"], (s) => s && started(s, id, !!input?.alongside))
+  client.setQueryData<Now>(["now"], (n) => n && { ...n, current_source: "timer" })
 }
 
-type Known = { title: string; area: string | null; preset: string | null; left: number | null; blocks: { start: string; end: string }[] }
-
-/** What the page already has of an item: its detail, its blocks on the plan, a row of it in a list. */
-export function known(client: QueryClient, id: number): Known | null {
-  let found: Known | null = null
-  const take = (x: Record<string, unknown>) => {
-    if (typeof x.title !== "string") return
-    found ??= { title: x.title, area: (x.area as string | null) ?? null, preset: (x.preset as string | null) ?? null, left: null, blocks: [] }
-    const left = (x.remaining_min ?? x.duration_min) as number | null | undefined
-    if (found.left === null && typeof left === "number") found.left = left
-    if (x.item_id === id && typeof x.start === "string" && typeof x.end === "string") found.blocks.push({ start: x.start, end: x.end })
-  }
-  const detail = client.getQueryData<{ item?: Record<string, unknown> }>(["item", id])?.item
-  if (detail) take(detail)
-  const matches = (x: unknown): x is Record<string, unknown> =>
-    !!x && typeof x === "object" && ((x as { item_id?: unknown }).item_id === id || ((x as { id?: unknown }).id === id && "status" in x))
-  for (const [, data] of client.getQueriesData<unknown>({ predicate: (q) => ["plan", "items", "now", "calendar"].includes(String(q.queryKey[0])) })) {
-    const lists = Array.isArray(data) ? [data] : data && typeof data === "object" ? Object.values(data as object).filter(Array.isArray) : []
-    for (const list of lists) for (const x of list as unknown[]) if (matches(x)) take(x)
-  }
-  return found
-}
-
-export function started(s: Status, id: number, alongside: boolean, title: string | null = null): Status {
-  const timer: Timer = { item_id: id, title, started: fromMin(nowMin()), minutes: 0, elapsed_s: 0 }
+export function started(s: Status, id: number, alongside: boolean): Status {
+  const timer: Timer = { item_id: id, title: null, started: fromMin(nowMin()), minutes: 0, elapsed_s: 0 }
   const others = [...(s.alongside ?? []), ...(s.timer ? [s.timer] : [])].filter((t) => t.item_id !== id)
   return { ...s, timer, alongside: alongside ? others : [] }
 }

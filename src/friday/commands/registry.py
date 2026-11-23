@@ -54,8 +54,6 @@ class Ctx:
     memo: dict[str, Any] = field(default_factory=dict)  # what one request reads once and many item views share
     # The server solves in its worker process: replan(reason) -> plan id. Without one, replan solves in-process.
     solver: Callable[[str], int | None] | None = None
-    # A change that can't move anything planned says so (learned lengths are for new items only): no replan for it.
-    plan_unchanged: bool = False
 
     @property
     def tz(self) -> str:
@@ -280,13 +278,10 @@ def run_in_transaction(
         before = read_snapshot(conn, now_utc, user_id) if preview == "full" else None  # what it's compared with
         command_id = log_start(conn, spec, inp, now_utc, actor, user_id, None if preview else idempotency_key)
         ctx = Ctx(conn, Writer(conn, user_id), now_utc, actor, user_id, settings, command_id)
-        written = conn.total_changes
         result = dump(spec.fn(ctx, inp))
         made = None
         placing = None
-        # Only a change that wrote something can change the plan (22 Nov: "Adjust new estimates automatically" with
-        # nothing learned yet wrote nothing, and Friday replanned anyway).
-        if spec.affects_plan and not ctx.plan_unchanged and conn.total_changes > written:
+        if spec.affects_plan:
             bump_generation(conn, user_id)
             made = generation(conn, user_id)
             placing = (made, changed_items(ctx.db.changes), moved_from(ctx, inp))

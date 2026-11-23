@@ -2,8 +2,8 @@
 // adjusts estimates for you), when you get things done, what Friday learned for you to approve (sleep and meals
 // too), one comparison question, and the load ahead against what you can do. Sleep and Meals are tabs here, with
 // their timelines, their switches and the nights and meals to log or put right (8 Nov: one cohesive page, where they
-// had a page of their own). This week, the week's look back, moved here from Review (27 Oct); Insights opens on it on the
-// week's last day, which it says inside (22 Nov: a "suggested" tag on the tab was "super vague"). The tab is in the address (`?tab=sleep`), so a link can open one.
+// had a page of their own). This week, the week's look back, moved here from Review (27 Oct); it's suggested on the
+// week's last day. The tab is in the address (`?tab=sleep`), so a link can open one.
 
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
@@ -24,7 +24,6 @@ import { addDays, shortHour } from "@/lib/time"
 import { dockRoom } from "@/now/dockRoom"
 import { LightenDialog } from "@/dialogs/Dialogs"
 import { overSentence, weekLabel } from "@/lib/load"
-import { switchWords } from "./lengthsWords"
 
 export { Section }
 
@@ -52,12 +51,21 @@ export function InsightsPage() {
   const setTab = (next: Tab) => setParams({ tab: next }, { replace: true })
   const [weeks, setWeeks] = useState(4)
   const data = useQuery({ queryKey: ["insights", weeks], queryFn: () => query("insights", { weeks }) }).data
+  const suggested: Tab | null = lastDay ? "week" : null
   return (
     <>
       <div className="fr-page-head">
         <span className="fr-h fr-title">Insights</span>
         <Seg
-          options={TABS.map((t) => ({ value: t.value, label: t.label }))}
+          options={TABS.map((t) => ({
+            value: t.value,
+            label: (
+              <>
+                {t.label}
+                {t.value === suggested && <span style={{ fontSize: 11, color: "var(--color-accent-300)" }}>suggested</span>}
+              </>
+            ),
+          }))}
           value={tab}
           onPick={setTab}
           label="Insights"
@@ -81,7 +89,7 @@ export function InsightsPage() {
               <Big big={`${data.hours} h`} line="of work recorded" />
               <Big big={data.estimate_ratio ? `${data.estimate_ratio}×` : "—"} line={data.estimate_ratio ? "how long things take against the estimate" : "Finish a few things to compare with estimates"} />
             </div>
-            <Section title="How long things really take" note={`Actual time against the estimate, by kind. ${data.timed ?? 0} of ${data.done} finished ${data.done === 1 ? "thing was" : "things were"} timed; the rest were checked off without a time.`}>
+            <Section title="How long things really take" note="Actual time compared with the estimate, by kind">
               <Accuracy kinds={data.by_kind} />
             </Section>
             <Section title="When you get things done" note={`Time worked in each hour, the last ${data.weeks} weeks together`} right={<Legend />}>
@@ -157,7 +165,7 @@ function Accuracy({ kinds }: { kinds: { kind: string; n: number; median: number;
         <Switch on={!!durations?.in_use} onToggle={() => use({ module: "durations", use: !durations?.in_use })} label="Adjust estimates" />
         <span style={{ display: "flex", flexDirection: "column" }}>
           <span>Adjust new estimates automatically</span>
-          <span className="fr-kicker">{durations ? `Learned from ${durations.n} finished things.` : switchWords(learning?.progress?.lengths ?? {})}</span>
+          <span className="fr-kicker">{durations ? `Learned from ${durations.n} finished things.` : "Friday needs a few more finished things before it can."}</span>
         </span>
       </div>
     </>

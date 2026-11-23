@@ -8,7 +8,7 @@
 // edit it (E) or reject it (R).
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { query, type Schemas } from "@/api/client"
 import { Chip, H, Icon, Menu } from "@/components/fr/controls"
 import { DateTimeInput } from "@/components/fr/TimeInput"
@@ -27,7 +27,6 @@ import { GapPane, SleepPane } from "./DayPanes"
 import { DecisionPane } from "./Decisions"
 import { type Message, nextAfter, rowOf, shownFields, waitingCount } from "./messages"
 import { Actions, After, Pane } from "./Pane"
-import { type Answer, answer, forgetTaken, unanswer, useAnswers } from "./answers"
 import { useDuplicates, useInbox, useInboxMessages, useToReview } from "./queries"
 import { SourceText } from "./SourceText"
 import { AgainPane, CopiesPane } from "./TaskPanes"
@@ -37,7 +36,11 @@ import { dockRoom } from "@/now/dockRoom"
 export { useInbox } from "./queries"
 
 type Suggestion = Schemas["SuggestionOut"]
-type Resolved = Answer
+interface Resolved {
+  s: Suggestion
+  accepted: boolean
+  commandId: number | null
+}
 type Done = (sent?: Promise<unknown>) => void
 
 // Not while you type, nor while a dialog is open over the Inbox (audit, 8 Nov: "r" behind the update dialog rejected
@@ -46,15 +49,10 @@ const typing = (e: KeyboardEvent) =>
   (e.target instanceof HTMLElement && !!e.target.closest("input, textarea, select, [contenteditable]")) || !!document.querySelector('[aria-modal="true"]')
 
 export function InboxPage() {
-  const resolved = useAnswers() // kept outside the page: answered stays answered while Friday saves it (answers.ts)
+  const [resolved, setResolved] = useState<Resolved[]>([])
   const answered = useMemo(() => resolved.map((r) => r.s), [resolved])
   const messages = useInboxMessages(answered)
   const inbox = useInbox().data
-  const firstInbox = useRef(inbox)
-  // a new visit: what the server has taken since is let go; what it still lists, or is saving, stays answered
-  useEffect(() => {
-    if (firstInbox.current) forgetTaken(new Set(firstInbox.current.suggestions.map((x: Suggestion) => x.id)))
-  }, [])
   const copies = useDuplicates().data
   const going = useToReview().data
   const goOver = useCommand("review_again", { label: (o) => o.result.message ?? "Ready" })
@@ -98,7 +96,7 @@ export function InboxPage() {
   const resolve = (rs: Resolved[], advance = true) => {
     const without = new Set([...gone, ...rs.map((r) => `s:${r.s.id}`)])
     if (current && advance) setSelected(nextAfter(list, current.key, without))
-    answer(rs)
+    setResolved((all) => [...all.filter((r) => !rs.some((x) => x.s.id === r.s.id)), ...rs])
   }
   const open = (key: string) => (setSelected(key), setReading(true))
   const pane = (m: Message) => {
@@ -119,7 +117,7 @@ export function InboxPage() {
             waiting={waiting}
             resolved={resolved.find((r) => r.s.id === m.s.id) ?? null}
             onResolved={resolve}
-            onReopen={() => unanswer(m.s.id)}
+            onReopen={() => setResolved((all) => all.filter((r) => r.s.id !== m.s.id))}
           />
         )
       }
