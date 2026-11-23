@@ -39,6 +39,8 @@ describe("Insights → Trends", () => {
     expect(screen.getAllByText(/^(\d+(\.\d+)?× as (long|quick)|On estimate) \(\d+\)$/).length).toBeGreaterThan(0)
     expect(screen.getByText("Quicker")).toBeTruthy()
     expect(screen.getByText("Longer")).toBeTruthy()
+    // 22 Nov: "31 things finished" over rows of 14 was "very unclear": how many were timed, said with the rows
+    expect(screen.getByText(/^Actual time against the estimate, by kind\. \d+ of \d+ finished things were timed; the rest were checked off without a time\.$/)).toBeTruthy()
   })
 
   it("turns on adjusting new estimates from what it learned", async () => {

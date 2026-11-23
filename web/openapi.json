@@ -21335,6 +21335,11 @@
       "type": "integer",
       "title": "Done"
      },
+     "timed": {
+      "type": "integer",
+      "title": "Timed",
+      "default": 0
+     },
      "hours": {
       "type": "number",
       "title": "Hours"

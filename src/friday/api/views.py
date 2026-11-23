@@ -199,6 +199,7 @@ class KindAccuracy(Model):
 class InsightsOut(Model):
     weeks: int
     done: int
+    timed: int = 0  # of `done`, those with a time you gave (timer, review, log): the only ones `by_kind` compares
     hours: float
     estimate_ratio: float | None
     by_kind: list[KindAccuracy]

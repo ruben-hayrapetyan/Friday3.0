@@ -81,7 +81,7 @@ export function InsightsPage() {
               <Big big={`${data.hours} h`} line="of work recorded" />
               <Big big={data.estimate_ratio ? `${data.estimate_ratio}×` : "—"} line={data.estimate_ratio ? "how long things take against the estimate" : "Finish a few things to compare with estimates"} />
             </div>
-            <Section title="How long things really take" note="Actual time compared with the estimate, by kind">
+            <Section title="How long things really take" note={`Actual time against the estimate, by kind. ${data.timed ?? 0} of ${data.done} finished ${data.done === 1 ? "thing was" : "things were"} timed; the rest were checked off without a time.`}>
               <Accuracy kinds={data.by_kind} />
             </Section>
             <Section title="When you get things done" note={`Time worked in each hour, the last ${data.weeks} weeks together`} right={<Legend />}>
