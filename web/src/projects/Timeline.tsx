@@ -82,7 +82,7 @@ export function Timeline({ p, steps, tone }: { p: Project; steps: Item[]; tone: 
             {due && <Due at={x(due)} text={`Due ${weekday(due)} ${Number(due.slice(8, 10))}, ${clock(due)}`} />}
             {showNow && <span title={`Now, ${clock(nowAt)}`} style={{ position: "absolute", zIndex: 2, top: HEAD - 16, bottom: 0, left: `${x(nowAt)}%`, width: 2, marginLeft: -1, borderRadius: 1, background: "var(--fr-now)" }} />}
             {lanes.map(({ s, bs }, i) => (
-              <Lane key={s.id} top={HEAD + i * LANE} title={s.title} bs={bs} x={x} skin={skinOf(s.status === "done" ? "done" : "planned", p.item.area, undefined, p.item.preset)} done={s.status === "done"} later={!!p.step_finish?.[String(s.id)]} today={today} />
+              <Lane key={s.id} top={HEAD + i * LANE} title={s.title} bs={bs} x={x} skin={skinOf(s.status === "done" ? "done" : "planned", p.item.area, undefined, p.item.preset)} done={s.status === "done"} later={!!p.step_finish?.[String(s.id)]} why={p.step_note?.[String(s.id)] ?? null} today={today} />
             ))}
           </div>
         </div>
@@ -123,12 +123,12 @@ function Due({ at, text }: { at: number; text: string }) {
 
 /** One step's sessions, each a bar from its start to its end (never thinner than 6px), the pigment on its spine
  * and a wash of it, as the calendar paints blocks; beside them, when it's planned. */
-function Lane({ top, title, bs, x, skin, done, later, today }: { top: number; title: string; bs: Block[]; x: (t: string) => number; skin: { bg: string; stripe: string; sub: string }; done: boolean; later: boolean; today: string }) {
+function Lane({ top, title, bs, x, skin, done, later, why, today }: { top: number; title: string; bs: Block[]; x: (t: string) => number; skin: { bg: string; stripe: string; sub: string }; done: boolean; later: boolean; why: string | null; today: string }) {
   const quiet = { position: "absolute", top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, whiteSpace: "nowrap", color: "var(--color-neutral-500)" } as const
   if (!bs.length) {
     return (
       <div style={{ position: "absolute", left: 0, right: 0, top, height: LANE }}>
-        <span style={{ ...quiet, left: 10, fontStyle: "italic", opacity: 0.7 }}>{done ? "done" : later ? "planned nearer the time" : "no room before its due"}</span>
+        <span style={{ ...quiet, left: 10, fontStyle: "italic", opacity: 0.7 }}>{done ? "done" : later ? "planned nearer the time" : why ? why.charAt(0).toLowerCase() + why.slice(1) : "not planned yet"}</span>
       </div>
     )
   }

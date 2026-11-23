@@ -132,7 +132,7 @@ export function ProjectDetail({ p, all, onPick, top, after }: { p: Project; all:
         {steps.map((s, i) => (
           <div key={s.id} style={{ display: "contents" }}>
             {i > 0 && <Then step={s} above={steps[i - 1]} project={p} />}
-            <Step step={s} linked={i > 0} first={i === 0} last={i === steps.length - 1} next={blocks.find((b) => b.item_id === s.id)?.start ?? null} later={p.step_finish?.[String(s.id)] ?? null} waitsFor={steps.find((x) => x.id === p.waits_for?.[String(s.id)])?.title ?? null} onMove={(by) => move(i, by)} />
+            <Step step={s} linked={i > 0} first={i === 0} last={i === steps.length - 1} next={blocks.find((b) => b.item_id === s.id)?.start ?? null} later={p.step_finish?.[String(s.id)] ?? null} note={p.step_note?.[String(s.id)] ?? null} onMove={(by) => move(i, by)} />
           </div>
         ))}
         <div className="fr-row" style={{ display: "flex", gap: 8, alignItems: "center", padding: "10px 0" }}>
@@ -187,7 +187,7 @@ function Then({ step, above, project }: { step: Item; above: Item; project: Proj
   )
 }
 
-function Step({ step, linked, first, last, next, later, waitsFor, onMove }: { step: Item; linked?: boolean; first: boolean; last: boolean; next: string | null; later: string | null; waitsFor: string | null; onMove: (by: number) => void }) {
+function Step({ step, linked, first, last, next, later, note, onMove }: { step: Item; linked?: boolean; first: boolean; last: boolean; next: string | null; later: string | null; note: string | null; onMove: (by: number) => void }) {
   const { today, layout } = useShell()
   const plannedWhen = usePlannedWhen()
   const done = useCommand("done", { label: () => `${step.title}: done` })
@@ -198,8 +198,9 @@ function Step({ step, linked, first, last, next, later, waitsFor, onMove }: { st
   const length = step.duration_min ?? 60
   // planned past the plan's two weeks, nearer its due, isn't "not planned" (17 Nov: "open subtasks say not planned
   // even with ample time")
-  // waiting for a step that has no room before its due says so, not "No room" of its own (19 Nov, a user's notes)
-  const planned = isDone ? "Done" : next ? plannedWhen(next, today) : later ? `Later, by ${when(later, today)}` : waitsFor ? `Waits for ${waitsFor}, which has no room before its due` : "No room before its due"
+  // with no time, why, as the plan says ("No room before its due", "Waits for …"), never guessed here: guessed, a step
+  // the planner had planned around read "No room" and the next one was planned (19, 23 Nov, a user's notes)
+  const planned = isDone ? "Done" : next ? plannedWhen(next, today) : later ? `Later, by ${when(later, today)}` : note ?? "Not planned yet"
   return (
     <div className="fr-row" data-step-row style={{ display: "grid", gridTemplateColumns: cols(layout.tight), gap: 12, alignItems: "center", padding: "10px 0", opacity: isDone ? 0.55 : 1, boxShadow: linked ? "none" : undefined }}>
       <span style={{ display: "flex", flexDirection: "column" }}>

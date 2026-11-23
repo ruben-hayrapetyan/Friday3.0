@@ -297,8 +297,27 @@ def flexible_items(inp: BuildInput, grid: Grid, fixed: Mapping[int, Item]) -> di
         *in_listed_order(inp, out),
         *long_after_short(inp, out),
     ]
+    steps = open_steps(inp, out)
     for engine_item in out.values():
-        engine_item.depends_on = dependency_specs(id_of(engine_item.key), dependencies, out)
+        engine_item.depends_on = dependency_specs(id_of(engine_item.key), dependencies, out, steps)
+    return out
+
+
+def open_steps(inp: BuildInput, items: Mapping[str, EngineItem]) -> dict[int, list[int]]:
+    """Each project's planned steps, all the way down: what a wait on the whole project waits for."""
+    kids: dict[int, list[int]] = {}
+    for item in inp.items:
+        if item.parent_id is not None and item.id is not None:
+            kids.setdefault(item.parent_id, []).append(item.id)
+    out: dict[int, list[int]] = {}
+    for parent in kids:
+        stack, found = list(kids[parent]), []
+        while stack:
+            i = stack.pop()
+            if key_of(i) in items:
+                found.append(i)
+            stack += kids.get(i, [])
+        out[parent] = sorted(found)
     return out
 
 
@@ -624,13 +643,24 @@ def with_amount(engine_item: EngineItem, item: Item, inp: BuildInput) -> EngineI
 
 
 def dependency_specs(
-    item_id: int, dependencies: Sequence[Dependency], items: Mapping[str, EngineItem]
+    item_id: int,
+    dependencies: Sequence[Dependency],
+    items: Mapping[str, EngineItem],
+    steps: Mapping[int, list[int]] | None = None,
 ) -> tuple[DepSpec, ...]:
+    """What `item_id` waits for. A wait on a whole project is a wait on each of its open steps (23 Nov: a project has
+    no time of its own in the planner, so the wait was dropped and what waited for it was planned at once)."""
     out = []
     for dep in dependencies:
-        other = items.get(key_of(dep.depends_on_id))
-        if dep.item_id == item_id and other is not None:
-            out.append(DepSpec(other.key, dep.fraction, dep.lag_min, other.total_units, other.progress))
+        if dep.item_id != item_id:
+            continue
+        inside = (steps or {}).get(dep.depends_on_id) or []
+        if item_id in inside:
+            continue  # a step can't wait for the project it's part of: the project's order says what it waits for
+        for source in inside or [dep.depends_on_id]:
+            other = items.get(key_of(source))
+            if other is not None and source != item_id:
+                out.append(DepSpec(other.key, dep.fraction, dep.lag_min, other.total_units, other.progress))
     return tuple(out)
 
 

@@ -9082,6 +9082,13 @@ export interface components {
             waits_for?: {
                 [key: string]: number;
             };
+            /**
+             * Step Note
+             * @default {}
+             */
+            step_note?: {
+                [key: string]: string;
+            };
         };
         /** ProjectRef */
         ProjectRef: {

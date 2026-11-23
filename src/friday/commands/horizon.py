@@ -19,7 +19,7 @@ from friday.api.commands import (
 from friday.api.types import Empty, ItemOut
 from friday.api.views import ProjectOut, WeekLoad
 from friday.commands.calendar import dues
-from friday.commands.fields import item_out, pointless_late, require_item, waiting_on
+from friday.commands.fields import item_out, require_item, waiting_on
 from friday.commands.items import add, add_dependency
 from friday.commands.project_steps import REST
 from friday.commands.registry import Ctx, command, query
@@ -76,6 +76,7 @@ def projects(ctx: Ctx, inp: Empty) -> list[ProjectOut]:
     finish = finishes(ctx, left)
     waiting = waiting_on(ctx)
     behind = {step: root for root, found in waiting_behind(ctx).items() for step, _ in found}
+    notes = step_notes(ctx, behind)
     out = []
     for item in items.values():
         is_project = children.get(item.id or 0) or item.preset == "Project"
@@ -87,7 +88,15 @@ def projects(ctx: Ctx, inp: Empty) -> list[ProjectOut]:
             for i in descendants(children, item.id or 0)
         ]
         made = project_out(ctx, item_out(ctx, item, done.get(item.id or 0, 0)), tree, finish)
-        out.append(made.model_copy(update={"waits_for": {str(c.id): behind[c.id] for c in tree if c.id in behind}}))
+        mine = {str(c.id) for c in tree}
+        out.append(
+            made.model_copy(
+                update={
+                    "waits_for": {str(c.id): behind[c.id] for c in tree if c.id in behind},
+                    "step_note": {k: v for k, v in notes.items() if k in mine},
+                }
+            )
+        )
     return sorted(out, key=lambda p: (p.item.due or "9999", p.item.id))
 
 
@@ -130,40 +139,53 @@ def project_out(ctx: Ctx, project: ItemOut, tree: list[ItemOut], finish: dict[in
 
 
 def waiting_behind(ctx: Ctx) -> dict[int, list[tuple[int, str]]]:
-    """Steps waiting for one that has no room before its due, by that step: (id, title), in their project's order.
-    A step has no room when it's open with work left, isn't in the plan, and is pointless once late (it expires at its
-    due, as an exam's prep does), so it never will be; the steps after it wait for it in turn until one doesn't wait
-    (19 Nov, a user's notes: "'no room before it's due' - other tasks in the project are dependent on it"; your
-    answer: "keep them waiting, both ask in inbox and also say why")."""
-    plan_id, _ = saved_plan(ctx)
-    planned = {r["item_id"] for r in rows(ctx.conn, "SELECT DISTINCT item_id FROM blocks WHERE plan_id = ?", [plan_id])}
-    found = rows(
-        ctx.conn,
-        "SELECT * FROM items WHERE user_id = ? AND status = 'todo' AND parent_id IS NOT NULL AND when_kind != 'fixed'",
-        [ctx.user_id],
-    )
-    kids: dict[int, list] = defaultdict(list)
-    for r in found:
-        kids[r["parent_id"]].append(item_from_row(r))
+    """What waits behind work with no room before its due, by that work: (id, title), in their project's order. As the
+    plan has it (planner/graph.py, saved in its report), never worked out again here: worked out here, the project page
+    said "No room" of a step the planner had planned around, and planned the next one (23 Nov, a user's notes)."""
+    _, report = saved_plan(ctx)
+    waiting = {int(k): int(v) for k, v in (report.get("waiting") or {}).items()}
+    if not waiting:
+        return {}
+    found = rows(ctx.conn, "SELECT id, title, parent_id FROM items WHERE user_id = ?", [ctx.user_id])
+    titles = {r["id"]: r for r in found}
     order = kv_get(ctx.conn, "project_order", {}, ctx.user_id) or {}
-    free, done = any_time_steps(ctx), minutes_by_item(ctx.conn, ctx.user_id)
+
+    def place(step: int) -> tuple[int, int]:
+        given = order.get(str((titles.get(step) or {"parent_id": None})["parent_id"]), [])
+        return (given.index(step) if step in given else len(given), step)
+
     out: dict[int, list[tuple[int, str]]] = {}
-    for parent, steps in kids.items():
-        given = order.get(str(parent), [])
-        steps.sort(key=lambda i: (given.index(i.id) if i.id in given else len(given), i.id or 0))
-        root: int | None = None
-        for step in steps:
-            if step.id in free:
-                root = None  # it doesn't wait for the one above
-            if root is not None and step.id not in planned:
-                out[root].append((step.id or 0, step.title))
-                continue
-            root = None
-            left = remaining_minutes(step, done.get(step.id or 0, 0)) or 0
-            if left > 0 and step.id not in planned and pointless_late(step, ctx.settings):
-                root = step.id or 0
-                out.setdefault(root, [])
-    return {k: v for k, v in out.items() if v}
+    for step in sorted(waiting, key=place):
+        if step in titles:
+            out.setdefault(waiting[step], []).append((step, titles[step]["title"]))
+    return out
+
+
+def step_notes(ctx: Ctx, behind: dict[int, int]) -> dict[str, str]:
+    """Why work has no time, in the plan's words: no room before its due, waiting behind such work (named, wherever it
+    is), or in a loop of waits. The page shows these and nothing it works out itself (23 Nov: it said "No room" of any
+    step without time, so of steps the planner had planned around)."""
+    _, report = saved_plan(ctx)
+    loops = {i: loop for loop in report.get("wait_loops") or [] for i in loop}
+    wanted = set(behind) | set(behind.values()) | no_room(ctx) | set(loops)
+    if not wanted:
+        return {}
+    marks = ",".join("?" * len(wanted))
+    found = rows(ctx.conn, f"SELECT id, title FROM items WHERE id IN ({marks})", list(wanted))  # noqa: S608 (only ?s)
+    titles = {r["id"]: r["title"] for r in found}
+    out = {str(i): "No room before its due" for i in no_room(ctx)}
+    for i, loop in loops.items():
+        others = [f"“{titles.get(j, 'another step')}”" for j in loop if j != i]
+        out[str(i)] = f"Waits for {' and '.join(others)}, which waits for it in turn: remove one of the waits"
+    for step, root in behind.items():
+        why = "which waits for it in turn" if root in loops else "which has no room before its due"
+        out[str(step)] = f"Waits for “{titles.get(root, 'another step')}”, {why}"
+    return out
+
+
+def no_room(ctx: Ctx) -> set[int]:
+    """Work the plan has no room for before its due, and never plans after it: as the plan says (23 Nov)."""
+    return set(saved_plan(ctx)[1].get("no_room") or [])
 
 
 def any_time_steps(ctx: Ctx) -> set[int]:

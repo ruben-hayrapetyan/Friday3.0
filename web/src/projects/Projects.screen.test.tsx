@@ -183,6 +183,25 @@ describe("projects", () => {
     expect(await screen.findByRole("button", { name: `Rehearse waits: after ${above}. Make it not wait` })).toBeTruthy()
   })
 
+  it("says why a step has no time as the plan does: waiting behind one with no room, by name", async () => {
+    // 23 Nov: the page guessed "No room before its due" for any step without time, and named what a step waits for
+    // only when it was in the same project; it reads the plan's words now (planner/graph.py)
+    const soon = new Date(Date.now() + 60 * 60_000).toISOString().slice(0, 16)
+    const made = await friday.c<{ result: { item: Item } }>("add", { title: "Grant application", preset: "Project", due: `${day(20)}T17:00`, duration_min: 60 })
+    const pid = made.result.item.id
+    const proposal = (await friday.c<{ result: { item: Item } }>("add", { title: "Grant proposal", parent_id: pid, due: soon, duration_min: 600, firmness: "hard" })).result.item
+    await friday.c("edit", { id: proposal.id, expires: true })
+    await friday.c("add", { title: "Grant budget", parent_id: pid, due: `${day(5)}T17:00`, duration_min: 60, firmness: "hard" })
+    const { user, client } = await page()
+    await user.click(await screen.findByRole("button", { name: /Grant application/ }))
+    // until the replan after these changes is in ("Not planned yet" till then, which is true): a busy test server
+    // takes longer than live()'s 8 seconds
+    await waitFor(async () => {
+      await client.invalidateQueries()
+      expect(within(step("Grant budget")).getByText("Waits for “Grant proposal”, which has no room before its due")).toBeTruthy()
+    }, { timeout: 30_000, interval: 500 })
+  })
+
   it("saves a project as a template and deletes a step", async () => {
     const { user, client } = await page()
     await user.click(await screen.findByRole("button", { name: /Rocketry design review/ }))

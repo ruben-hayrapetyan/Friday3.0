@@ -98,3 +98,19 @@ def test_work_across_the_start_of_a_planning_day_keeps_to_the_longest_chunk() ->
     p = zone_problem(work, ["late_work"])
     start = prepare_start(p)
     assert start.violations == 0 and check(p, start.c.plan_from_owner(start.owner)) == []
+
+
+def test_what_waits_is_placed_after_what_it_waits_for_even_when_it_matters_more() -> None:
+    """In topological order (23 Nov, your design): a dependent that matters more than its source, and has the same
+    deadline, was placed first, found its source short and got no start at all."""
+    from friday.engine.compile import compile_problem  # noqa: PLC0415
+    from friday.engine.construct import placement_order  # noqa: PLC0415
+
+    p = problem([item("chore", 1, duration_units=2), item("chore", 2, duration_units=2)], ["unscheduled"],
+                deps=[Dependency(2, 1)])  # fmt: skip
+    p.items["item:2"].importance = 10  # matters more than what it waits for
+    c = compile_problem(p)
+    order = [c.keys[i] for i in placement_order(c)]
+    assert order.index("item:1") < order.index("item:2")
+    placed = c.plan_from_owner(construct(c))
+    assert placed.get("item:2") and min(placed["item:2"]) > max(placed["item:1"])  # both placed, in order

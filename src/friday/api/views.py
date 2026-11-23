@@ -282,6 +282,9 @@ class ProjectOut(Model):
     step_finish: dict[str, str] = {}  # each open step's planned finish, by id: a date when planned past the plan's days
     any_time: list[int] = []  # its steps that don't wait for the one above (the rest do: the order is the chain)
     waits_for: dict[str, int] = {}  # a step waiting for one that has no room before its due: that step's id (19 Nov)
+    # why a step has no time, as the plan says, by id (23 Nov): "No room before its due", "Waits for …"; none when it
+    # has time or the plan says nothing of it
+    step_note: dict[str, str] = {}
 
 
 class ExamPrepOut(Model):

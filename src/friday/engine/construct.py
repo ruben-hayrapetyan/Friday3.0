@@ -14,6 +14,7 @@ from friday.engine.compile import Compiled, Model, compile_problem
 from friday.engine.kernel import init_state, item_violations, new_state, total_violations
 from friday.engine.problem import Problem
 from friday.engine.prune import demote_locks
+from friday.engine.waits import Waits, topological
 
 NO_DUE = 10.0**15
 
@@ -143,7 +144,17 @@ def placement_order(c: Compiled) -> list[int]:
     # A meal's minimum first (personal pinned lunch): placed after the work, it found its window taken
     # by work due days later, and the anneal rarely moved both to give it back.
     meal = [M.amount_kind[i] == 1 and problem.items[c.keys[i]].min > 0 for i in range(M.I)]
-    return sorted(range(M.I), key=lambda i: (0 if meal[i] else 1, 0 if hard[i] else 1, effective[i], -importance[i], i))
+    preferred = sorted(
+        range(M.I), key=lambda i: (0 if meal[i] else 1, 0 if hard[i] else 1, effective[i], -importance[i], i)
+    )
+    # In topological order (23 Nov, your design): never before what it waits for, which placed first leaves it room
+    # after it; among what's ready, the order above. Placed before its source, a dependent found it short and got no
+    # start at all. A loop of waits (held back and said, planner/graph.py) keeps the order above.
+    keys = [c.keys[i] for i in preferred]
+    order, _ = topological(Waits.of(problem), keys)
+    index = {k: i for i, k in enumerate(c.keys)}
+    placed = [index[k] for k in order if k in index]
+    return placed + [i for i in preferred if c.keys[i] not in set(order)]
 
 
 def fewest_late_order(c: Compiled) -> list[int]:

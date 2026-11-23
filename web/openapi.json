@@ -29116,6 +29116,14 @@
       "type": "object",
       "title": "Waits For",
       "default": {}
+     },
+     "step_note": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Step Note",
+      "default": {}
      }
     },
     "additionalProperties": false,

@@ -23,6 +23,7 @@ from friday.engine.explain import block_costs, blocks_of
 from friday.engine.problem import FixedOcc, Plan, Problem
 from friday.engine.rules import RULE_TYPES
 from friday.engine.rules.prices import BeforeEvent, Skippable, titled
+from friday.planner import graph
 from friday.planner.build import PLANNER_RULES, id_of, key_of
 from friday.planner.snapshot import BlockRow, Snapshot
 from friday.planner.solve import Solved
@@ -109,34 +110,16 @@ def assemble(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
         return assembled(snapshot, solved)
 
 
-def held_back(problem: Problem, over_units: dict[str, int]) -> tuple[set[str], set[str]]:
-    """Work with no room before its due, and the work waiting for it. Stuck: never planned after its due (pointless once
-    late: an exam's prep, a step marked so) and part of it doesn't fit before. Waiting: what depends on stuck work, a
-    project's steps after it, and what waits for those in turn. 20 Nov, a user's notes: "'no room before it's due'
-    however other sub-tasks that are dependent on it are scheduled, which makes no sense"; your answer: "Later steps
-    wait". It's done or archived once its due passes (commands/pointless.py), and the rest go on."""
-    stuck = {
-        key
-        for key, item in problem.items.items()
-        if item.window_is_hard and item.amount == "fixed" and item.due_utc is not None and over_units.get(key, 0) > 0
-    }
-    waiting: set[str] = set()
-    grew = True
-    while grew:
-        grew = False
-        for key, item in problem.items.items():
-            if key not in waiting and key not in stuck and any(d.key in stuck | waiting for d in item.depends_on):
-                waiting.add(key)
-                grew = True
-    return stuck, waiting
-
-
 def assembled(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
     problem, result = solved.problem, solved.result
     blocks, other = planned_blocks(problem, result.plan)
     evaluation = result.evaluation
-    stuck, waiting = held_back(problem, evaluation.over_units)
-    blocks = [b for b in blocks if key_of(b.item_id) not in waiting]  # they wait: no time of theirs in the plan
+    # what waits behind work with no room, read from the graph of waits (planner/graph.py): no time of theirs in the
+    # plan, no later day either (20 Nov, a user's notes: "'no room before it's due' however other sub-tasks that are
+    # dependent on it are scheduled, which makes no sense"; 23 Nov: one graph, in topological order)
+    held = graph.held(problem, evaluation.over_units)
+    out = held.out()
+    blocks = [b for b in blocks if key_of(b.item_id) not in out]
     kept_closer = spaced_closer(snapshot, blocks)
     report = {
         "stage_values": evaluation.stage_values,
@@ -148,6 +131,7 @@ def assembled(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
         + clashes(problem, snapshot.settings["time"].timezone)
         + given_way(problem, blocks, snapshot.settings["time"].timezone, snapshot.now_utc)
         + missing_rule_types(snapshot)
+        + loop_notices(problem, held.loops)
         + closer_notices(snapshot, blocks, kept_closer),
         "spacing_closer": {c.item_id: asdict(c) for c in kept_closer},
         "changes": changes(snapshot, problem, blocks),
@@ -168,7 +152,13 @@ def assembled(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
         "allocation_capacity_hours": [round(units * UNIT_MIN / 60, 2) for units in solved.allocation.room],
         "allocation_start": problem.grid.slots[0].date.isoformat(),
         # neither a later day for what has no room before its due, nor for what waits for it
-        "allocation_finish": {k: v for k, v in allocation_finish(solved).items() if key_of(k) not in stuck | waiting},
+        "allocation_finish": {
+            k: v for k, v in allocation_finish(solved).items() if key_of(k) not in held.no_room | out
+        },
+        # the plan's say on what waits, so the pages read it rather than working it out again (23 Nov)
+        "no_room": sorted(id_of(k) for k in held.no_room),
+        "waiting": {id_of(k): id_of(root) for k, root in held.waiting.items()},
+        "wait_loops": [[id_of(k) for k in loop] for loop in held.loops],
         "slack_minutes": {id_of(k): s.minutes for k, s in slack(solved.executor).items()},
         "pace": pace_days(snapshot, problem),
         "pace_notices": pace_notices(snapshot, problem, blocks),
@@ -296,6 +286,16 @@ def in_class_exam(a: FixedOcc, b: FixedOcc) -> bool:
     """A midterm in its own lecture's time replaces the lecture; that isn't a clash to point out."""
     course = course_tag(a.title, [])
     return "exam" in (a.kind, b.kind) and course is not None and course == course_tag(b.title, [])
+
+
+def loop_notices(problem: Problem, loops: list[list[str]]) -> list[str]:
+    """Waits that go round in a circle: none of them can be first, so none is planned until one wait goes."""
+    out = []
+    for loop in loops:
+        names = [f"“{problem.items[k].title}”" for k in loop]
+        listed = ", ".join(names[:-1]) + f" and {names[-1]}" if len(names) > 1 else names[0]
+        out.append(f"{listed} wait for each other, so none of them is planned: remove one of the waits")
+    return out
 
 
 def missing_rule_types(snapshot: Snapshot) -> list[str]:
