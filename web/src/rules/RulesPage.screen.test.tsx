@@ -5,7 +5,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { friday, openFriday, waitForSent } from "@/test/friday"
 
-type Rule = { name: string; sentence: string; enabled: boolean; strength: string; source: string; wins_over?: string[]; gives_way_to?: string[] }
+type Rule = { name: string; sentence: string; enabled: boolean; strength: string; source: string; background?: boolean; wins_over?: string[]; gives_way_to?: string[] }
 const rules = () => friday.q<Rule[]>("rules")
 const rule = async (sentence: string) => (await rules()).find((r) => r.sentence === sentence)
 
@@ -23,6 +23,24 @@ describe("the Rules page", () => {
     expect(screen.getAllByText("Yours").length).toBe(3)
     expect(screen.getAllByText("Built in").length).toBeGreaterThan(3)
     expect(screen.getByText(/How Friday fills in the rest \(\d+\)/)).toBeTruthy()
+  })
+
+  it("lists the rules strongest first, A–Z within each strength, the ones switched off last", async () => {
+    // 23 Nov: "organize rules based on either importance or alphabetically"; your choice: strongest first, then A–Z
+    await openFriday("/rules")
+    await screen.findByText(/^\d+ on, 3 of them yours$/)
+    const byName = new Map((await rules()).map((r) => [r.name, r]))
+    const shown = [...document.querySelectorAll<HTMLElement>(".fr-rule-row[data-rule]")].map((row) => byName.get(row.dataset.rule as string) as Rule)
+    const rank = (r: Rule) => [Number(!r.enabled), { Always: 0, Strongly: 1, Prefer: 2 }[r.strength] ?? 3] as const
+    const firstFolded = shown.findIndex((r) => r?.background)
+    const listed = (firstFolded < 0 ? shown : shown.slice(0, firstFolded)).filter(Boolean)
+    for (let i = 1; i < listed.length; i++) {
+      const [a, b] = [listed[i - 1], listed[i]]
+      const [ra, rb] = [rank(a), rank(b)]
+      const order = ra[0] - rb[0] || ra[1] - rb[1] || a.sentence.localeCompare(b.sentence, undefined, { sensitivity: "base" })
+      expect(order, `${a.sentence} before ${b.sentence}`).toBeLessThanOrEqual(0)
+    }
+    expect(listed.length).toBeGreaterThan(3)
   })
 
   it("has no Rules lab: no link to one, no switch for it, and an old link to it opens Rules", async () => {

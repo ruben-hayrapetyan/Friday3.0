@@ -21,6 +21,7 @@ import { TimeInput } from "@/components/fr/TimeInput"
 import { NOTE_EXAMPLES, useNotes } from "@/settings/AboutYou"
 import { dockRoom } from "@/now/dockRoom"
 import { useShell } from "@/shell/ShellContext"
+import { inOrder } from "./order"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
@@ -91,13 +92,13 @@ export function RulesPage() {
               <WeekPaces />
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {rules.filter((r) => !r.background).map(row)}
+              {inOrder(rules.filter((r) => !r.background)).map(row)}
             </div>
             <details>
               <summary className="fr-kicker" style={{ cursor: "pointer", padding: "6px 0" }}>
                 How Friday fills in the rest ({rules.filter((r) => r.background).length})
               </summary>
-              <div style={{ display: "flex", flexDirection: "column" }}>{rules.filter((r) => r.background).map(row)}</div>
+              <div style={{ display: "flex", flexDirection: "column" }}>{inOrder(rules.filter((r) => r.background)).map(row)}</div>
             </details>
           </section>
           <Notes />
