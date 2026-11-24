@@ -22,8 +22,9 @@ const local = (ms) => {
 /** Clicks the button `words` in the meals row `n` days back (0: today), or anything in it matching `css`. */
 const inRow = (until, n, words, css = "button") =>
   until(`(() => { const sec = [...document.querySelectorAll("section")].find((s) => s.innerText.startsWith("Your meals")); const row = sec?.querySelectorAll(":scope > div > .fr-row")[${n}]; const el = row && [...row.querySelectorAll(${JSON.stringify(css)})].find((b) => b.innerText.replace(/\\s+/g, " ").trim().includes(${JSON.stringify(words)})); if (!el) return false; el.click(); return true })()`, 10_000, `"${words}" in the meals ${n} days back`)
-const rowText = (until, n) =>
-  until(`(() => { const sec = [...document.querySelectorAll("section")].find((s) => s.innerText.startsWith("Your meals")); return sec?.querySelectorAll(":scope > div > .fr-row")[${n}]?.innerText.replace(/\\s+/g, " ") ?? "" })()`)
+/** In the page: the meals row `n` days back, as text. */
+const rowJs = (n) => `(() => { const sec = [...document.querySelectorAll("section")].find((s) => s.innerText.startsWith("Your meals")); return sec?.querySelectorAll(":scope > div > .fr-row")[${n}]?.innerText.replace(/\\s+/g, " ") ?? "" })()`
+const rowText = (until, n) => until(rowJs(n))
 /** "09:45" as the page says it on the 12-hour clock: "9:45am" (":00" left out, as it does). */
 const twelve = (hhmm) => {
   const [h, m] = hhmm.split(":").map(Number)
@@ -58,7 +59,7 @@ export default [
       const eating = await waitFor(async () => (await meals(q)).eating)
       expect(eating?.kind === "snack", `the server's eating: ${JSON.stringify(eating)}`)
       // ended within the minute it started would be refused ("that's before you started"): it began 20 minutes ago
-      undo.push((await c("meal_edit", { id: eating.id, start: local(Date.now() - 20 * 60_000) })).command_id)
+      await c("meal_edit", { id: eating.id, start: local(Date.now() - 20 * 60_000) })
       await open(PAGE)
       await click("Done eating")
       await has("Snack: 2") // "Snack: 20 min"
@@ -66,6 +67,7 @@ export default [
       expect(done && done.minutes >= 20 && done.minutes <= 21, `ended as ${JSON.stringify(done)}`)
       await has("Eating now:")
       expect((await meals(q)).eating === null, "still eating")
+      await c("meal_remove", { id: eating.id }) // the sample's today as it was
     },
   },
   {
@@ -84,7 +86,7 @@ export default [
       await has("Logged lunch")
       const lunch = await waitFor(async () => (await on(q, day(-2))).find((m) => m.kind === "lunch"))
       expect(lunch?.start === `${day(-2)}T12:15` && lunch.end === `${day(-2)}T13:05` && lunch.minutes === 50, `logged as ${JSON.stringify(lunch)}`)
-      expect((await rowText(until, 2)).includes("Lunch 12:15pm–1:05pm · 50m"), `the row: ${await rowText(until, 2)}`)
+      expect(await until(`${rowJs(2)}.includes("Lunch 12:15pm–1:05pm · 50m")`, 10_000, "the lunch's chip").catch(() => false), `the row: ${await rowText(until, 2)}`)
       await inRow(until, 2, "Lunch 12:15pm")
       await type("Finished", "1:20pm")
       await press("Enter")
@@ -108,7 +110,7 @@ export default [
       await has("Skipped dinner")
       const skipped = await waitFor(async () => (await on(q, day(-3))).find((m) => m.kind === "dinner" && m.skipped))
       expect(skipped, "the server has no skipped dinner")
-      expect((await rowText(until, 3)).includes("Dinner skipped"), `the row: ${await rowText(until, 3)}`)
+      expect(await until(`${rowJs(3)}.includes("Dinner skipped")`, 10_000, "the skipped dinner's chip").catch(() => false), `the row: ${await rowText(until, 3)}`)
       await inRow(until, 3, "Dinner skipped")
       await has("You said you skipped it")
       await inRow(until, 3, "Not skipped after all")
