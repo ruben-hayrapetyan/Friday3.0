@@ -193,10 +193,11 @@ def today(ctx: Ctx) -> date:
     return to_local(ctx.now_utc, ctx.tz).date()
 
 
-def due(shown: dict[str, list[str]], tip: str, on: date) -> bool:
-    """Not shown three times yet, and not in the last week."""
+def due(shown: dict[str, list[str]], tip: str, on: date, closed: frozenset[str] = frozenset()) -> bool:
+    """Not closed with ×, not shown three times yet, and not in the last week."""
     dates = shown.get(tip, [])
-    return len(dates) < TIMES and (not dates or date.fromisoformat(max(dates)) <= on - timedelta(days=APART))
+    return (tip not in closed and len(dates) < TIMES
+            and (not dates or date.fromisoformat(max(dates)) <= on - timedelta(days=APART)))  # fmt: skip
 
 
 @query("tips")
@@ -204,18 +205,23 @@ def tips(ctx: Ctx, inp: Empty) -> TipOut:
     """The tip to show now, if any: the first whose habit holds and that's due, none if one was shown today."""
     shown, on = seen(ctx), today(ctx)
     if any(on.isoformat() in dates for dates in shown.values()):
-        return TipOut()
+        return TipOut()  # one a day at most (24 Nov: "i don't want pro tips to become something annoying")
+    closed = frozenset(kv_get(ctx.conn, "tips_closed", [], ctx.user_id) or [])
     for tip in TIPS:
-        if due(shown, tip.id, on) and tip.applies(ctx):
+        if due(shown, tip.id, on, closed) and tip.applies(ctx):
             return TipOut(id=tip.id, text=tip.text, page=tip.page)
     return TipOut()
 
 
 @command("tip_shown", logged=False)  # what the app showed, nothing of yours to undo
 def tip_shown(ctx: Ctx, inp: TipInput) -> Changed:
-    """A tip was shown: counted, so it's shown at most three times, a week apart, and nothing else that day."""
+    """A tip was shown: counted, so it's shown at most three times, a week apart, and nothing else that day. Closed
+    with × (24 Nov: "make sure there is an x button if the user wants to kill it early"), it doesn't come back."""
     if inp.id not in {t.id for t in TIPS}:
         return Changed(message="No such tip")
+    if inp.closed:
+        closed = set(kv_get(ctx.conn, "tips_closed", [], ctx.user_id) or [])
+        kv_set(ctx.conn, "tips_closed", sorted(closed | {inp.id}), ctx.user_id)
     shown = seen(ctx)
     on = today(ctx).isoformat()
     if on not in shown.get(inp.id, []):

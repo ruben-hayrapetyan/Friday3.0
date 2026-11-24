@@ -3,7 +3,8 @@
 // its based on the usage"; then "the pro tips should show up for 10seconds and have a 'take me there' button"). The
 // server picks the tip (commands/tips.py: at most one a day, the same one at most three times a week apart); here it
 // slides in a few seconds after Friday opens, stays ten seconds and slides out. "Take me there" opens the page the
-// feature is on. Never over the tour, Setup or a dialog, and above the Now bar.
+// feature is on; × closes it at once ("make sure there is an x button if the user wants to kill it early"), and that
+// tip doesn't come back. Never over the tour, Setup or a dialog, and above the Now bar.
 
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
@@ -79,6 +80,19 @@ export function ProTip() {
           </button>
         )}
       </span>
+      <button
+        type="button"
+        className="btn btn-icon btn-ghost"
+        aria-label="Close tip"
+        title="Close (this tip won't come back)"
+        onClick={() => {
+          if (tip.id) void command("tip_shown", { id: tip.id, closed: true }).catch(() => {})
+          setLeaving(true)
+        }}
+        style={{ flex: "none", width: 22, height: 22, marginTop: -2, marginRight: -6, color: "var(--color-neutral-400)" }}
+      >
+        <Icon name="x" size={13} />
+      </button>
     </div>
   )
 }

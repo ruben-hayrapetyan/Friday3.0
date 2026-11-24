@@ -10463,7 +10463,7 @@
   },
   "/api/c/tip_shown": {
    "post": {
-    "summary": "A tip was shown: counted, so it's shown at most three times, a week apart, and nothing else that day.",
+    "summary": "A tip was shown: counted, so it's shown at most three times, a week apart, and nothing else that day. Closed",
     "operationId": "tip_shown",
     "parameters": [
      {
@@ -37702,6 +37702,11 @@
      "id": {
       "type": "string",
       "title": "Id"
+     },
+     "closed": {
+      "type": "boolean",
+      "title": "Closed",
+      "default": false
      }
     },
     "additionalProperties": false,

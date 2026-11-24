@@ -151,3 +151,12 @@ def test_a_habit_gone_stops_its_tip(app: App) -> None:
     assert tip(app) == "meal_events"
     app.do("drop", id=lunches[0])
     assert tip(app) is None
+
+
+def test_a_tip_closed_with_x_doesnt_come_back(app: App) -> None:
+    for day in (20, 21, 22):
+        event(app, "Lunch", day, 12)
+    app.do("tip_shown", id="meal_events")
+    app.do("tip_shown", id="meal_events", closed=True)  # × while it showed
+    assert app.at("2026-10-26T09:00").do("tips")["id"] != "meal_events"  # a week on: not again
+    assert app.at("2026-11-20T09:00").do("tips")["id"] != "meal_events"

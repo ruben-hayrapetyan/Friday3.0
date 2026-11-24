@@ -1558,7 +1558,7 @@ VERBS = {
         commands.TipInput,
         True,
         False,
-        "A tip was shown: counted, so it's shown at most three times, a week apart, and nothing else that day.",
+        "A tip was shown: counted, so it's shown at most three times, a week apart, and nothing else that day. Closed",
     ),
     "tips": Verb(
         "GET",

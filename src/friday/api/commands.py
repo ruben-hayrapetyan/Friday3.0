@@ -1381,3 +1381,4 @@ class ExamFocusForInput(Model):
 
 class TipInput(Model):
     id: str
+    closed: bool = False  # closed with ×: that tip doesn't come back

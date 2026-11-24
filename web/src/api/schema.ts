@@ -2478,7 +2478,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** A tip was shown: counted, so it's shown at most three times, a week apart, and nothing else that day. */
+        /** A tip was shown: counted, so it's shown at most three times, a week apart, and nothing else that day. Closed */
         post: operations["tip_shown"];
         delete?: never;
         options?: never;
@@ -11922,6 +11922,11 @@ export interface components {
         TipInput: {
             /** Id */
             id: string;
+            /**
+             * Closed
+             * @default false
+             */
+            closed?: boolean;
         };
         /**
          * TipOut

@@ -55,6 +55,16 @@ describe("a pro tip's ten seconds", () => {
     expect(screen.queryByText(TEXT)).toBeNull()
   })
 
+  it("closes at once with ×, and says so, so that tip doesn't come back", async () => {
+    open()
+    await after(TIP_AFTER_MS + 100)
+    expect(screen.getByText(TEXT)).toBeTruthy()
+    await act(async () => screen.getByRole("button", { name: "Close tip" }).click())
+    await after(400)
+    expect(screen.queryByText(TEXT)).toBeNull()
+    expect(sent).toEqual(["tip_shown", "tip_shown"]) // shown, then closed
+  })
+
   it("never comes over the tour, and isn't counted then", async () => {
     open(true)
     await after(TIP_AFTER_MS + TIP_FOR_MS)
