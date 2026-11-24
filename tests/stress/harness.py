@@ -261,7 +261,12 @@ def plan_issues(world: World, status: str, coarse_from: int | None = None) -> li
             out.append(f"T{item_id} planned past its due ({world.local(parse_utc(item['due_utc']))}) and not said late")
         # A meal may reach up to MEAL_REACH_MIN outside its window when events fill it (planner/build.meal_room).
         reach = MEAL_REACH_MIN if item["preset"] == "Routine" and MEAL.search(item["title"]) else 0
-        if item["release_utc"] and start < parse_utc(item["release_utc"]) - reach:
+        # where you locked it, it stays, before its release too ("Locked · won't move"; random worlds, 24 Nov)
+        locked = world.conn.execute(
+            "SELECT 1 FROM pins WHERE item_id = ? AND kind = 'locked' AND start_utc <= ? AND end_utc > ?",
+            [item_id, format_utc(start), format_utc(start)],
+        ).fetchone()
+        if item["release_utc"] and start < parse_utc(item["release_utc"]) - reach and not locked:
             out.append(f"T{item_id} planned before its release")
     # What it waits on comes first.
     by_item: dict[int, list[tuple[int, int]]] = {}
