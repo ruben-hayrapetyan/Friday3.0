@@ -33,7 +33,6 @@ event_keep headless
 exam_focus_for headless
 exams web
 fits headless
-fitting web
 gmail_app web
 gmail_app_accounts headless
 gmail_app_set headless
@@ -82,7 +81,6 @@ nap_start headless
 napping web
 not_duplicates headless
 now_view web
-ongoing web
 other_ways headless
 pace headless
 pace_delete headless
