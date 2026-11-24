@@ -13,6 +13,7 @@ import sqlite3
 
 from friday.api.commands import Changed, ItemRef
 from friday.api.views import ArchivedOut
+from friday.commands.fields import require_item
 from friday.commands.registry import Ctx, command, run
 from friday.core.db import rows
 from friday.core.items import Item
@@ -92,6 +93,7 @@ def archived_restore(ctx: Ctx, inp: ItemRef) -> Changed:
     again; planned as late work."""
     from friday.commands.items import reopen  # noqa: PLC0415 (items imports the registry this module adds to)
 
+    require_item(ctx, inp.id)  # 24 Nov, the new pipeline tests: an id not there answered 500, not a refusal
     ctx.db.update("items", {"id": inp.id}, {"expires": 0, "updated_utc": ctx.now_text})
     reopen(ctx, inp)
     forget(ctx, inp.id)

@@ -263,11 +263,7 @@ def test_triage_offers_to_skip_an_event_until_you_say_you_go(friday: Friday) -> 
     assert "Salsa club" not in [o["skip_title"] for o in friday.q("triage")["options"]]
 
 
-@pytest.mark.xfail(
-    reason="BUG: event_choice keeps event ids and event_going keeps title keys in the one kv list `events_going`; "
-    "once both are there, sorting ints with strings raises TypeError and the command fails with a 500",
-    strict=True,
-)
+# 24 Nov: found by this test (ids and titles in one kv list, sorting them crashed); fixed with a list each
 def test_going_to_a_free_event_and_saying_you_go_to_another_both_work(friday: Friday) -> None:
     d = day(5)
     free = event(friday, "Drop-in hours", f"{d}T13:00", f"{d}T14:00", free=True)

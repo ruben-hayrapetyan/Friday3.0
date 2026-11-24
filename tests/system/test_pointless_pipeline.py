@@ -114,8 +114,7 @@ def test_brought_back_it_isnt_archived_again_by_the_next_job_run(friday: Friday,
     assert status(friday, made["quiz"]) == "todo"
 
 
-@pytest.mark.xfail(reason="BUG: archived_restore of an id that isn't there answers 500 (ValueError), not a refusal",
-                   strict=True)  # fmt: skip
+# 24 Nov: found by this test (500, not a refusal); fixed
 def test_bring_back_of_something_not_there_is_refused(friday: Friday) -> None:
     answer = friday.http.post("/api/c/archived_restore", json={"id": 99999})
     assert answer.status_code == 422, answer.text

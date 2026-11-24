@@ -32,5 +32,7 @@ def kept() -> dict[str, Any]:
 
 
 def get(name: str) -> str:
-    """A key by its name ("trello_client_id"): FRIDAY_TRELLO_CLIENT_ID, else the keys file, else ""."""
-    return str(os.environ.get(f"FRIDAY_{name.upper()}") or kept().get(name) or "").strip()
+    """A key by its name ("trello_client_id"): FRIDAY_TRELLO_CLIENT_ID when it's set (empty too: not registered in
+    this copy, 24 Nov), else the keys file, else ""."""
+    said = os.environ.get(f"FRIDAY_{name.upper()}")
+    return str(said if said is not None else kept().get(name) or "").strip()

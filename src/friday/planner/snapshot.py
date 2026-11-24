@@ -293,7 +293,7 @@ def snapshot_items(conn: sqlite3.Connection, now_utc: int, settings: dict[str, A
         [user_id, format_utc(now_utc - 1440), format_utc(now_utc + days * 1440)],
     )
     items = {}
-    going = set(kv_get(conn, EVENTS_GOING, [], user_id) or [])
+    going = going_ids(conn, user_id)
     for r in found:
         item = busy_as_you_count(item_from_row(r), settings, calendars, going)
         area = areas.get(item.area_id) if item.area_id is not None else None
@@ -338,7 +338,21 @@ def event_holds(conn: sqlite3.Connection, user_id: int) -> dict[int, int]:
     return {int(e): int(t) for e, t in (kv_get(conn, "event_holds", {}, user_id) or {}).items()}
 
 
-EVENTS_GOING = "events_going"  # kv: the events marked free in their calendar that you said you're going to
+EVENTS_GOING = "events_going"  # kv: the events marked free in their calendar that you said you're going to (ids)
+# kv: titles of events you go to, never offered to skip (What gives; rating.event_going). Kept in events_going too
+# before 24 Nov, where ids and titles mixed and sorting them crashed: each reads its own kind from there as well.
+EVENTS_YOU_GO_TO = "events_you_go_to"
+
+
+def going_ids(conn: sqlite3.Connection, user_id: int = 1) -> set[int]:
+    """The free events you said you're going to, by id (titles saved there before 24 Nov left out)."""
+    return {e for e in kv_get(conn, EVENTS_GOING, [], user_id) or [] if isinstance(e, int)}
+
+
+def gone_to_titles(conn: sqlite3.Connection, user_id: int = 1) -> set[str]:
+    """The events you go to, by title key: their own list, and those saved among the ids before 24 Nov."""
+    old = [e for e in kv_get(conn, EVENTS_GOING, [], user_id) or [] if isinstance(e, str)]
+    return set(old) | set(kv_get(conn, EVENTS_YOU_GO_TO, [], user_id) or [])
 
 
 def busy_as_you_count(

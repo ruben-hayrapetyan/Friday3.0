@@ -19,7 +19,7 @@ from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.cushion import cushion
 from friday.planner.hidden import written_to
 from friday.planner.progress import remaining_minutes
-from friday.planner.snapshot import EVENTS_GOING
+from friday.planner.snapshot import going_ids
 from friday.planner.store import EventLink, area_names, event_links, kv_get, load_item
 
 UNIT_FIELDS = {
@@ -240,7 +240,7 @@ def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
         # Marked free in its calendar: worked through until you choose (16 Nov, a client's note: free events had none
         # of the three choices); going, it takes your time as a busy one does; skipped, it's crossed out.
         if "events_going" not in ctx.memo:
-            ctx.memo["events_going"] = set(kv_get(ctx.conn, EVENTS_GOING, [], ctx.user_id) or [])
+            ctx.memo["events_going"] = going_ids(ctx.conn, ctx.user_id)
         if item.id in ctx.memo["events_going"] and item.blocks_time:
             reason = None
         elif not item.blocks_time and not all_day:

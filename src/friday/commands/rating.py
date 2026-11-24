@@ -28,7 +28,7 @@ from friday.core.items import FieldError
 from friday.core.time import format_utc
 from friday.ingest import llm
 from friday.ingest.rating import guessed, rate
-from friday.planner.snapshot import EVENTS_GOING
+from friday.planner.snapshot import EVENTS_GOING, EVENTS_YOU_GO_TO, going_ids, gone_to_titles
 from friday.planner.store import kv_get, kv_set, load_settings
 
 AHEAD_DAYS = 14
@@ -153,8 +153,9 @@ def event_category(ctx: Ctx, inp: EventCategoryInput) -> Changed:
 @command("event_going")
 def event_going(ctx: Ctx, inp: EventGoingInput) -> Changed:
     """You go to this event: Friday stops offering to skip it."""
-    going = sorted(set(kv_get(ctx.conn, "events_going", [], ctx.user_id)) | {rating_key(inp.title)})
-    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "events_going"}, {"value": json.dumps(going)})
+    # titles in a list of their own (24 Nov: kept among the free events' ids, sorting them both crashed)
+    going = sorted(gone_to_titles(ctx.conn, ctx.user_id) | {rating_key(inp.title)})
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": EVENTS_YOU_GO_TO}, {"value": json.dumps(going)})
     return Changed(message=f"Won't suggest skipping {inp.title}")
 
 
@@ -200,7 +201,11 @@ def event_choice(ctx: Ctx, inp: EventChoiceInput) -> Changed:
         holds = {str(k): v for k, v in (kv_get(ctx.conn, "event_holds", {}, ctx.user_id) or {}).items()}
         if holds.pop(str(event.id), None) is not None:
             ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "event_holds"}, {"value": json.dumps(holds)})
-    going = [e for e in kv_get(ctx.conn, EVENTS_GOING, [], ctx.user_id) or [] if e != event.id]
+    # titles saved among these ids before 24 Nov move to their own list first, so rewriting the ids keeps them
+    titles = gone_to_titles(ctx.conn, ctx.user_id)
+    if titles != set(kv_get(ctx.conn, EVENTS_YOU_GO_TO, [], ctx.user_id) or []):
+        ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": EVENTS_YOU_GO_TO}, {"value": json.dumps(sorted(titles))})
+    going = [e for e in going_ids(ctx.conn, ctx.user_id) if e != event.id]
     if inp.choice == "going" and event.free:
         going.append(event.id)  # marked free in its calendar: going makes it take your time, in Friday only
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": EVENTS_GOING}, {"value": json.dumps(sorted(going))})

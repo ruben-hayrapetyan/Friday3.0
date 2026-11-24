@@ -30,7 +30,7 @@ from friday.core.items import FieldError
 from friday.core.settings import validate_value
 from friday.core.time import clock_time, format_utc, parse_utc, planning_date, to_local
 from friday.engine.rules import RULE_TYPES, build_rules
-from friday.planner.snapshot import take_snapshot
+from friday.planner.snapshot import gone_to_titles, take_snapshot
 from friday.planner.spacing import Closer, closer_words
 from friday.planner.store import current_plan, kv_get, load_item
 from friday.planner.views import UnderWay, change_list, why_not_view
@@ -254,7 +254,7 @@ def api_input(ctx: Ctx, values: dict[str, Any]) -> dict[str, Any]:
 def triage(ctx: Ctx, inp: Empty) -> TriageOut:
     """Options when hard work is late or overflowing, each with the late hours it saves."""
     ratings = kv_get(ctx.conn, "event_ratings", {}, ctx.user_id)
-    going = frozenset(kv_get(ctx.conn, "events_going", [], ctx.user_id))
+    going = frozenset(gone_to_titles(ctx.conn, ctx.user_id))
     _, options = run_triage(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), ratings, going)
     # late now is the plan's, as the Plan page says it; each option is still tried on a quick copy (24 Nov, the
     # agreement check: Triage's own quick plan listed work late the plan didn't)
