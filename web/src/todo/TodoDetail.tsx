@@ -19,6 +19,7 @@ import { fadingSaid } from "./fading"
 import { LogWork } from "./LogWork"
 import { DuePicker, LengthPicker, LengthStepper, ListPicker } from "./Pickers"
 import { dockRoom } from "@/now/dockRoom"
+import { otherTimed, startWords } from "@/now/startWords"
 
 const TRAVEL = [0, 10, 15, 30] // minutes each way
 
@@ -40,8 +41,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
   const detail = useItem(id).data
   const now = useNow().data
   const status = useStatus().data
-  const timer = status?.timer ?? null
-  const alongside = status?.alongside ?? []
+  const other = otherTimed(status, id)
   const presets = usePresets()
   const areas = (useAreas().data ?? []).filter((a) => !a.archived).map((a) => a.name)
   const [pick, setPick] = useState<"area" | "preset" | "due" | "length" | null>(null)
@@ -66,6 +66,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
   const item = detail.item
   const p = progress(item)
   const isDone = item.status === "done"
+  const starting = startWords(other, !!item.done_min, "Start now")
   const toggle = (k: typeof pick) => setPick(pick === k ? null : k)
   const length = item.duration_min
   // The same each way here; an item given different times before and after shows neither chip.
@@ -308,15 +309,17 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
       )}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {!isDone && item.when !== "fixed" && now?.current?.item_id !== id && (
-          <button className="btn btn-primary" onClick={() => start({ id })}>
-            <Icon name="play" />
-            {item.done_min ? "Resume" : "Start now"}
+          // one start everywhere (now/startWords): while something else is timed, a Switch that says it stops that,
+          // with Alongside beside it (24 Nov: "Start now" here stopped it with no word)
+          <button className="btn btn-primary" onClick={() => start({ id })} title={starting.hint}>
+            <Icon name={starting.alongside ? "arrows-left-right" : "play"} />
+            {starting.label}
           </button>
         )}
-        {!isDone && item.when !== "fixed" && timer && timer.item_id !== id && !alongside.some((t) => t.item_id === id) && (
-          <button className="btn btn-secondary" onClick={() => start({ id, alongside: true })} title={`Times this too, keeping ${timer.title ?? "what you're on"} going`}>
+        {!isDone && item.when !== "fixed" && starting.alongside && (
+          <button className="btn btn-secondary" onClick={() => start({ id, alongside: true })} title={`Times this too: ${other} keeps going`}>
             <Icon name="plus" />
-            Start alongside
+            Alongside
           </button>
         )}
         <button className="btn btn-secondary" onClick={() => (isDone ? reopen({ id }) : done({ id }))}>

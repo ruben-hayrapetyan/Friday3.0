@@ -274,7 +274,12 @@ describe("a task's detail", () => {
     await waitFor(() => expect(within(first.aside).queryByRole("button", { name: /Start now/ })).toBeNull(), { timeout: 5000 })
     first.unmount()
     const second = await detailOf(b.title)
-    await second.user.click(await within(second.aside).findByRole("button", { name: /Start alongside/ }, { timeout: 5000 }))
+    // 24 Nov, a user: "Start now" here stopped what was timed with no word; now it's a Switch that says so, as the
+    // plan's block is, with Alongside beside it
+    const switching = await within(second.aside).findByRole("button", { name: /^Switch/ }, { timeout: 5000 })
+    expect(switching.getAttribute("title")).toMatch(/^Times this instead: .+ stops$/)
+    expect(within(second.aside).queryByRole("button", { name: /Start now/ })).toBeNull()
+    await second.user.click(within(second.aside).getByRole("button", { name: /^Alongside/ }))
     expect((await waitForSent("start")).body).toEqual({ id: second.item.id, alongside: true })
     await friday.c("stop", {})
   })

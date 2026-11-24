@@ -13,6 +13,7 @@ import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { DrawerFrame } from "@/todo/Drawer"
 import { dayWords, things } from "./words"
+import { otherTimed, startWords } from "@/now/startWords"
 
 type DayOut = Schemas["VacationDayOut"]
 type Thing = Schemas["VacationThing"]
@@ -97,6 +98,9 @@ function Row({ date, thing }: { date: string; thing: Thing }) {
   const start = useCommand("start", { label: () => `Timing ${thing.title}` })
   const stop = useCommand("stop", { label: () => `${thing.title}: timer stopped` })
   const worked = thing.timed_min + (running ? Math.floor(elapsed / 60) : 0)
+  // one start everywhere (now/startWords, 24 Nov): while something else is timed, Switch says it stops that, and
+  // Alongside goes beside it
+  const starting = startWords(otherTimed(status, thing.item_id), false)
   return (
     <div className="fr-hover" style={{ display: "grid", gridTemplateColumns: "16px 3px minmax(0,1fr) auto", gap: 9, alignItems: "center", padding: "7px 4px", borderRadius: "var(--radius-md)" }}>
       <Check small done={thing.ticked} onToggle={() => tick({ date, item_id: thing.item_id, ticked: !thing.ticked })} />
@@ -108,16 +112,30 @@ function Row({ date, thing }: { date: string; thing: Thing }) {
         </span>
       </span>
       {!thing.ticked && !thing.done ? (
-        <button
-          className="btn btn-secondary tnum"
-          aria-label={running ? `Stop timing ${thing.title}` : `Time ${thing.title}`}
-          title={running ? "Stop the timer" : "Time it: it shows on the calendar where you worked"}
-          onClick={() => (running ? stop({ id: thing.item_id }) : start({ id: thing.item_id, alongside: false }))}
-          style={{ height: 26, padding: "0 10px", fontSize: 12, gap: 5, ...(running ? { color: "var(--fr-now)", boxShadow: "inset 0 0 0 1px var(--fr-now)" } : {}) }}
-        >
-          <Icon name={running ? "stop" : "play"} fill size={11} />
-          {running ? hms(elapsed) : "Start"}
-        </button>
+        <span style={{ display: "flex", gap: 4 }}>
+          <button
+            className="btn btn-secondary tnum"
+            aria-label={running ? `Stop timing ${thing.title}` : `${starting.alongside ? "Switch to" : "Time"} ${thing.title}`}
+            title={running ? "Stop the timer" : starting.alongside ? starting.hint : "Time it: it shows on the calendar where you worked"}
+            onClick={() => (running ? stop({ id: thing.item_id }) : start({ id: thing.item_id, alongside: false }))}
+            style={{ height: 26, padding: "0 10px", fontSize: 12, gap: 5, ...(running ? { color: "var(--fr-now)", boxShadow: "inset 0 0 0 1px var(--fr-now)" } : {}) }}
+          >
+            <Icon name={running ? "stop" : "play"} fill size={11} />
+            {running ? hms(elapsed) : starting.label}
+          </button>
+          {!running && starting.alongside && (
+            <button
+              className="btn btn-secondary"
+              aria-label={`Time ${thing.title} alongside`}
+              title={`Times this too: ${otherTimed(status, thing.item_id)} keeps going`}
+              onClick={() => start({ id: thing.item_id, alongside: true })}
+              style={{ height: 26, padding: "0 10px", fontSize: 12, gap: 5 }}
+            >
+              <Icon name="plus" size={11} />
+              Alongside
+            </button>
+          )}
+        </span>
       ) : (
         <span />
       )}

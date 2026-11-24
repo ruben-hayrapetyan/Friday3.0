@@ -7,7 +7,7 @@ import { command, errorWords, query, type Schemas } from "@/api/client"
 import { Box, H, Icon, Seg } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { runTogether, undoAll, useCommand } from "@/hooks/useCommand"
-import { useHorizon, usePaces, useSettings } from "@/hooks/queries"
+import { useHorizon, usePaces, useSettings, useStatus } from "@/hooks/queries"
 import { ChangeList } from "@/components/ChangeList"
 import { because } from "@/lib/changes"
 import { clock, dur, when } from "@/lib/format"
@@ -18,6 +18,7 @@ import { useShell } from "@/shell/ShellContext"
 import { dayName } from "@/inbox/messages"
 import { fixedToday } from "./fixedToday"
 import { inAnotherDialog, keepTabInside } from "@/lib/focusTrap"
+import { otherTimed, startWords } from "@/now/startWords"
 
 /** A dialog takes the keys while it's open: Esc closes it, and Tab starts inside it (the audit, 31 Oct) and stays
  * there, Shift-Tab too; closed, it gives the focus back to what opened it, or to `back()` when that can move (the
@@ -112,6 +113,9 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
   const [auto, setAuto] = useBriefSwitch()
   const next = nextBlocks(blocks.filter((b) => b.start.startsWith(today)))
   const first = brief?.rocks.map((r) => next.get(r.item_id)).find(Boolean)
+  // one start everywhere (now/startWords, 24 Nov): while something else is timed, Switch says it stops that
+  const status = useStatus().data
+  const starting = first ? startWords(otherTimed(status, first.item_id), false) : null
   return (
     <Modal onClose={onClose} top width={720} label="Morning brief">
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -192,10 +196,16 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
         <button className="btn btn-ghost" onClick={onClose}>
           See the plan
         </button>
-        {first && (
-          <button className="btn btn-primary" onClick={() => (start({ id: first.item_id }), onClose())}>
+        {first && starting?.alongside && (
+          <button className="btn btn-secondary" onClick={() => (start({ id: first.item_id, alongside: true }), onClose())} title={`Times this too: ${otherTimed(status, first.item_id)} keeps going`}>
+            <Icon name="plus" />
+            Alongside
+          </button>
+        )}
+        {first && starting && (
+          <button className="btn btn-primary" onClick={() => (start({ id: first.item_id }), onClose())} title={starting.hint}>
             <Icon name="play" />
-            Start {first.title}
+            {starting.alongside ? `Switch to ${first.title}` : `Start ${first.title}`}
           </button>
         )}
       </div>
