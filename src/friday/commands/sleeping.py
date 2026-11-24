@@ -165,7 +165,7 @@ def recorded(ctx: Ctx, days: int) -> dict:
 def usual_night(ctx: Ctx) -> int:
     """Your usual night, as your sleep setting has it (the amount you set up, as it's updated since): the length most
     of its seven nights have, one-off nights left out. The one number a night's sleep is measured against (23 Nov, the
-    user: a night was yellow by its own plan, which moved from 6h30 to 8h15, so the colour followed no clear rule)."""
+    user: a night was yellow by its own plan, which moved from 6h30 to 8h15, so the color followed no clear rule)."""
     today = to_local(ctx.now_utc, ctx.tz).date()
     lengths = sorted(
         wake - bedtime
