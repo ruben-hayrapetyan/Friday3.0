@@ -23178,6 +23178,11 @@
       ],
       "title": "Durations"
      },
+     "durations_wanted": {
+      "type": "boolean",
+      "title": "Durations Wanted",
+      "default": false
+     },
      "energy": {
       "anyOf": [
        {

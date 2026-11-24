@@ -222,6 +222,7 @@ def learning(ctx: Ctx, inp: Empty) -> LearningOut:
         proposals=(last or {}).get("proposals") or EMPTY_PROFILE["proposals"],
         digest=digest + module_digest(ctx),
         durations=durations_view(ctx),
+        durations_wanted=bool(kv_get(ctx.conn, "learned_durations_wanted", False, ctx.user_id)),
         energy=energy_view(ctx),
         order=order_view(ctx),
         progress=progress(ctx),

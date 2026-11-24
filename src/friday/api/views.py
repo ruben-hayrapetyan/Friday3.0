@@ -446,6 +446,7 @@ class LearningOut(Model):
     proposals: dict[str, Any]  # pending, accepted, refused
     digest: list[str]
     durations: dict[str, Any] | None = None  # learned lengths: in use, n, error against the old estimator
+    durations_wanted: bool = False  # the switch as you set it, before anything is learned too (23 Nov)
     energy: dict[str, Any] | None = None  # learned hours: in use, observations, the hours where work slips most
     order: OrderOut | None = None  # a kind you keep starting before another that's planned first
     # What each learner has to go on so far, and what it waits for before it can suggest anything: {have, need}.

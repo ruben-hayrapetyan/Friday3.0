@@ -7056,6 +7056,11 @@ export interface components {
             durations?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Durations Wanted
+             * @default false
+             */
+            durations_wanted?: boolean;
             /** Energy */
             energy?: {
                 [key: string]: unknown;

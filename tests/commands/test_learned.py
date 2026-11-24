@@ -122,4 +122,6 @@ def test_nothing_is_learned_before_friday_knows_your_timezone(tmp_path: Path) ->
 
 
 def test_using_what_isnt_learned_yet_says_so(app: App) -> None:
-    assert app.do("learn_module", module="energy", use=True)["message"] == "Nothing learned yet"
+    # and keeps your choice (23 Nov: "Nothing learned yet" saved nothing, so the switch sprang back off)
+    said = app.do("learn_module", module="energy", use=True)["message"]
+    assert said == "On: Friday uses your good and bad hours once it has learned them"

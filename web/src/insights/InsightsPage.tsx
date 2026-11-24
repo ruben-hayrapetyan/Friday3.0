@@ -129,6 +129,7 @@ function Accuracy({ kinds }: { kinds: { kind: string; n: number; median: number;
   const learning = useQuery({ queryKey: ["learning"], queryFn: () => query("learning") }).data
   const use = useCommand("learn_module", { label: (o) => o.result.message ?? "Saved" })
   const durations = learning?.durations as { in_use: boolean; n: number } | null | undefined
+  const on = durations ? !!durations.in_use : !!learning?.durations_wanted
   return (
     <>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -162,10 +163,11 @@ function Accuracy({ kinds }: { kinds: { kind: string; n: number; median: number;
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg)" }}>
-        <Switch on={!!durations?.in_use} onToggle={() => use({ module: "durations", use: !durations?.in_use })} label="Adjust estimates" />
+        {/* your choice, from the first click (Friday Notes, 23 Nov: it sprang back off with "Nothing learned yet") */}
+        <Switch on={on} onToggle={() => use({ module: "durations", use: !on })} label="Adjust estimates" />
         <span style={{ display: "flex", flexDirection: "column" }}>
           <span>Adjust new estimates automatically</span>
-          <span className="fr-kicker">{durations ? `Learned from ${durations.n} finished things.` : "Friday needs a few more finished things before it can."}</span>
+          <span className="fr-kicker">{durations ? `Learned from ${durations.n} finished things.` : on ? "On: Friday adjusts them once it has learned how long things take. It needs a few more finished things you timed." : "Friday needs a few more finished things before it can."}</span>
         </span>
       </div>
     </>

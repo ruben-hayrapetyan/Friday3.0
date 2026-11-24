@@ -75,7 +75,9 @@ def learn_nightly(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> N
 def keep(conn: sqlite3.Connection, user_id: int, name: str, value: dict[str, Any] | None) -> None:
     if value is None:
         return
-    value["approved"] = (kv_get(conn, name, {}, user_id) or {}).get("approved", False)
+    before = kv_get(conn, name, None, user_id)
+    wanted = bool(kv_get(conn, f"{name}_wanted", False, user_id))  # switched on before anything was learned
+    value["approved"] = before.get("approved", wanted) if before else wanted
     conn.execute(
         "INSERT INTO kv (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT (user_id, key) DO UPDATE SET value = "
         "excluded.value",
@@ -205,9 +207,18 @@ def learned_energy(conn: sqlite3.Connection, settings: dict[str, Any], user_id: 
 def learn_module(ctx: Ctx, inp: LearnModuleInput) -> Changed:
     """Use, or stop using, learned durations or the learned energy map (your approval in suggest mode)."""
     name = f"learned_{inp.module}"
+    # your choice is kept as you make it, learned or not (Friday Notes, 23 Nov: the first click said "Nothing learned
+    # yet", saved nothing, and lengths learned later took "off"); what's learned later takes it (`keep`)
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": f"{name}_wanted"}, {"value": json.dumps(inp.use)})
     kept = kv_get(ctx.conn, name, None, ctx.user_id)
     if kept is None:
-        return Changed(message="Nothing learned yet")
+        what = "how long things take" if inp.module == "durations" else "your good and bad hours"
+        on = (
+            f"On: Friday adjusts new estimates once it has learned {what}"
+            if inp.module == "durations"
+            else (f"On: Friday uses {what} once it has learned them")
+        )
+        return Changed(message=on if inp.use else "Off")
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": name}, {"value": json.dumps(kept | {"approved": inp.use})})
     what = "durations" if inp.module == "durations" else "good and bad hours"
     return Changed(message=f"Using learned {what}" if inp.use else f"Stopped using learned {what}")
