@@ -234,14 +234,12 @@ def test_rule_clash_names_another_rule_on_the_days_it_bends(heavy: Friday) -> No
     every = rules(heavy)
     bent = [n for n, r in every.items() if r["violated"] and n not in ("late_work", "late_tasks", "quota")]
     assert bent, "sixty hours in five days bends no rule"
-    found = 0
     for name in bent:
         out = heavy.q("rule_clash", name=name)
         assert out["rule"] == name and out["sentence"] == every[name]["sentence"]
         if out["other"] is None:
             assert out["days"] == [] and out["said"] == ""
             continue
-        found += 1
         assert out["other"] in every and out["other"] != name
         assert out["other_sentence"] == every[out["other"]]["sentence"]
         assert out["days"] and all(day(0) <= d <= day(14) for d in out["days"])
@@ -249,7 +247,6 @@ def test_rule_clash_names_another_rule_on_the_days_it_bends(heavy: Friday) -> No
         assert out["said"].endswith(f"{out['because'][1:]}." + (" Which should win?" if out["ask"] else ""))
     # Whether a bent rule clashes with another depends on the hour it's planned at (24 Nov: none did at 4pm, here and
     # on debian): each answer is checked above, clashing or not; that one clashes is rule_clashes' test's to show.
-    assert found >= 0
 
 
 def test_rule_clash_of_a_deadline_or_a_kept_rule_is_nothing(heavy: Friday) -> None:
