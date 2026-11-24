@@ -95,8 +95,17 @@ export async function openChrome() {
       msg.error ? fail(new Error(msg.error.message)) : done(msg.result)
     } else for (const l of listeners) l(msg)
   }
+  // Chrome gone (its DevTools socket closed): what still waits on it fails, rather than waiting forever (24 Nov: a
+  // browser test run hung an hour and a half on one)
+  let closed = null
+  socket.onclose = () => {
+    closed = new Error("Chrome's DevTools connection closed")
+    for (const [, fail] of pending.values()) fail(closed)
+    pending.clear()
+  }
   const send = (method, params = {}, sessionId) =>
     new Promise((done, fail) => {
+      if (closed) return fail(closed)
       const id = ++next
       pending.set(id, [done, fail])
       socket.send(JSON.stringify({ id, method, params, sessionId }))
@@ -161,11 +170,13 @@ export const SETTLE = `new Promise((done) => {
 
 // In the page: press the button (or link, switch, menu item) named `name`, the first one showing; "Plan…" is the one
 // that opens a menu (aria-expanded), not the page of that name; "a|b" is whichever of them shows.
-export const CLICK = (said) => `(() => {
+export const CLICK = (said, within = null) => `(() => {
+  const root = ${within ? `document.querySelector(${JSON.stringify(within)})` : "document"}
+  if (!root) return false
   const menu = ${JSON.stringify(said)}.endsWith("…")
   const name = ${JSON.stringify(said)}.replace(/…$/, "")
   const named = (el) => (el.getAttribute("aria-label") || el.textContent || "").replace(/\\s+/g, " ").trim()
-  const all = [...document.querySelectorAll("button, a, [role=button], [role=menuitem], [role=tab], [role=option]")]
+  const all = [...root.querySelectorAll("button, a, [role=button], [role=menuitem], [role=tab], [role=option]")]
   const showing = all.filter((el) => el.getBoundingClientRect().width > 0 && (!menu || el.hasAttribute("aria-expanded")))
   const names = name.split("|")
   const el = showing.find((el) => names.includes(named(el))) || showing.find((el) => names.some((n) => named(el).startsWith(n)))

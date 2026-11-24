@@ -7,7 +7,7 @@
 //   node web/e2e/run.mjs [--only items,rules] [--case alex] [--url http://127.0.0.1:8791] [--shots DIR]
 //
 // A test file: `export default [{ name, run }]`, run({ page, open, click, type, text, has, until, q, c, planned, day,
-// expect }) → throws on what's wrong. Exit 0: all passed; 1: some failed (listed); 2: it couldn't run. Build web/dist
+// expect }) → throws on what's wrong. click(name, { within: selector }) presses only inside that part of the page. Exit 0: all passed; 1: some failed (listed); 2: it couldn't run. Build web/dist
 // first.
 
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs"
@@ -22,6 +22,8 @@ const only = option("--only")?.split(",")
 const shots = option("--shots")
 
 export class Failed extends Error {}
+
+const TEST_LIMIT_S = Number(process.env.E2E_TEST_LIMIT_S ?? 180) // per test; a loaded Mac may need more
 
 /** What a test is given: the page, the server, and the steps a person takes. */
 function tools(page, base) {
@@ -58,8 +60,10 @@ function tools(page, base) {
   /** Whether the page (or `selector`) shows `words`, waiting for it a while. */
   const has = (words, selector = "body", ms = 10_000) =>
     until(`(document.querySelector(${JSON.stringify(selector)})?.innerText ?? "").replace(/\\s+/g, " ").includes(${JSON.stringify(words)})`, ms, `"${words}" on the page`)
-  const click = async (name) => {
-    await until(CLICK(name), 10_000, `a button "${name}"`)
+  /** Presses the button named `name` (its words or aria-label), the first showing, inside `within` if given: a row's
+   * circle and the detail panel's button can share a name ("Mark done"). */
+  const click = async (name, { within = null } = {}) => {
+    await until(CLICK(name, within), 10_000, `a button "${name}"${within ? ` in ${within}` : ""}`)
     await evaluate(page, SETTLE)
   }
   /** Types into the field labelled `label` (its aria-label, placeholder or label text), as keys, then Enter if asked. */
@@ -104,7 +108,10 @@ async function main() {
         const label = `${file.replace(".e2e.mjs", "")}: ${test.name}`
         const began = Date.now()
         try {
-          await test.run(t)
+          // one stuck test fails, rather than holding the run (24 Nov: a run hung an hour and a half)
+          let timer
+          const limit = new Promise((_, fail) => (timer = setTimeout(() => fail(new Failed(`took over ${TEST_LIMIT_S}s`)), TEST_LIMIT_S * 1000)))
+          await Promise.race([test.run(t), limit]).finally(() => clearTimeout(timer))
           passed++
           console.log(`  ✓ ${label} (${((Date.now() - began) / 1000).toFixed(1)}s)`)
         } catch (error) {

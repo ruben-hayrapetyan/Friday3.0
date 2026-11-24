@@ -87,7 +87,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
     </div>
   )
   return (
-    <aside className="fr-scroll-column" style={{ overflowY: "auto", minHeight: 0, padding: `20px 22px ${dockRoom(140)}`, boxShadow: "inset 1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 18 }}>
+    <aside data-panel="todo-detail" className="fr-scroll-column" style={{ overflowY: "auto", minHeight: 0, padding: `20px 22px ${dockRoom(140)}`, boxShadow: "inset 1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
           <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>

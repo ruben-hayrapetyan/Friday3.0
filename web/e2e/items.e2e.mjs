@@ -23,11 +23,11 @@ export default [
       const item = await find(q, "E2E lab writeup")
       await open(`/todo?item=${item.id}`)
       await has("Planned sessions")
-      await click("Mark done")
+      await click("Mark done", { within: "[data-panel=todo-detail]" }) // the panel's, not a row's circle
       await until(`true`, 100)
       for (let i = 0; i < 40 && (await find(q, "E2E lab writeup")).status !== "done"; i++) await new Promise((r) => setTimeout(r, 250))
       expect((await find(q, "E2E lab writeup")).status === "done", "Mark done didn't finish it on the server")
-      await click("Open again")
+      await click("Open again", { within: "[data-panel=todo-detail]" })
       for (let i = 0; i < 40 && (await find(q, "E2E lab writeup")).status !== "todo"; i++) await new Promise((r) => setTimeout(r, 250))
       expect((await find(q, "E2E lab writeup")).status === "todo", "Open again didn't open it on the server")
     },
