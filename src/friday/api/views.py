@@ -1148,3 +1148,11 @@ class BreakChoicesOut(Model):
     calendars: list[CalendarChoice]
     tags: list[str]
     series: list[SeriesChoice]
+
+
+class TipOut(Model):
+    """A pro tip to show now (#23), or none: a feature you may be missing, and the page it's on."""
+
+    id: str | None = None
+    text: str | None = None
+    page: str | None = None

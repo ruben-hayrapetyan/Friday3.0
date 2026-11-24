@@ -2469,6 +2469,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/tip_shown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A tip was shown: counted, so it's shown at most three times, a week apart, and nothing else that day. */
+        post: operations["tip_shown"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/token_add": {
         parameters: {
             query?: never;
@@ -4011,6 +4028,23 @@ export interface paths {
         };
         /** Friday's terms, and whether you have yet to accept them. */
         get: operations["terms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/tips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The tip to show now, if any: the first whose habit holds and that's due, none if one was shown today. */
+        get: operations["tips"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11884,6 +11918,44 @@ export interface components {
              */
             message?: string;
         };
+        /** TipInput */
+        TipInput: {
+            /** Id */
+            id: string;
+        };
+        /**
+         * TipOut
+         * @description A pro tip to show now (#23), or none: a feature you may be missing, and the page it's on.
+         */
+        TipOut: {
+            /** Id */
+            id?: string | null;
+            /** Text */
+            text?: string | null;
+            /** Page */
+            page?: string | null;
+        };
+        /** TipShownResult */
+        TipShownResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
         /** ToReviewOut */
         ToReviewOut: {
             /** Items */
@@ -18361,6 +18433,43 @@ export interface operations {
             };
         };
     };
+    tip_shown: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TipInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipShownResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     token_add: {
         parameters: {
             query?: {
@@ -20878,6 +20987,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TermsOut"];
+                };
+            };
+        };
+    };
+    tips: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipOut"];
                 };
             };
         };

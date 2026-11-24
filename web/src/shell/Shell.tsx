@@ -41,6 +41,7 @@ import { nextHour, placeAfter, useHost } from "./host"
 import { SIDEBAR } from "./layout"
 import { useShell } from "./ShellContext"
 import { HelpOverlay } from "./HelpOverlay"
+import { ProTip } from "./ProTip"
 import { FirstTour, Tour } from "./Tour"
 import { UpdateDialogs } from "@/updates/UpdateDialogs"
 import { Icon } from "@/components/fr/controls"
@@ -168,6 +169,7 @@ export function Shell() {
       <SpanOffer />
       <UpdateDialogs />
       {tour && dialog !== "setup" && <Tour />}
+      <ProTip />
       {help && !tour && <HelpOverlay />}
       <FirstTour ready={setupDone === true && dialog === null && briefDecided === today} toured={toured} />
     </DragProvider>

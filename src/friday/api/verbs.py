@@ -1552,6 +1552,22 @@ VERBS = {
         False,
         "Accept Friday's terms, the version you read.",
     ),
+    "tip_shown": Verb(
+        "POST",
+        "/api/c/tip_shown",
+        commands.TipInput,
+        True,
+        False,
+        "A tip was shown: counted, so it's shown at most three times, a week apart, and nothing else that day.",
+    ),
+    "tips": Verb(
+        "GET",
+        "/api/q/tips",
+        commands.Empty,
+        False,
+        False,
+        "The tip to show now, if any: the first whose habit holds and that's due, none if one was shown today.",
+    ),
     "to_review": Verb(
         "GET", "/api/q/to_review", commands.Empty, False, False, "What's left to go over, soonest due first."
     ),

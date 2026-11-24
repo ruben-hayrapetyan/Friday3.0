@@ -937,3 +937,38 @@ kbd.fr-kbd {
 @container (min-width: 500px) {
   .fr-going-name.is-short { flex: none; }
 }
+
+/* A pro tip (shell/ProTip.tsx, #23): slides in at the bottom right for five seconds and out again. Flat, like the
+   toasts; set above the Now bar by its own bottom. */
+.fr-tip {
+  position: fixed;
+  right: 24px;
+  z-index: 45;
+  max-width: 320px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface, var(--color-bg));
+  color: var(--color-text);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-text) 12%, transparent), 0 8px 24px rgb(0 0 0 / 0.25);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  animation: fr-tip-in 260ms ease-out both;
+}
+.fr-tip[data-leaving] { animation: fr-tip-out 260ms ease-in both; }
+@keyframes fr-tip-in {
+  from { transform: translateX(calc(100% + 32px)); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes fr-tip-out {
+  from { transform: none; opacity: 1; }
+  to { transform: translateX(calc(100% + 32px)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fr-tip, .fr-tip[data-leaving] { animation-name: none; }
+  .fr-tip[data-leaving] { opacity: 0; }
+}
