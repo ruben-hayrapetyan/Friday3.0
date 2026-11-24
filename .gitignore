@@ -58,3 +58,7 @@ site/downloads/
 # Kept on this Mac, not public (14 Nov): the engine research beyond its report (docs/research), and a plugin's config
 /BackendGuidelines/
 .ckignore
+
+# mutation runs (scripts/mutation.sh)
+.mutants/
+mutants/

@@ -12,7 +12,7 @@ of it a machine can check.
 | Regular | The code does what it says, case by case: commands, the planner, the words Friday says | `tests/` (Python), `web/src/**/*.test.ts(x)` | `uv run pytest`, `pnpm --dir web test` |
 | Headless | The whole pipeline: a command sent over HTTP to a real `fridayd`, the plan made, every view read back the same way | `tests/system/` | `uv run pytest tests/system` |
 | Web | What you see: a real Chrome, headless, drives Friday's pages and checks what they show | `web/e2e/<feature>.e2e.mjs`, `web/scripts/*-check.mjs` | `node web/e2e/run.mjs`, `node web/scripts/agreement-check.mjs`, `node web/scripts/overflow-check.mjs` |
-| Depth | The tests notice a wrong change: each line changed on purpose (a mutation) must fail a test | `scripts/mutation.sh` | `scripts/mutation.sh [module]` |
+| Depth | The tests notice a wrong change: each line changed on purpose (a mutation) must fail a test | `scripts/mutation.sh` | `scripts/mutation.sh [module] [tests]` on debian |
 | Generated | Thousands of made-up weeks, settings and changes, every plan checked against what must always hold, and against the last release's plans | `tests/stress/` | `uv run python -m tests.stress.run --out DIR` |
 
 `tests/features.toml` lists every feature with the commands and queries it runs and the pages it's on. Every command
@@ -51,6 +51,10 @@ and `tests/test_features.py` fails if something is missing from it or listed but
 Line coverage only says a line ran. A mutation run changes the code on purpose, one small change at a time (a `<`
 made `<=`, a branch taken away, a number off by one), and runs the tests: each change has to fail at least one test.
 A change that no test notices (a surviving mutant) is a missing test, and is written before the work counts as done.
+The first run, on the pro tips (24 Nov), let 65 of 341 changes through its 15 passing tests: coverage alone said 100%.
+
+Coverage itself: `scripts/coverage.sh` (Python and the web app). The planner's inner loops are compiled (numba), so
+the coverage tool can't see them run: measure with `NUMBA_DISABLE_JIT=1` to count them.
 
 ## Generated situations
 
