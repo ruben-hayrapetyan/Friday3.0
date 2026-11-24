@@ -88,7 +88,6 @@ phone_forget headless
 phones web
 plan_view web
 pointless web
-progress web
 project_delete headless
 project_options web
 project_set headless
