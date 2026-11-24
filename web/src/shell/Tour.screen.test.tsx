@@ -51,6 +51,21 @@ describe("the tour", () => {
     await waitFor(() => expect(tour()).toBeNull())
   })
 
+  // 24 Nov, a user: at the tour's Settings stop the page was blank. Settings goes on to the section you last had open,
+  // and the tour, opening its page again on every address change, sent it back: the page shows, at its section.
+  it("opens the Settings page at its Settings stop, not a blank one", async () => {
+    const { user } = await openFriday("/")
+    await user.click(screen.getAllByRole("button", { name: "What's on this page" })[0])
+    await user.click(await screen.findByRole("button", { name: "Take the tour" }))
+    await screen.findByRole("dialog", { name: "Tour of Friday: Here's your plan" })
+    while (!card().queryByRole("heading", { name: "Settings" })) await user.click(card().getByRole("button", { name: "Next" }))
+    await waitFor(() => expect(route()).toMatch(/^\/settings\/[a-z]+$/))
+    expect(await screen.findByText("Changes apply right away")).toBeTruthy()
+    await new Promise((r) => setTimeout(r, 300)) // and it stays
+    expect(route()).toMatch(/^\/settings\/[a-z]+$/)
+    expect(screen.getByText("Changes apply right away")).toBeTruthy()
+  })
+
   it("ends with × or Esc", async () => {
     const { user } = await openFriday("/")
     await user.click(screen.getAllByRole("button", { name: "What's on this page" })[0])

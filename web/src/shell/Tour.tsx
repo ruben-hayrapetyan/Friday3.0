@@ -193,9 +193,13 @@ export function Tour() {
 
   useEffect(() => next.current?.focus(), [at])
 
-  // the stop's page, opened for you
+  // the stop's page, opened for you once, as you come to the stop; then the page is left alone (24 Nov, a user: at the
+  // Settings stop the page was blank: Settings goes on to the section you last had open, and opening the stop's page
+  // again on every address change sent it back, over and over)
   const navigate = useNavigate()
-  useEffect(() => void navigate(stop.page), [stop.page, navigate])
+  const go = useRef(navigate)
+  go.current = navigate
+  useEffect(() => void go.current(stop.page), [stop.page])
 
   // in case the guide never says it's gone; let go of with this tour, so it can't end one taken after it (the audit,
   // 12 Nov)
