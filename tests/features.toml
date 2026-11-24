@@ -1,0 +1,388 @@
+# Every feature of Friday and what it is made of (24 Nov, the user: "go through every single functionality of the
+# app and build an extensive test suite (both web, headless, and regular)"). tests/test_features.py checks every
+# command and query belongs to a feature here, and every feature has its tests in each layer (TESTING.md).
+# `commands`: the commands and queries it runs; `pages`: where it is in the app (none: no page of its own).
+
+[[feature]]
+id = "ai"
+name = "AI: key, models, local models"
+commands = ["ai_check", "ai_key_set", "ai_models", "local_model_cancel", "local_model_use", "local_models"]
+pages = ["/settings/integrations"]
+
+[[feature]]
+id = "archive"
+name = "Finished projects: archive, delete"
+commands = ["project_archive", "project_delete", "project_unarchive", "projects_finished"]
+pages = ["/projects"]
+
+[[feature]]
+id = "asks"
+name = "Ask me later"
+commands = ["ask_later", "asks_later"]
+pages = ["/inbox"]
+
+[[feature]]
+id = "beat_plan"
+name = "Beating the plan (Insights)"
+commands = ["beat_plan"]
+pages = ["/insights"]
+
+[[feature]]
+id = "calendar"
+name = "The calendar's days and tags"
+commands = ["areas", "calendar"]
+pages = ["/"]
+
+[[feature]]
+id = "calendars"
+name = "Google calendars chosen"
+commands = ["calendar_set", "google_calendars"]
+pages = ["/settings/calendars"]
+
+[[feature]]
+id = "checking"
+name = "Copies and the review of what came in"
+commands = ["duplicates", "duplicates_merge", "not_duplicates", "review_again", "reviewed", "to_review"]
+pages = ["/inbox/check"]
+
+[[feature]]
+id = "claude"
+name = "Ask Claude"
+commands = ["ask_claude"]
+pages = ["/"]
+
+[[feature]]
+id = "conflicts"
+name = "Rule clashes resolved"
+commands = ["conflict_resolve"]
+pages = ["/inbox"]
+
+[[feature]]
+id = "connecting"
+name = "Google: connect, tasks, remove"
+commands = ["google_client_save", "google_connect", "google_connect_cancel", "google_connect_status", "google_remove", "google_tasks_connect"]
+pages = ["/settings/calendars"]
+
+[[feature]]
+id = "decisions"
+name = "Decisions: late work, locks"
+commands = ["late_accept", "lock_keep"]
+pages = ["/inbox"]
+
+[[feature]]
+id = "diagnose"
+name = "Report a problem"
+commands = ["diagnose", "report"]
+pages = ["/settings/advanced"]
+
+[[feature]]
+id = "eating"
+name = "Meals: planned, logged, timed, learned"
+commands = ["meal_edit", "meal_end", "meal_log", "meal_plan", "meal_remove", "meal_skip", "meal_start", "meal_use_length", "meal_use_time", "meals"]
+pages = ["/body", "/"]
+
+[[feature]]
+id = "effects"
+name = "A suggestion's effect on the plan"
+commands = ["suggestion_effect"]
+pages = ["/inbox"]
+
+[[feature]]
+id = "eventwrites"
+name = "Events written to your calendar"
+commands = ["events_to_calendar"]
+pages = []
+
+[[feature]]
+id = "exams"
+name = "Exams and their prep"
+commands = ["exam_focus_for", "exams"]
+pages = ["/projects"]
+
+[[feature]]
+id = "explain"
+name = "Why a block is where it is, what changed, triage, lighten"
+commands = ["changes", "lighten", "preview_weights", "rule_totals", "triage", "why", "why_not"]
+pages = ["/"]
+
+[[feature]]
+id = "fitting"
+name = "Fit: what fits a gap"
+commands = ["fit"]
+pages = ["/"]
+
+[[feature]]
+id = "gmail_app"
+name = "Gmail app passwords"
+commands = ["gmail_app_accounts", "gmail_app_set"]
+pages = ["/settings/integrations"]
+
+[[feature]]
+id = "horizon"
+name = "Projects: steps, order, templates, load ahead"
+commands = ["load", "projects", "reorder", "step_any_time", "template_apply", "template_save"]
+pages = ["/projects"]
+
+[[feature]]
+id = "importing"
+name = "Import from the old apps"
+commands = ["import_chroma_colors", "import_personal"]
+pages = []
+
+[[feature]]
+id = "inbox"
+name = "The Inbox: suggestions from mail, documents and sources; accept, reject, Ask"
+commands = ["ask_ai", "batch_accept", "document_add", "document_retry", "documents", "inbox", "source_add", "source_edit", "source_remove", "suggestion_accept", "suggestion_reject", "suggestion_restore", "sync_now"]
+pages = ["/inbox"]
+
+[[feature]]
+id = "insights"
+name = "Insights: trends"
+commands = ["insights"]
+pages = ["/insights"]
+
+[[feature]]
+id = "integrations"
+name = "Other apps: connect, lists, tokens (Todoist, Notion, Trello…)"
+commands = ["integration_connect", "integration_disconnect", "integration_list_set", "integration_lists", "integration_set", "integration_sign_in", "integration_token_page", "integrations"]
+pages = ["/settings/integrations"]
+
+[[feature]]
+id = "items"
+name = "Add, edit, finish and delete to-dos and events; tags; waits between to-dos"
+commands = ["add", "area_add", "area_edit", "depend", "done", "drop", "edit", "reopen", "undepend"]
+pages = ["/todo", "/"]
+
+[[feature]]
+id = "items_view"
+name = "A to-do's detail, the to-do list, and reading a typed line"
+commands = ["item", "items", "parse"]
+pages = ["/todo"]
+
+[[feature]]
+id = "kinds"
+name = "Kinds of to-do"
+commands = ["kind_add", "kind_remove"]
+pages = ["/settings/tags"]
+
+[[feature]]
+id = "learned"
+name = "Learned lengths switch"
+commands = ["learn_module"]
+pages = ["/insights"]
+
+[[feature]]
+id = "learning"
+name = "What Friday learns: proposals, check-ins, comparisons, order"
+commands = ["checkin", "compare_answer", "learn_apply", "learn_order", "learn_reject", "learn_reset", "learning", "proposal_answer", "questions"]
+pages = ["/insights", "/inbox"]
+
+[[feature]]
+id = "log_view"
+name = "The log and stats"
+commands = ["log_list", "stats"]
+pages = ["/insights"]
+
+[[feature]]
+id = "mac"
+name = "The Mac's calendars and writes"
+commands = ["mac_calendars", "mac_sync", "mac_writes", "mac_written"]
+pages = []
+
+[[feature]]
+id = "mac_plan"
+name = "The plan for the Mac app"
+commands = ["mac_plan"]
+pages = []
+
+[[feature]]
+id = "mail"
+name = "Mail log"
+commands = ["mail_log", "mail_retry"]
+pages = ["/settings/integrations"]
+
+[[feature]]
+id = "mail_app"
+name = "Mail app accounts"
+commands = ["mail_app_accounts", "mail_app_forget", "mail_app_set"]
+pages = ["/settings/integrations"]
+
+[[feature]]
+id = "napping"
+name = "Naps"
+commands = ["nap_edit", "nap_end", "nap_log", "nap_remove", "nap_start"]
+pages = ["/body"]
+
+[[feature]]
+id = "now_view"
+name = "The Now bar and Friday's status"
+commands = ["now", "status"]
+pages = ["/"]
+
+[[feature]]
+id = "ongoing"
+name = "Ongoing projects (hours a week)"
+commands = ["ongoing_add", "ongoing_delete", "ongoing_projects", "ongoing_set"]
+pages = ["/projects"]
+
+[[feature]]
+id = "optional_events"
+name = "Optional events"
+commands = ["event_mode", "event_optional"]
+pages = ["/"]
+
+[[feature]]
+id = "phones"
+name = "Phone pairing"
+commands = ["phone_forget", "phone_pair", "phone_set", "phone_status"]
+pages = ["/settings/phone"]
+
+[[feature]]
+id = "pins"
+name = "Pin and lock blocks"
+commands = ["pin", "unpin"]
+pages = ["/"]
+
+[[feature]]
+id = "plan_view"
+name = "The plan on the calendar: blocks, events, what fits, paces"
+commands = ["events", "fits", "paces", "plan"]
+pages = ["/"]
+
+[[feature]]
+id = "planning"
+name = "Replan and resolve"
+commands = ["replan", "resolve"]
+pages = []
+
+[[feature]]
+id = "pointless"
+name = "Work archived once its due passed"
+commands = ["archived_ok", "archived_restore"]
+pages = ["/inbox"]
+
+[[feature]]
+id = "progress"
+name = "Timing work: start, stop, alongside, sittings, log work, the daily review"
+commands = ["close_day", "log", "progress", "review_submit", "review_task", "settle", "sitting_delete", "sitting_edit", "start", "stop", "stuck"]
+pages = ["/", "/todo", "/review"]
+
+[[feature]]
+id = "project_options"
+name = "A project's options"
+commands = ["project_options", "project_set"]
+pages = ["/projects"]
+
+[[feature]]
+id = "rating"
+name = "Events: category, going, keep, hold a task"
+commands = ["category_merge", "event_category", "event_choice", "event_going", "event_hold", "event_keep"]
+pages = ["/"]
+
+[[feature]]
+id = "reminders"
+name = "Apple Reminders sync"
+commands = ["reminder_writes", "reminder_written", "reminders_sync"]
+pages = []
+
+[[feature]]
+id = "repeats"
+name = "Calendar repeats import"
+commands = ["calendar_repeats", "repeats_import", "repeats_leave_out"]
+pages = ["/inbox"]
+
+[[feature]]
+id = "reviews"
+name = "Morning brief, the day's review, the week's review"
+commands = ["brief", "review", "week_note", "week_review"]
+pages = ["/", "/review", "/insights"]
+
+[[feature]]
+id = "rules"
+name = "Rules in your own words: read, add, edit, clashes, why"
+commands = ["rule_add", "rule_clash", "rule_clashes", "rule_edit", "rule_read", "rule_remove", "rule_set", "rule_why", "rule_win", "rules"]
+pages = ["/rules"]
+
+[[feature]]
+id = "series"
+name = "Repeating to-dos and events"
+commands = ["materialize", "repeat", "series_add", "series_delete", "series_edit", "series_list", "series_resume", "series_spacing", "series_stop", "skip"]
+pages = ["/todo", "/settings/repeating"]
+
+[[feature]]
+id = "settings"
+name = "Settings, paces and one-day changes"
+commands = ["day_override", "pace", "pace_delete", "pace_save", "settings_set"]
+pages = ["/settings", "/"]
+
+[[feature]]
+id = "settings_view"
+name = "Reading settings"
+commands = ["settings"]
+pages = ["/settings"]
+
+[[feature]]
+id = "setup"
+name = "Setup and the tour"
+commands = ["setup", "setup_save", "tour_offered"]
+pages = ["/"]
+
+[[feature]]
+id = "shove"
+name = "Shove: push the day on"
+commands = ["shove", "unshove"]
+pages = ["/"]
+
+[[feature]]
+id = "sleeping"
+name = "Sleep: taps, nights, learned times"
+commands = ["sleep", "sleep_mark", "sleep_mark_edit", "sleep_mark_remove", "sleep_skip"]
+pages = ["/body", "/insights"]
+
+[[feature]]
+id = "terms"
+name = "Terms"
+commands = ["terms", "terms_accept"]
+pages = ["/"]
+
+[[feature]]
+id = "tips"
+name = "Pro tips"
+commands = ["tip_shown", "tips"]
+pages = ["/"]
+
+[[feature]]
+id = "tokens"
+name = "API tokens"
+commands = ["token_add", "token_remove", "tokens"]
+pages = ["/settings/tokens"]
+
+[[feature]]
+id = "undo"
+name = "Undo"
+commands = ["undo"]
+pages = ["/"]
+
+[[feature]]
+id = "updates"
+name = "Updates: look, install later, test users' versions, what's new"
+commands = ["update_check", "update_later", "update_start", "update_status", "update_stop", "update_test_invite", "update_test_join", "update_test_leave", "whats_new_seen"]
+pages = ["/settings/updates"]
+
+[[feature]]
+id = "vacations"
+name = "Breaks: add, edit, tick a break day's list, suggested breaks"
+commands = ["break_choices", "break_suggestion", "vacation_add", "vacation_day", "vacation_delete", "vacation_edit", "vacation_tick", "vacations"]
+pages = ["/", "/settings/breaks"]
+
+[[feature]]
+id = "ways"
+name = "Other ways to plan a block"
+commands = ["other_way", "other_way_pick", "other_ways"]
+pages = ["/"]
+
+[[feature]]
+id = "whatif"
+name = "What if"
+commands = ["whatif", "whatif_keep", "whatif_ready"]
+pages = ["/"]
