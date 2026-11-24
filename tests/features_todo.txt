@@ -40,7 +40,6 @@ google_client_save headless
 google_connect_cancel headless
 google_remove headless
 google_tasks_connect headless
-horizon web
 import_chroma_colors headless
 import_personal headless
 inbox web
@@ -50,7 +49,6 @@ integration_disconnect headless
 integration_sign_in headless
 integration_token_page headless
 integrations web
-items_view web
 kind_add headless
 kind_remove headless
 kinds web
