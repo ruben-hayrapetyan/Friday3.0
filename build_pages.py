@@ -72,9 +72,11 @@ def page(name: str, title: str, description: str, body: str, robots: str | None 
         if robots
         else ""
     }
+<link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="48x48" href="/images/icon-48.png">
+<link rel="icon" type="image/png" sizes="96x96" href="/images/icon-96.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png">
-<link rel="apple-touch-icon" href="/images/icon.png">
+<link rel="apple-touch-icon" href="/images/icon-180.png">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>

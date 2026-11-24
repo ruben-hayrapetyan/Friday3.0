@@ -441,3 +441,36 @@ def test_the_faq_asks_about_a_mobile_version_not_only_the_iphone() -> None:
     """H212 (15 Nov, a client: "iphone" → "mobile", phones in general, not Apple's alone)."""
     home = (SITE / "index.html").read_text()
     assert "<summary>Is there a Windows, Linux or mobile version?</summary>" in home and "iPhone version" not in home
+
+
+# 23 Nov: Google showed Friday's icon small and blurry inside a white ring (Canva's filled its circle): the icons were
+# the Mac app icon, a rounded square in a transparent margin. They're full-bleed now (scripts/make_favicons.py).
+def corner_alpha(png: bytes) -> int:
+    """The top-left pixel's alpha in an 8-bit RGBA PNG (its first pixel needs no unfiltering: nothing left or above)."""
+    import struct
+    import zlib
+
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"
+    at, idat, color = 8, b"", None
+    while at < len(png):
+        size, kind = struct.unpack(">I4s", png[at : at + 8])
+        chunk = png[at + 8 : at + 8 + size]
+        if kind == b"IHDR":
+            color = chunk[9]
+        if kind == b"IDAT":
+            idat += chunk
+        at += 12 + size
+    assert color == 6, "RGBA"
+    return zlib.decompress(idat)[1 + 3]
+
+
+def test_the_icons_fill_their_square_for_search_results() -> None:
+    images = SITE / "images"
+    for size in (48, 96, 180, 192, 512):
+        png = (images / f"icon-{size}.png").read_bytes()
+        assert int.from_bytes(png[16:20], "big") == size
+        assert corner_alpha(png) == 255, f"icon-{size}.png has a see-through corner"
+    assert (SITE / "favicon.ico").is_file()
+    for page in ("index.html", "help.html", "features.html", "privacy.html", "whats-new.html"):
+        text = (SITE / page).read_text()
+        assert 'href="/favicon.ico"' in text and "/images/icon-96.png" in text and "/images/icon-180.png" in text
