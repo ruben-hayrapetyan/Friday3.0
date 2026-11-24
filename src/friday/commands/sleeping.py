@@ -162,6 +162,20 @@ def recorded(ctx: Ctx, days: int) -> dict:
     return nights_from(marks, starts, ctx.day_start, ends)
 
 
+def usual_night(ctx: Ctx) -> int:
+    """Your usual night, as your sleep setting has it (the amount you set up, as it's updated since): the length most
+    of its seven nights have, one-off nights left out. The one number a night's sleep is measured against (23 Nov, the
+    user: a night was yellow by its own plan, which moved from 6h30 to 8h15, so the colour followed no clear rule)."""
+    today = to_local(ctx.now_utc, ctx.tz).date()
+    lengths = sorted(
+        wake - bedtime
+        for bedtime, wake, _ in (
+            night_times(ctx.settings, {}, today + timedelta(days=n), ctx.tz, ctx.day_start) for n in range(7)
+        )
+    )
+    return lengths[3]  # the middle one: what four or more of the seven share
+
+
 def planned_min(ctx: Ctx, overrides: dict, evening) -> int:
     bedtime, wake, _ = night_times(ctx.settings, overrides, evening, ctx.tz, ctx.day_start)
     return wake - bedtime
@@ -215,6 +229,7 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
         ready=format_local(this_morning.ready_at) if this_morning and this_morning.ready_at else None,
         nights=[night_out(ctx, overrides, n) for n in shown],
         average_slept_min=round(sum(full) / len(full)) if full else None,
+        usual_night_min=usual_night(ctx),
         routine_min=learned.routine_min,
         wind_down_min=learned.wind_down_min,
         done=format_local(tonight.done.at) if tonight and tonight.done and not tonight.bed else None,

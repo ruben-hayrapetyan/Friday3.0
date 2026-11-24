@@ -1025,6 +1025,7 @@ class SleepOut(Model):
     ready: str | None = None
     nights: list[SleepNightOut] = []  # the last two weeks, newest first
     average_slept_min: int | None = None  # over the last seven recorded nights
+    usual_night_min: int | None = None  # your usual night as your sleep setting has it; a night an hour under is short
     routine_min: dict[str, int] = {}  # learned, by the weekday of the morning
     wind_down_min: dict[str, int] = {}  # learned, done with work to bed, by the weekday of the evening
     done: str | None = None  # tonight's done with work, local

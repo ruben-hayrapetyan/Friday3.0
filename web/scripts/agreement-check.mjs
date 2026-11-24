@@ -73,6 +73,12 @@ async function makeWeeks({ c, planned }) {
   await c("depend", { item_id: steps[2], depends_on_id: steps[1] })
   // Soft work already past its due.
   await c("add", { title: "Agreement: reading response", preset: "Reading", due: `${day(-1)}T17:00`, duration_min: 90, firmness: "soft" })
+  // Sleep tracked, four nights logged: 8h, 6h, 7h15 and 5h30.
+  await c("settings_set", { key: "sleep_tracking", value: { on: true } })
+  for (const [n, bed, up] of [[4, "23:30", "07:30"], [3, "00:30", "06:30"], [2, "23:30", "06:45"], [1, "01:00", "06:30"]]) {
+    await c("sleep_mark", { kind: "bed", at: `${bed < "12:00" ? day(1 - n) : day(-n)}T${bed}` })
+    await c("sleep_mark", { kind: "up", at: `${day(1 - n)}T${up}` })
+  }
   await planned()
 }
 
@@ -229,6 +235,26 @@ const CHECKS = [
           found.push({ where: `Projects, ${p.item.title}`, says: "Not planned yet", but: "its steps have time planned" })
       }
       return found
+    },
+  },
+  {
+    name: "sleep: a night is yellow when, and only when, it's an hour or more under your usual night",
+    async run({ q, open, page }) {
+      const sleep = await q("sleep")
+      const usual = sleep.usual_night_min
+      await open("/insights?tab=sleep")
+      const cells = await evaluate(page, `[...document.querySelectorAll("span.tnum")].filter((s) => /^(\\d+h)?( ?\\d+m)?$/.test(s.innerText.trim()) && s.innerText.trim()).map((s) => ({ text: s.innerText.trim(), yellow: s.style.color.includes("warn") }))`)
+      const found = []
+      let compared = 0
+      for (const n of sleep.nights.filter((n) => n.slept_min)) {
+        const want = n.slept_min <= usual - 60
+        const h = Math.floor(n.slept_min / 60), m = n.slept_min % 60
+        const text = h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`
+        for (const cell of cells.filter((c) => c.text === text))
+          if (++compared && cell.yellow !== want) found.push({ where: `Sleep, ${n.date}`, says: `${text} ${cell.yellow ? "yellow" : "gray"}`, but: `your usual night is ${usual / 60} h: it should be ${want ? "yellow" : "gray"}` })
+      }
+      if (process.env.AGREEMENT_PROGRESS) console.error(`  sleep: ${compared} cells compared`)
+      return compared ? found : [{ where: "Sleep", says: "no night's hours on the page", but: `${sleep.nights.filter((n) => n.slept_min).length} nights were logged` }]
     },
   },
   {

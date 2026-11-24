@@ -11117,6 +11117,8 @@ export interface components {
             nights?: components["schemas"]["SleepNightOut"][];
             /** Average Slept Min */
             average_slept_min?: number | null;
+            /** Usual Night Min */
+            usual_night_min?: number | null;
             /**
              * Routine Min
              * @default {}

@@ -399,3 +399,24 @@ def test_work_before_you_went_to_bed_still_counts(tmp_path: Path) -> None:
     assert awake_parts(150, 260, away) == [(200, 260)]  # from being ready
     assert awake_parts(120, 180, away) == []
     assert awake_parts(120, 180, None) == [(120, 180)]  # no taps this morning: as planned
+
+
+# 23 Nov, the user: a night's "slept" was yellow when it was an hour under that night's own plan, which ran from 6h30
+# to 8h15 as one-off nights moved, so short nights could stay gray and long ones turn yellow. Yellow is now an hour or
+# more under one number for every night: your usual night, as your sleep setting has it (the amount you set up, as
+# it's updated since), the length most of its seven nights have.
+def test_your_usual_night_is_what_most_nights_of_your_sleep_setting_give(app: App) -> None:
+    on(app)
+    assert app.do("sleep")["usual_night_min"] == 8 * 60  # weeknights 11:30pm–7:30am, weekends 12:30–9am
+    week = app.do("settings")["sleep"]
+    shorter = {d: ({**n, "bedtime": "00:00", "wake": "07:00"} if d in ("mon", "tue", "wed", "thu", "fri") else n)
+               for d, n in week.items()}  # fmt: skip
+    app.do("settings_set", key="sleep", value=shorter)  # as "Use these times" updates it
+    assert app.do("sleep")["usual_night_min"] == 7 * 60
+
+
+def test_a_one_off_night_doesnt_change_your_usual_night(app: App) -> None:
+    on(app)
+    before = app.do("sleep")["usual_night_min"]
+    app.do("day_override", date="2026-10-20", wake="05:30")  # up early once
+    assert app.do("sleep")["usual_night_min"] == before

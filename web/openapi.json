@@ -35394,6 +35394,17 @@
       ],
       "title": "Average Slept Min"
      },
+     "usual_night_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Usual Night Min"
+     },
      "routine_min": {
       "additionalProperties": {
        "type": "integer"

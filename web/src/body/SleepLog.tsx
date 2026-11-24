@@ -10,6 +10,7 @@ import { useSettings, useSleep } from "@/hooks/queries"
 import { clock, dayLabel, dur, weekday } from "@/lib/format"
 import { addDays, nearestAt } from "@/lib/time"
 import { Section } from "@/insights/Section"
+import { shortNight } from "@/insights/Sleep"
 import { useShell } from "@/shell/ShellContext"
 import { EditCard, minutesBetween, TimeField } from "./Times"
 import { NAP_HOURS, SLEEP_HOURS } from "@/lib/ampm"
@@ -212,6 +213,7 @@ const dow = (d: string) => ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new
 /** The last two weeks of nights, one a row: its four times and how long you slept; a night not recorded too. A row
  * clicked opens its card under it (`NightCard`). */
 function NightRows({ nights }: { nights: Schemas["SleepNightOut"][] }) {
+  const usual = useSleep().data?.usual_night_min ?? null // one number for every night (shortNight)
   const { today } = useShell()
   const [open, setOpen] = useState<string | null>(null)
   const byDate = new Map(nights.map((n) => [n.date, n]))
@@ -243,7 +245,7 @@ function NightRows({ nights }: { nights: Schemas["SleepNightOut"][] }) {
                       </span>
                     )
                   })}
-                  <span className="tnum" title={`You plan for ${dur(night.planned_min)}`} style={{ textAlign: "right", color: night.slept_min && night.slept_min < night.planned_min - 60 ? "var(--fr-warn)" : "var(--color-neutral-300)" }}>
+                  <span className="tnum" title={shortNight(night.slept_min, usual) && usual !== null ? `An hour or more under your usual ${dur(usual)}` : `You plan for ${dur(night.planned_min)}`} style={{ textAlign: "right", color: shortNight(night.slept_min, usual) ? "var(--fr-warn)" : "var(--color-neutral-300)" }}>
                     {night.slept_min ? dur(night.slept_min) : "—"}
                   </span>
                 </>

@@ -59,7 +59,7 @@ export function SleepSection({ here = false }: { here?: boolean }) {
   return (
     <Section title="Sleep" note="Your last two weeks of nights, and what Friday learned from them" right={log}>
       <Usual sleep={sleep} />
-      {nights.length ? <Timeline nights={nights} /> : <span style={{ color: "var(--color-neutral-400)" }}>No nights yet. Tap “Going to bed” and “I’m up” in the Now bar, or log last night {here ? "below" : <>in Insights → Sleep</>}.</span>}
+      {nights.length ? <Timeline nights={nights} usual={sleep.usual_night_min ?? null} /> : <span style={{ color: "var(--color-neutral-400)" }}>No nights yet. Tap “Going to bed” and “I’m up” in the Now bar, or log last night {here ? "below" : <>in Insights → Sleep</>}.</span>}
       <LearnedSleep sleep={sleep} />
     </Section>
   )
@@ -96,7 +96,14 @@ function Usual({ sleep }: { sleep: Schemas["SleepOut"] }) {
   )
 }
 
-function Timeline({ nights }: { nights: Schemas["SleepNightOut"][] }) {
+/** A night an hour or more under your usual night (the one number for every night: your sleep setting's usual length,
+ * as you set it up and as it's updated since). 23 Nov, the user: by each night's own plan, which moved from 6h30 to
+ * 8h15, short nights stayed gray and long ones turned yellow. */
+export function shortNight(slept: number | null | undefined, usual: number | null): boolean {
+  return !!slept && usual !== null && slept <= usual - 60
+}
+
+function Timeline({ nights, usual }: { nights: Schemas["SleepNightOut"][]; usual: number | null }) {
   const [hover, setHover] = useState<string | null>(null)
   const shown = nights.find((n) => n.date === hover)
   return (
@@ -137,7 +144,7 @@ function Timeline({ nights }: { nights: Schemas["SleepNightOut"][] }) {
             {n.ready && <span title="Ready to work" style={{ position: "absolute", top: 0, bottom: 0, width: 2, borderRadius: 1, left: `${along(n.date, n.ready)}%`, background: "var(--color-accent-200)" }} />}
             {n.done && <span title="Done with work" style={{ position: "absolute", top: 0, bottom: 0, width: 2, borderRadius: 1, left: `${along(n.date, n.done)}%`, background: "var(--color-neutral-400)" }} />}
           </span>
-          <span className="tnum" style={{ textAlign: "right", fontSize: 12, color: n.slept_min && n.slept_min < n.planned_min - 60 ? "var(--fr-warn)" : "var(--color-neutral-300)" }}>
+          <span className="tnum" style={{ textAlign: "right", fontSize: 12, color: shortNight(n.slept_min, usual) ? "var(--fr-warn)" : "var(--color-neutral-300)" }}>
             {n.slept_min ? dur(n.slept_min) : "—"}
           </span>
         </div>
@@ -155,6 +162,11 @@ function Timeline({ nights }: { nights: Schemas["SleepNightOut"][] }) {
         <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
           <span style={{ width: 2, height: 12, borderRadius: 1, background: "var(--color-accent-200)" }} /> Ready to work
         </span>
+        {usual !== null && (
+          <span style={{ color: "var(--fr-warn)" }}>
+            An hour or more under your usual {dur(usual)}
+          </span>
+        )}
         <span style={{ flex: 1 }} />
         <span className="tnum" style={{ color: "var(--color-neutral-300)" }}>
           {shown ? `${dayLabel(shown.date)}: ${shown.done ? `done ${clock(shown.done)}, ` : ""}${shown.bed ? `bed ${clock(shown.bed)}` : "no bedtime"}, ${shown.up ? `up ${clock(shown.up)}` : "no wake time"}${shown.ready ? `, ready ${clock(shown.ready)}` : ""}${shown.slept_min ? ` · ${dur(shown.slept_min)} asleep, ${dur(shown.planned_min)} planned` : ""}` : "Point at a night for its times"}
