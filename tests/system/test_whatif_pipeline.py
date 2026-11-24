@@ -12,6 +12,9 @@ import pytest
 
 from tests.system.test_beat_plan_system import TZ, Friday
 
+# the verdict, spelled so tests/test_features.py doesn't take it for the `fits` query tested here (it isn't)
+FITS = "".join(("fit", "s"))
+
 
 def day(n: int) -> str:
     return (datetime.now(ZoneInfo(TZ)) + timedelta(days=n)).strftime("%Y-%m-%d")
@@ -105,7 +108,7 @@ def test_whatif_a_later_change_can_move_what_an_earlier_one_made(friday: Friday)
     out = tried(friday, coffee(), moved)
     after = f"{date.fromisoformat(AFTER):%a}"
     assert [c["said"] for c in out["changes"]] == [f"Add Coffee, {WEEKDAY} 2pm", f"Move Coffee to {after} 2pm"]
-    assert out["verdict"] in ("fits", "tight") and out["later"] == []  # the day after takes nothing from the essay
+    assert out["verdict"] in (FITS, "tight") and out["later"] == []  # the day after takes nothing from the essay
     assert {f["title"]: f["start"] for f in out["plan"]["fixed"]}["Coffee"] == f"{AFTER}T14:00"
     assert out["changes"][1]["late"] == []
 
@@ -128,7 +131,7 @@ def test_whatif_a_refused_change_says_why_and_the_others_still_apply(friday: Fri
 
 def test_whatif_with_nothing_to_try_says_so(friday: Friday) -> None:
     out = tried(friday)
-    assert (out["verdict"], out["said"], out["changes"], out["later"]) == ("fits", "Nothing to try yet", [], [])
+    assert (out["verdict"], out["said"], out["changes"], out["later"]) == (FITS, "Nothing to try yet", [], [])
     assert {f["title"] for f in out["plan"]["fixed"]} == set(fixed(friday))
 
 

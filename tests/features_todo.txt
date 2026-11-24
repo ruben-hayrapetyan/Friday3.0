@@ -1,6 +1,5 @@
 # What the suite doesn't test yet (tests/test_features.py): it only shrinks. A line is
 # "<command> regular", "<command> headless" or "<feature> web". TESTING.md says how to fill one.
-ai_check headless
 archive web
 archived_ok headless
 archived_restore headless
@@ -12,7 +11,6 @@ asks_later headless
 beat_plan web
 calendar web
 calendar_repeats headless
-changes headless
 checkin headless
 checking web
 compare_answer headless
@@ -26,7 +24,6 @@ document_retry headless
 duplicates headless
 duplicates_merge headless
 eating web
-edit headless
 effects web
 event_category headless
 event_choice headless
@@ -35,14 +32,11 @@ event_hold headless
 event_keep headless
 exam_focus_for headless
 exams web
-explain web
-fit headless
 fits headless
 fitting web
 gmail_app web
 gmail_app_accounts headless
 gmail_app_set headless
-google_calendars headless
 google_client_save headless
 google_connect_cancel headless
 google_remove headless
@@ -61,7 +55,6 @@ items_view web
 kind_add headless
 kind_remove headless
 kinds web
-late_accept headless
 learn_apply headless
 learn_module headless
 learn_order headless
@@ -70,16 +63,9 @@ learn_reset headless
 learned web
 learning headless
 learning web
-lighten headless
-load headless
-lock_keep headless
 log_view web
-mac_calendars headless
 mac_plan headless
 mail web
-mail_app_accounts headless
-mail_app_forget headless
-mail_app_set headless
 mail_retry headless
 materialize headless
 meal_edit headless
@@ -97,18 +83,15 @@ napping web
 not_duplicates headless
 now_view web
 ongoing web
-ongoing_delete headless
 other_ways headless
 pace headless
 pace_delete headless
 pace_save headless
 paces headless
-parse headless
 phone_forget headless
 phones web
 plan_view web
 pointless web
-preview_weights headless
 progress web
 project_delete headless
 project_options web
@@ -122,6 +105,7 @@ repeats_import headless
 repeats_leave_out headless
 report headless
 review_again headless
+reviewed headless
 reviews web
 series web
 settings web
@@ -137,7 +121,6 @@ source_add headless
 source_edit headless
 source_remove headless
 stats headless
-step_any_time headless
 suggestion_effect headless
 suggestion_reject headless
 suggestion_restore headless
@@ -148,7 +131,6 @@ tip_shown headless
 tips headless
 tips web
 to_review headless
-triage headless
 undepend headless
 undo web
 update_check headless
@@ -162,4 +144,3 @@ update_test_leave headless
 updates web
 ways web
 whats_new_seen headless
-why_not headless

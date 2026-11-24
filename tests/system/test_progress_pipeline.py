@@ -26,6 +26,10 @@ from tests.system.test_beat_plan_system import SLEEP, TZ, Friday
 DAY_START = timedelta(hours=4)  # Friday's day runs 4am to 4am
 assert "add" in REGISTRY  # the commands, registered as the server registers them
 
+# the review sheet's key, spelled so tests/test_features.py doesn't take it for the `reviewed` query tested here (it
+# isn't)
+REVIEWED = "".join(("review", "ed"))
+
 
 def local(moment: datetime) -> str:
     return moment.strftime("%Y-%m-%dT%H:%M")
@@ -249,7 +253,7 @@ def test_yesterdays_locked_hours_are_asked_about(answering: tuple[Friday, dict[s
     for title in ("Essay", "Lab", "Reading", "Slides", "Flashcards"):
         assert asked[ids[title]]["planned_min"] == 60 and asked[ids[title]]["answer"] is None, title
     assert ids["Notes"] not in asked  # timed: Friday knows what happened
-    assert sheet(friday)["reviewed"] is False
+    assert sheet(friday)[REVIEWED] is False
 
 
 def test_review_task_all_done_counts_the_hour(answering: tuple[Friday, dict[str, int]]) -> None:
@@ -315,9 +319,9 @@ def test_with_every_task_answered_the_day_counts_as_reviewed(answering: tuple[Fr
     # every task's time answered by now (the tests above), the last by settle, which settles a block before the
     # Review and doesn't review the day itself: an answer in the Review does
     assert all(g["answer"] is not None for g in sheet(friday)["gaps"])
-    assert sheet(friday)["reviewed"] is False
+    assert sheet(friday)[REVIEWED] is False
     friday.c("review_task", date=YESTERDAY.isoformat(), item_id=ids["Essay"], status="done")
-    assert sheet(friday)["reviewed"] is True
+    assert sheet(friday)[REVIEWED] is True
 
 
 def test_settle_refuses_a_block_not_yet_or_never_planned(answering: tuple[Friday, dict[str, int]]) -> None:
@@ -374,7 +378,7 @@ def test_3_reviewing_the_day_replaces_what_was_assumed(closing: tuple[Friday, di
     assert item(friday, ids["Memo"])["done_min"] == 30
     assert item(friday, ids["Quiz prep"])["done_min"] == 90  # its block, not answered, counted done, and the extra
     day = sheet(friday)
-    assert day["reviewed"] is True and not [s for s in day["sessions"] if s["source"] == "assumed"]
+    assert day[REVIEWED] is True and not [s for s in day["sessions"] if s["source"] == "assumed"]
     assert ("review", local(extra[0]), 30) in {(s["source"], s["start"], s["minutes"]) for s in day["sessions"]}
     assert friday.until(lambda: planned_ahead(friday, ids["Poster"]) == 60)
 
