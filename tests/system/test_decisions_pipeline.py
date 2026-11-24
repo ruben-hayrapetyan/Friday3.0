@@ -46,8 +46,9 @@ def late_ids(friday: Friday) -> set[int]:
 
 def planned(friday: Friday) -> None:
     """The worker has planned every change so far."""
+    # five minutes: a fresh server's first plans, beside others on a busy machine, took over 90 s (24 Nov, debian)
     friday.until(lambda: (s := friday.q("status"))["plan_generation"] is not None
-                 and s["plan_generation"] >= s["generation"])  # fmt: skip
+                 and s["plan_generation"] >= s["generation"], timeout=300)  # fmt: skip
 
 
 def refused(friday: Friday, verb: str, **body: object) -> dict:

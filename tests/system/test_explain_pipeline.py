@@ -58,7 +58,7 @@ def week(friday: Friday) -> dict[str, int]:
     essay = friday.c("add", title="essay", duration_min=180, firmness="hard", due=at(120))["item"]["id"]
     notes = friday.c("add", title="novel notes", duration_min=600, firmness="hard", due=at(60 * 24 * 10))["item"]["id"]
     planned(friday)
-    friday.until(lambda: "essay" in friday.q("status")["late"] and week_blocks(friday, "novel notes"))
+    friday.until(lambda: "essay" in friday.q("status")["late"] and week_blocks(friday, "novel notes"), timeout=300)
     return {"essay": essay, "notes": notes}
 
 
