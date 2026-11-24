@@ -5,7 +5,6 @@ archive web
 archived_ok headless
 archived_restore headless
 area_edit headless
-areas headless
 ask_ai headless
 ask_later headless
 asks web
@@ -17,7 +16,6 @@ changes headless
 checkin headless
 checking web
 claude web
-close_day headless
 compare_answer headless
 conflicts web
 connecting web
@@ -37,8 +35,6 @@ event_choice headless
 event_going headless
 event_hold headless
 event_keep headless
-event_mode headless
-event_optional headless
 exam_focus_for headless
 exams web
 explain web
@@ -79,7 +75,6 @@ learning web
 lighten headless
 load headless
 lock_keep headless
-log_list headless
 log_view web
 mac_calendars headless
 mac_plan headless
@@ -116,7 +111,6 @@ phones web
 plan_view web
 pointless web
 preview_weights headless
-progress headless
 progress web
 project_delete headless
 project_options web
@@ -124,26 +118,17 @@ project_set headless
 proposal_answer headless
 questions headless
 rating web
-reminder_written headless
-reopen headless
 repeat headless
 repeats web
 repeats_import headless
 repeats_leave_out headless
 report headless
-resolve headless
 review_again headless
-review_submit headless
-review_task headless
-reviewed headless
 reviews web
 series web
 settings web
 settings_view web
-settle headless
 shove web
-sitting_delete headless
-sitting_edit headless
 skip headless
 sleep_mark headless
 sleep_mark_edit headless
@@ -155,7 +140,6 @@ source_edit headless
 source_remove headless
 stats headless
 step_any_time headless
-stuck headless
 suggestion_effect headless
 suggestion_reject headless
 suggestion_restore headless
@@ -166,7 +150,6 @@ tip_shown headless
 tips headless
 tips web
 to_review headless
-tour_offered headless
 triage headless
 undepend headless
 undo web
@@ -179,9 +162,6 @@ update_test_invite headless
 update_test_join headless
 update_test_leave headless
 updates web
-vacations web
 ways web
-week_note headless
-week_review headless
 whats_new_seen headless
 why_not headless
