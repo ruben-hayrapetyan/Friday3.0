@@ -15,12 +15,10 @@ calendar_repeats headless
 changes headless
 checkin headless
 checking web
-claude web
 compare_answer headless
 conflicts web
 connecting web
 day_override headless
-decisions web
 diagnose headless
 diagnose web
 document_add headless
