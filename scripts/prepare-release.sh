@@ -7,6 +7,13 @@
 # Release to test users or Release to everyone (H224–H227). Nothing is released here.
 #
 #   scripts/prepare-release.sh VERSION NOTES.json [--with EVERYONES_VERSION]
+#   scripts/prepare-release.sh VERSION --train TEST_USERS_VERSION
+#
+# The train (H236, #22): what test users have goes to everyone under everyone's own number (24 Nov, your answers:
+# "Ask, then Release", the number typed each time: test users' 0.7.1 for everyone as 0.6.9, not 0.7.1). Run on main:
+# the commit test users' version was built from (the hub's record) is merged in, the version files taking their copy
+# and then everyone's number, and it's prepared with the notes for everyone you approved for it in the hub. It waits
+# in the hub like any version; Release sends it.
 #
 # Two lines at once (H236): on test users' line, --with names the fix for everyone this version brings them (prepared
 # from main first, then main merged into their line); the hub sends this one to test users when that one goes to
@@ -31,6 +38,34 @@ die() { echo "Not prepared: $1" >&2; exit 1; }
 [ -n "$HOST" ] || die "say where the hub is: FRIDAY_RELEASE_HOST in $RELEASE_ENV"
 
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "the version should be a number like 0.2.0, not '$VERSION'"
+WORK="$(mktemp -d)"
+trap 'rm -r "$WORK"' EXIT
+TRAIN="" TRAIN_COMMIT=""
+if [ "$NOTES" = "--train" ]; then
+  TRAIN="${3:-}"
+  [[ "$TRAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "--train names the version test users have, like 0.7.1"
+  [ "$TRAIN" != "$VERSION" ] || die "the train gives everyone test users' $TRAIN under everyone's own number: name that number, not $TRAIN"
+  ssh "$HOST" "cat friday-releases/testing.json" > "$WORK/testing.json" 2>/dev/null \
+    || die "the hub's record of test users' versions couldn't be read from $HOST"
+  TRAIN_COMMIT="$(python3 -I - "$WORK/testing.json" "$TRAIN" "$WORK/notes.json" <<'PY'
+import json, sys
+record, version, out = sys.argv[1:]
+found = next((v for v in json.load(open(record))["versions"] if v["version"] == version), None)
+if found is None:
+    sys.exit(f"Not prepared: test users never had {version}")
+if found.get("state") not in ("out", "replaced"):
+    sys.exit(f"Not prepared: test users' {version} is {found.get('state')}, not theirs to pass on")
+if not found.get("everyone_approved") or not found.get("everyone_notes"):
+    sys.exit(f"Not prepared: approve {version}'s notes for everyone in the hub first")
+if not found.get("commit"):
+    sys.exit(f"Not prepared: the hub has no commit recorded for {version}")
+json.dump(found["everyone_notes"], open(out, "w"))
+print(found["commit"])
+PY
+)" || exit 1
+  NOTES="$WORK/notes.json"
+  set -- "$VERSION" "$NOTES"
+fi
 [ -f "$NOTES" ] || die "no notes at '$NOTES'"
 python3 - "$NOTES" <<'PY' || die "the notes need a summary sentence and at least one line under new, changed or fixed"
 import json, sys
@@ -77,6 +112,28 @@ PROFILE="${FRIDAY_NOTARY_PROFILE:-friday-notary}"
 xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1 \
   || die "notarytool has no keychain profile '$PROFILE' that Apple accepts: store one with xcrun notarytool store-credentials $PROFILE (your Apple ID, team id and an app-specific password from account.apple.com)"
 
+if [ -n "$TRAIN" ]; then
+  [ "$(git rev-parse --abbrev-ref HEAD)" = "$EVERYONE_BRANCH" ] || die "the train is prepared on $EVERYONE_BRANCH: switch to it first"
+  git cat-file -e "$TRAIN_COMMIT^{commit}" 2>/dev/null \
+    || die "test users' $TRAIN was built from $TRAIN_COMMIT, which isn't in this repository"
+  echo "==> Test users' $TRAIN for everyone, as $VERSION"
+  if ! git merge -q --no-ff --no-commit "$TRAIN_COMMIT" >/dev/null 2>&1; then
+    # only the files that name the version may differ both ways: they take test users' copy, then everyone's number
+    NUMBERS=(VERSION pyproject.toml web/package.json uv.lock)
+    OTHERS="$(git diff --name-only --diff-filter=U | grep -vxF -e VERSION -e pyproject.toml -e web/package.json -e uv.lock || true)"
+    if [ -n "$OTHERS" ] || [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+      git merge --abort 2>/dev/null || true
+      die "test users' $TRAIN doesn't merge into $EVERYONE_BRANCH cleanly (${OTHERS//$'\n'/, }): merge $EVERYONE_BRANCH into their line, then prepare their version again"
+    fi
+    for f in "${NUMBERS[@]}"; do
+      if git diff --name-only --diff-filter=U | grep -qxF "$f"; then git checkout -q --theirs -- "$f" && git add -- "$f"; fi
+    done
+  fi
+  if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+    git commit -q -m "Test users' $TRAIN for everyone, as $VERSION (the train)"
+  fi
+fi
+
 echo "==> Friday $VERSION"
 # the number everywhere it's written (H174): VERSION, pyproject.toml, web/package.json and uv.lock
 NUMBERED_SAID="$(python3 scripts/set_version.py "$VERSION")" || die "the version number couldn't be written into its files"
@@ -86,8 +143,6 @@ if ! git diff --quiet HEAD -- "${NUMBERED[@]}"; then
 fi
 COMMIT="$(git rev-parse HEAD)"
 
-WORK="$(mktemp -d)"
-trap 'rm -r "$WORK"' EXIT
 APP="${FRIDAY_PREPARE_APP:-}"
 if [ -z "$APP" ]; then
   Mac/build.sh  # it looks for updates on the site, as every build but Friday Test does (H169)
@@ -121,13 +176,13 @@ spctl --assess --type open --context context:primary-signature "$DMG" \
 SHA="$(shasum -a 256 "$DMG" | cut -d' ' -f1)"
 BYTES="$(stat -f %z "$DMG")"
 
-python3 - "$NOTES" "$VERSION" "$SHA" "$BYTES" "$COMMIT" "$WITH" > "$WORK/candidate.json" <<'PY'
+python3 - "$NOTES" "$VERSION" "$SHA" "$BYTES" "$COMMIT" "$WITH" "$TRAIN" > "$WORK/candidate.json" <<'PY'
 import json, sys
 from datetime import datetime
-notes, version, sha, size, commit, with_ = sys.argv[1:]
+notes, version, sha, size, commit, with_, train = sys.argv[1:]
 print(json.dumps({"version": version, "prepared": datetime.now().isoformat(timespec="seconds"), "sha256": sha,
                   "bytes": int(size), "commit": commit, "notes": json.load(open(notes)), "approved": False}
-                 | ({"with": with_} if with_ else {}), indent=2))
+                 | ({"with": with_} if with_ else {}) | ({"train": train} if train else {}), indent=2))
 PY
 
 echo "==> Uploading to the laptop ($HOST)"

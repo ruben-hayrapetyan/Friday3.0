@@ -243,3 +243,78 @@ def test_test_users_version_of_a_fix_needs_main_taken_in_first(setup: dict[str, 
                        (("--and",), "unknown option --and")):  # fmt: skip
         done = prepare(setup, "0.3.1", more=more)
         assert done.returncode != 0 and said in done.stderr, done.stderr
+
+
+# The train under everyone's own number (24 Nov, #22, your answers: "Ask, then Release", the number typed each time):
+# test users' version, merged into main from the commit it was built from, prepared as everyone's next number with the
+# notes for everyone approved in the hub.
+EVERYONE = {"summary": "Breaks, for everyone.", "new": ["Breaks"], "changed": [], "fixed": []}
+
+
+def two_lines(setup: dict[str, Path], approved: bool = True, clash: bool = False) -> str:
+    """main at 0.2.0; test users' line at 0.3.0 with a feature, recorded in the hub as out with them."""
+    repo = setup["repo"]
+    git(repo, "branch", "-M", "main")
+    git(repo, "checkout", "-qb", "next")
+    (repo / "breaks.txt").write_text("a feature only test users have\n")
+    git(repo, "add", "breaks.txt")
+    git(repo, "commit", "-qm", "Breaks")
+    subprocess.run(["python3", "scripts/set_version.py", "0.3.0"], cwd=repo, check=True, capture_output=True)
+    git(repo, "commit", "-qam", "Friday 0.3.0, prepared for release")
+    tested = git(repo, "rev-parse", "HEAD")
+    git(repo, "checkout", "-q", "main")
+    subprocess.run(["python3", "scripts/set_version.py", "0.2.0"], cwd=repo, check=True, capture_output=True)
+    git(repo, "commit", "-qam", "Friday 0.2.0, prepared for release")  # the version files differ both ways
+    if clash:
+        (repo / "breaks.txt").write_text("something else on main\n")
+        git(repo, "add", "breaks.txt")
+        git(repo, "commit", "-qm", "A clash")
+    record = setup["laptop"] / "friday-releases" / "testing.json"
+    record.parent.mkdir(parents=True)
+    out = {"version": "0.3.0", "state": "out", "commit": tested}
+    out |= {"everyone_notes": EVERYONE, "everyone_approved": approved}
+    record.write_text(json.dumps({"versions": [out]}))
+    return tested
+
+
+def train(setup: dict[str, Path], version: str, tested: str) -> subprocess.CompletedProcess:
+    env = {"PATH": f"{setup['bin']}:/usr/bin:/bin:/usr/sbin:/sbin", "HOME": str(setup["laptop"]),
+           "FRIDAY_PREPARE_APP": str(setup["app"]), "FRIDAY_RELEASE_HOST": "laptop"}  # fmt: skip
+    script = str(setup["repo"] / "scripts" / "prepare-release.sh")
+    return subprocess.run([script, version, "--train", tested], env=env, capture_output=True, text=True, timeout=300)
+
+
+def test_the_train_prepares_test_users_version_under_everyones_number(setup: dict[str, Path]) -> None:
+    tested = two_lines(setup)
+    done = train(setup, "0.2.1", "0.3.0")
+    assert done.returncode == 0, done.stderr
+    repo = setup["repo"]
+    waiting = json.loads((setup["laptop"] / "friday-releases" / "candidates" / "0.2.1" / "candidate.json").read_text())
+    assert waiting["version"] == "0.2.1" and waiting["train"] == "0.3.0" and waiting["notes"] == EVERYONE
+    assert waiting["commit"] == git(repo, "rev-parse", "HEAD")
+    assert git(repo, "rev-parse", "--abbrev-ref", "HEAD") == "main"
+    assert git(repo, "log", "-1", "--format=%s") == "Friday 0.2.1, prepared for release"
+    assert git(repo, "log", "-1", "--format=%s", "HEAD~1") == "Test users' 0.3.0 for everyone, as 0.2.1 (the train)"
+    assert git(repo, "merge-base", "--is-ancestor", tested, "HEAD") == ""  # their commit is in main
+    assert (repo / "breaks.txt").exists() and (repo / "VERSION").read_text().strip() == "0.2.1"
+    assert all("0.2.1" in (repo / f).read_text() for f in ("pyproject.toml", "web/package.json", "uv.lock"))
+    assert not git(repo, "status", "--porcelain")
+
+
+@pytest.mark.parametrize(("case", "said"), [
+    ("unapproved", "approve 0.3.0's notes for everyone in the hub first"),
+    ("not main", "the train is prepared on main"),
+    ("clash", "doesn't merge into main cleanly (breaks.txt)"),
+    ("unknown", "test users never had 0.3.9"),
+    ("same number", "name that number, not 0.3.0"),
+])  # fmt: skip
+def test_the_train_refuses_what_it_cant_do(setup: dict[str, Path], case: str, said: str) -> None:
+    two_lines(setup, approved=case != "unapproved", clash=case == "clash")
+    if case == "not main":
+        git(setup["repo"], "checkout", "-q", "next")
+    version, tested = {"unknown": ("0.2.1", "0.3.9"), "same number": ("0.3.0", "0.3.0")}.get(case, ("0.2.1", "0.3.0"))
+    before = git(setup["repo"], "rev-parse", "HEAD")
+    done = train(setup, version, tested)
+    assert done.returncode != 0 and said in done.stderr, done.stderr
+    assert git(setup["repo"], "rev-parse", "HEAD") == before and not git(setup["repo"], "status", "--porcelain")
+    assert not (setup["laptop"] / "friday-releases" / "candidates").exists()
