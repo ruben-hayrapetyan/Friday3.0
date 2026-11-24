@@ -124,6 +124,9 @@ def test_now_never_names_it_but_its_busy_time_ends_your_free_time(app: App) -> N
     now = app.do("now")
     assert now["next"]["title"] == "Dentist"  # what's next, for the Now dock and Siri
     assert now["gap_minutes"] == 30  # free until the hidden meeting at 9:30, which still keeps work off its time
+    # and the bar says until when you're free as its length does (24 Nov, the agreement check: "Free until" the
+    # Dentist's time, beside the 30 minutes to the hidden meeting)
+    assert now["free_until"].endswith("T09:30") and now["free_until"] < now["next"]["start"]
     show(app)
     assert app.do("now")["next"]["title"] == "Rocketry meeting"
 

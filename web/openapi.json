@@ -26867,6 +26867,17 @@
       "type": "integer",
       "title": "Gap Minutes"
      },
+     "free_until": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Free Until"
+     },
      "then_same": {
       "type": "boolean",
       "title": "Then Same",

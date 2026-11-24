@@ -431,7 +431,9 @@ export function heldSaid(held: { loose?: boolean; here?: [string, string]; elsew
   if (held.here) return `Planned here, ${clock(held.here[0])}–${clock(held.here[1])}; ${rest}`
   if (held.elsewhere) return `Not planned here: Friday has it ${when(held.elsewhere, today)}.`
   if (held.elsewhere === null) return "Not planned here, and not planned anywhere yet."
-  return open ? "Planned here first; any work can have the rest." : "Planned here first; other work keeps off it."
+  // Before the plan has answered (a pick just made) the rule, not a result: "Planned here first" claimed a placement
+  // nothing had made yet (24 Nov, the agreement check)
+  return open ? "Friday tries it here first; any work can have the rest." : "Friday tries it here first; other work keeps off it."
 }
 
 /** The task an event's time is for. `only` "work": under Work through it, where a to-do is optional (it's there first,

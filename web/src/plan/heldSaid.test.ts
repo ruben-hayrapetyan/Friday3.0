@@ -16,4 +16,8 @@ describe("an event's held task, as the plan has it", () => {
   it("never 'Planned here first' when the plan says otherwise", () => {
     expect(heldSaid({ elsewhere: "2026-12-01T15:00" }, true, today)).not.toMatch(/Planned here/)
   })
+  it("before the plan has answered, the rule, not a placement (24 Nov, the agreement check)", () => {
+    expect(heldSaid({}, true, today)).toBe("Friday tries it here first; any work can have the rest.")
+    expect(heldSaid({}, false, today)).toBe("Friday tries it here first; other work keeps off it.")
+  })
 })

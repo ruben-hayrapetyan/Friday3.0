@@ -149,3 +149,14 @@ def test_the_load_ahead_counts_the_blocks_from_when_the_plan_was_made_as_its_roo
     assert any(parse_utc(b["start_utc"]) < afternoon for b in blocks if b["plan_id"] == plan_id)
     (week,) = app.do("load", weeks=1)
     assert week["hours"] == pytest.approx(sum(max(0, e - s) for s, e in ahead) / 60, abs=0.1)
+
+
+# 24 Nov, the agreement check: Load ahead and the day totals every other page shows count a task that runs by itself
+# (laundry) the same way, as the quarter hour it needs you, not its whole run (its block is saved as that quarter hour).
+def test_the_load_ahead_counts_what_runs_by_itself_as_the_quarter_hour_it_needs_you(app: App) -> None:
+    app.do("add", text="laundry ~2h runs by itself due wed 17:00")
+    app.do("replan")
+    (week,) = app.do("load", weeks=1)
+    plan = app.do("plan", start="2026-10-19T00:00", end="2026-10-26T00:00")
+    assert any(b["background"] for b in plan["blocks"])
+    assert week["hours"] == pytest.approx(sum(plan["day_hours"].values()), abs=0.05)

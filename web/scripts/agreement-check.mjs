@@ -73,9 +73,10 @@ async function makeWeeks({ c, planned }) {
   await c("depend", { item_id: steps[2], depends_on_id: steps[1] })
   // Soft work already past its due.
   await c("add", { title: "Agreement: reading response", preset: "Reading", due: `${day(-1)}T17:00`, duration_min: 90, firmness: "soft" })
-  // Sleep tracked, four nights logged: 8h, 6h, 7h15 and 5h30.
+  // Sleep tracked, four nights logged: 8h, 6h, 7h15 and 5h30, the last ending yesterday morning (so none is in the
+  // future, whatever the hour the check runs).
   await c("settings_set", { key: "sleep_tracking", value: { on: true } })
-  for (const [n, bed, up] of [[4, "23:30", "07:30"], [3, "00:30", "06:30"], [2, "23:30", "06:45"], [1, "01:00", "06:30"]]) {
+  for (const [n, bed, up] of [[5, "23:30", "07:30"], [4, "00:30", "06:30"], [3, "23:30", "06:45"], [2, "01:00", "06:30"]]) {
     await c("sleep_mark", { kind: "bed", at: `${bed < "12:00" ? day(1 - n) : day(-n)}T${bed}` })
     await c("sleep_mark", { kind: "up", at: `${day(1 - n)}T${up}` })
   }
@@ -243,7 +244,7 @@ const CHECKS = [
       const sleep = await q("sleep")
       const usual = sleep.usual_night_min
       await open("/insights?tab=sleep")
-      const cells = await evaluate(page, `[...document.querySelectorAll("span.tnum")].filter((s) => /^(\\d+h)?( ?\\d+m)?$/.test(s.innerText.trim()) && s.innerText.trim()).map((s) => ({ text: s.innerText.trim(), yellow: s.style.color.includes("warn") }))`)
+      const cells = await evaluate(page, `[...document.querySelectorAll("span.tnum")].filter((s) => !s.closest("[data-tour=now]") && /^(\\d+h)?( ?\\d+m)?$/.test(s.innerText.trim()) && s.innerText.trim()).map((s) => ({ text: s.innerText.trim(), yellow: s.style.color.includes("warn") }))`)
       const found = []
       let compared = 0
       for (const n of sleep.nights.filter((n) => n.slept_min)) {
@@ -255,6 +256,50 @@ const CHECKS = [
       }
       if (process.env.AGREEMENT_PROGRESS) console.error(`  sleep: ${compared} cells compared`)
       return compared ? found : [{ where: "Sleep", says: "no night's hours on the page", but: `${sleep.nights.filter((n) => n.slept_min).length} nights were logged` }]
+    },
+  },
+  {
+    name: "now: the Now bar's free time ends where its length does",
+    async run({ q, open, page }) {
+      const now = await q("now")
+      if (now.current || !now.gap_minutes) return []
+      await open("/")
+      const bar = await text(page, "[data-tour=now]")
+      const h = Math.floor(now.gap_minutes / 60), m = now.gap_minutes % 60
+      const length = h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`
+      const end = new Date(Date.now() + now.gap_minutes * 60_000)
+      const found = []
+      if (now.free_until && Math.abs(new Date(now.free_until).getTime() - end.getTime()) > 120_000)
+        found.push({ where: "Now bar (server)", says: `free until ${now.free_until}`, but: `its ${length} end at ${end.toTimeString().slice(0, 5)}` })
+      if (!bar.includes(length)) found.push({ where: "Now bar", says: bar.slice(0, 80), but: `the free time is ${length}` })
+      return found
+    },
+  },
+  {
+    name: "breaks: a break day's counts agree on its panel, its calendar line and the Now bar",
+    async run({ q, c, open, page, planned }) {
+      // Friday's today, its planning day: after midnight and before your day starts it's still yesterday
+      const today = (await q("calendar", { start: day(0), days: 1 })).today
+      const made = (await c("vacation_add", { name: "Agreement break", start: today, end: day(2), mode: "light" })).result.vacation.id
+      try {
+        await planned()
+        let list = await q("vacation_day", { date: today })
+        if (list.items.length) await c("vacation_tick", { date: today, item_id: list.items[0].item_id, ticked: true })
+        list = await q("vacation_day", { date: today })
+        const left = list.items.filter((t) => !t.ticked).length
+        const cal = (await q("calendar", { start: today, days: 1 })).days[0].vacation
+        const found = []
+        if ((cal.things ?? 0) - (cal.ticked ?? 0) !== left)
+          found.push({ where: "the calendar's break line", says: `${(cal.things ?? 0) - (cal.ticked ?? 0)} to do`, but: `the day's list has ${left} left` })
+        await open("/")
+        const bar = await text(page, "[data-tour=now]")
+        const want = !list.items.length ? "nothing to do today" : left ? `${left} thing${left === 1 ? "" : "s"} to do today` : "today's list is done"
+        if (!bar.includes(want)) found.push({ where: "Now bar", says: bar.match(/[^.]*(to do today|list is done|nothing to do today)/)?.[0] ?? "no break line", but: `the day's list: ${want}` })
+        return found
+      } finally {
+        await c("vacation_delete", { id: made })
+        await planned()
+      }
     },
   },
   {

@@ -8330,6 +8330,8 @@ export interface components {
             fits: components["schemas"]["Swap"][];
             /** Gap Minutes */
             gap_minutes: number;
+            /** Free Until */
+            free_until?: string | null;
             /**
              * Then Same
              * @default false

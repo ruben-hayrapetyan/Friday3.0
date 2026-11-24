@@ -20,6 +20,7 @@ from friday.api.commands import (
 )
 from friday.api.types import ChangeOut, Empty
 from friday.commands.fields import require_item
+from friday.commands.horizon import saved_plan
 from friday.commands.progress import parse_block_key
 from friday.commands.registry import Ctx, query
 from friday.commands.rules import readings, words
@@ -254,10 +255,17 @@ def triage(ctx: Ctx, inp: Empty) -> TriageOut:
     """Options when hard work is late or overflowing, each with the late hours it saves."""
     ratings = kv_get(ctx.conn, "event_ratings", {}, ctx.user_id)
     going = frozenset(kv_get(ctx.conn, "events_going", [], ctx.user_id))
-    late, options = run_triage(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), ratings, going)
-    titles = {item_id: require_item(ctx, item_id).title for item_id in late}
+    _, options = run_triage(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), ratings, going)
+    # late now is the plan's, as the Plan page says it; each option is still tried on a quick copy (24 Nov, the
+    # agreement check: Triage's own quick plan listed work late the plan didn't)
+    _, report = saved_plan(ctx)
+    late = {int(k): h for k, h in (report.get("late_hours") or {}).items()}
+    todo = {
+        r["id"]: r["title"]
+        for r in rows(ctx.conn, "SELECT id, title FROM items WHERE user_id = ? AND status = 'todo'", [ctx.user_id])
+    }
     return TriageOut(
-        late={titles[k]: v for k, v in late.items()},
+        late={todo[k]: v for k, v in late.items() if k in todo},
         options=[
             TriageOption(
                 action=o.action,

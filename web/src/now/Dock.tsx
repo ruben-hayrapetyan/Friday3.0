@@ -116,7 +116,7 @@ export function Dock() {
           ) : cur ? (
             <On cur={cur} next={next} dot={color(cur.area, cur.preset)} menu={menu} onMenu={toggle} onFold={fold} />
           ) : (
-            <Free until={now.next?.start ?? null} gap={now.gap_minutes} next={now.next?.title ?? null} fits={now.fits} today={today} onFold={fold} />
+            <Free {...freeLine(now)} gap={now.gap_minutes} fits={now.fits} today={today} onFold={fold} />
           )}
           {work && menu === "swap" && <Swaps options={now.swaps} timing={!!timer} onClose={() => setMenu(null)} />}
         </>
@@ -759,4 +759,13 @@ function Swaps({ options, timing, onClose }: { options: Fit[]; timing: boolean; 
       ))}
     </div>
   )
+}
+
+/** Until when you're free and what comes then, from one fact: the free time's end, as its length counts it. Busy time
+ * on a calendar you hid ends it unnamed (24 Nov, the agreement check: "Free until" the next visible thing's time, beside
+ * the shorter length to the hidden meeting). */
+export function freeLine(now: { free_until?: string | null; next?: { start: string; title: string } | null }): { until: string | null; next: string | null } {
+  const until = now.free_until ?? now.next?.start ?? null
+  const hidden = !!now.free_until && !!now.next && now.free_until < now.next.start
+  return { until, next: hidden ? "busy" : (now.next?.title ?? null) }
 }

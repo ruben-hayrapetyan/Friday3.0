@@ -187,6 +187,7 @@ def test_changes_lists_moves_and_the_commands_behind_them(app: App) -> None:
 def test_triage_offers_ways_to_make_late_work_less_late(app: App) -> None:
     app.do("add", title="busy", when="fixed", start="2026-10-19T12:00", end="2026-10-20T04:00")
     app.do("add", text="essay due mon 12:00 ~4h !5")
+    app.do("replan")  # late now is the plan's (24 Nov), as the Plan page says it
     found = app.do("triage")
     late = found["late"]["essay"]  # the last hour lands the next morning, 20.5 h after the due
     assert late == 20.5 and found["options"][0]["late_hours_saved"] == late

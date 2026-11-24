@@ -69,3 +69,14 @@ def test_other_less_important_work_due_first_is_tried_with_one_more_day(app: App
     due = app.do("item", id=reading["item"]["id"])["item"]["due"]
     assert step[0] == "edit" and step[1]["id"] == reading["item"]["id"]
     assert format_local(to_local(step[1]["due_utc"], TZ)) == "2026-10-21T12:00" and due == "2026-10-20T12:00"
+
+
+# 24 Nov, the agreement check: "See options" listed as late now work the Plan page didn't (Triage worked out its own
+# late list with a quick plan of its own, rougher than the plan, and of edits the plan hadn't caught up with). Late now
+# is the plan's, as the Plan page says it; the options are still each tried on a copy.
+def test_late_now_is_the_plans_late_work_as_the_plan_page_says(app: App) -> None:
+    replan(app.conn, app.now_utc)
+    app.do("add", title="Lab report", due="2026-10-20T09:00", duration_min=300, firmness="hard")  # not planned yet
+    plan_page = {i["title"]: i["hours"] for i in app.do("status")["late_items"]}
+    assert plan_page and "Lab report" not in plan_page
+    assert app.do("triage")["late"] == pytest.approx(plan_page)

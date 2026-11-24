@@ -186,6 +186,7 @@ def now(ctx: Ctx, inp: Empty) -> NowOut:
             if w.chunk_minutes <= gap
         ][:count],
         gap_minutes=gap,
+        free_until=ctx.local(format_utc(ctx.now_utc + gap)) if gap else None,
     )
 
 

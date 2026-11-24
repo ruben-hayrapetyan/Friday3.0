@@ -55,6 +55,7 @@ class NowOut(Model):
     alerts: list[Alert]
     fits: list[Swap]
     gap_minutes: int
+    free_until: str | None = None  # when the free time ends: `next`'s start, or a hidden calendar's busy time before it
     then_same: bool = False  # timing what's also planned next: `next` is the next other thing
 
 
