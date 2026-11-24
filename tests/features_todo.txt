@@ -101,7 +101,6 @@ repeats_leave_out headless
 report headless
 review_again headless
 reviewed headless
-reviews web
 series web
 settings web
 settings_view web
