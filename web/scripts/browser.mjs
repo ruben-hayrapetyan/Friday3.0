@@ -51,7 +51,7 @@ export async function serveSample({ case: who = "alex", ready = true, prefix = "
   const setup = await (await fetch(`${base}/api/q/setup`)).json()
   if (!setup.done) await post("setup_save", { ...setup.answers, brief: false })
   await post("tour_offered", {})
-  return { base, stop: () => (end(), rmSync(folder, { recursive: true, force: true, maxRetries: 5 })) }
+  return { base, folder, stop: () => (end(), rmSync(folder, { recursive: true, force: true, maxRetries: 5 })) }
 }
 
 /** Ends a process started `detached` and everything it started. */

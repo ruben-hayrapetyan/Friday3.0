@@ -1,6 +1,5 @@
 # What the suite doesn't test yet (tests/test_features.py): it only shrinks. A line is
 # "<command> regular", "<command> headless" or "<feature> web". TESTING.md says how to fill one.
-ai web
 ai_check headless
 archive web
 archived_ok headless
@@ -16,7 +15,6 @@ break_choices headless
 break_suggestion headless
 calendar web
 calendar_repeats headless
-calendars web
 changes headless
 checkin headless
 checking web
@@ -88,7 +86,6 @@ log_view web
 mac_calendars headless
 mac_plan headless
 mail web
-mail_app web
 mail_app_accounts headless
 mail_app_forget headless
 mail_app_set headless
@@ -149,12 +146,10 @@ rule_clashes headless
 rule_read headless
 rule_remove headless
 rule_win headless
-rules web
 series web
 settings web
 settings_view web
 settle headless
-setup web
 shove web
 sitting_delete headless
 sitting_edit headless
@@ -183,7 +178,6 @@ to_review headless
 token_add headless
 token_remove headless
 tokens headless
-tokens web
 tour_offered headless
 triage headless
 undepend headless

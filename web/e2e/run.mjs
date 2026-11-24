@@ -4,11 +4,12 @@
 // server has. This serves one sample (Alex's lived-in one unless --case), opens Chrome once and runs each file's
 // tests in turn, each on a fresh page load.
 //
-//   node web/e2e/run.mjs [--only items,rules] [--case alex] [--url http://127.0.0.1:8791] [--shots DIR]
+//   node web/e2e/run.mjs [--only items,rules] [--case alex] [--url http://127.0.0.1:8791 [--folder DIR]] [--shots DIR]
 //
-// A test file: `export default [{ name, run }]`, run({ page, open, click, type, text, has, until, q, c, planned, day,
-// expect }) → throws on what's wrong. Exit 0: all passed; 1: some failed (listed); 2: it couldn't run. Build web/dist
-// first.
+// A test file: `export default [{ name, run }]`, run({ page, base, folder, open, click, type, text, has, until, q, c,
+// planned, day, expect, evaluate }) → throws on what's wrong. Exit 0: all passed; 1: some failed (listed); 2: it couldn't run.
+// Build web/dist first. `base` is the sample's address; `folder` its own data and config folder (its friday.toml and
+// secrets.toml), or undefined with --url.
 
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import path from "node:path"
@@ -24,7 +25,7 @@ const shots = option("--shots")
 export class Failed extends Error {}
 
 /** What a test is given: the page, the server, and the steps a person takes. */
-function tools(page, base) {
+function tools(page, base, folder) {
   const q = async (name, params = {}) => {
     const r = await fetch(`${base}/api/q/${name}?${new URLSearchParams(params)}`)
     if (!r.ok) throw new Error(`${name}: ${r.status} ${(await r.text()).slice(0, 200)}`)
@@ -82,21 +83,21 @@ function tools(page, base) {
     const d = new Date(Date.now() + n * 86_400_000)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
   }
-  return { page, open, click, type, text, has, until, q, c, planned, day, expect, wait, press: (k) => press(page, k) }
+  return { page, base, folder, open, click, type, text, has, until, q, c, planned, day, expect, wait, press: (k) => press(page, k), evaluate: (expression) => evaluate(page, expression) }
 }
 
 async function main() {
   const files = readdirSync(HERE).filter((f) => f.endsWith(".e2e.mjs")).sort()
   const chosen = files.filter((f) => !only || only.includes(f.replace(".e2e.mjs", "")))
   const given = option("--url")
-  const sample = given ? { base: given.replace(/\/$/, ""), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-" })
+  const sample = given ? { base: given.replace(/\/$/, ""), folder: option("--folder"), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-" })
   const { page, close } = await openChrome()
   const failed = []
   let passed = 0
   const started = Date.now()
   try {
     await page("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
-    const t = tools(page, sample.base)
+    const t = tools(page, sample.base, sample.folder)
     await t.planned()
     for (const file of chosen) {
       const tests = (await import(pathToFileURL(path.join(HERE, file)).href)).default
