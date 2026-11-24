@@ -11,8 +11,6 @@ ask_later headless
 asks web
 asks_later headless
 beat_plan web
-break_choices headless
-break_suggestion headless
 calendar web
 calendar_repeats headless
 changes headless
@@ -107,7 +105,6 @@ not_duplicates headless
 now_view web
 ongoing web
 ongoing_delete headless
-optional_events web
 other_ways headless
 pace headless
 pace_delete headless
@@ -116,7 +113,6 @@ paces headless
 parse headless
 phone_forget headless
 phones web
-pins web
 plan_view web
 pointless web
 preview_weights headless
@@ -141,11 +137,6 @@ review_submit headless
 review_task headless
 reviewed headless
 reviews web
-rule_clash headless
-rule_clashes headless
-rule_read headless
-rule_remove headless
-rule_win headless
 series web
 settings web
 settings_view web
@@ -175,9 +166,6 @@ tip_shown headless
 tips headless
 tips web
 to_review headless
-token_add headless
-token_remove headless
-tokens headless
 tour_offered headless
 triage headless
 undepend headless
@@ -191,19 +179,9 @@ update_test_invite headless
 update_test_join headless
 update_test_leave headless
 updates web
-vacation_add headless
-vacation_day headless
-vacation_delete headless
-vacation_edit headless
-vacation_tick headless
-vacations headless
 vacations web
 ways web
 week_note headless
 week_review headless
-whatif headless
-whatif web
-whatif_keep headless
-whatif_ready headless
 whats_new_seen headless
 why_not headless
