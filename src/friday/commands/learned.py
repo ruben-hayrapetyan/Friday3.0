@@ -1,6 +1,7 @@
 """Learned durations and the learned energy map, wired (DESIGN §21.7): the nightly fit, and what new items and the
 planner take from it. Results are kept in `kv` (`learned_durations`, `learned_energy`), each with whether you
-approved it; in `auto` mode it is used without asking. Both learn from default-pace days only.
+approved it; in `auto` mode it is used without asking. Lengths learn from every day but a break (a task takes as
+long on a Push day as any other, 23 Nov); the energy map from default-pace days only.
 """
 
 import json
@@ -61,6 +62,13 @@ def default_pace_days(conn: sqlite3.Connection, settings: dict[str, Any], user_i
     return is_default
 
 
+def not_on_break(conn: sqlite3.Connection, user_id: int) -> Any:
+    """The days lengths learn from: all but a break's (23 Nov, your answer "Count every day": Push and Easy days were
+    left out, and what you timed then "didn't count")."""
+    on_break = break_dates(conn, user_id)
+    return lambda day: day not in on_break
+
+
 def learn_nightly(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> None:
     """Refit both; the server's nightly job and the simulator run this."""
     settings = load_settings(conn, user_id)
@@ -87,7 +95,7 @@ def keep(conn: sqlite3.Connection, user_id: int, name: str, value: dict[str, Any
 
 def fit_durations(conn: sqlite3.Connection, settings: dict[str, Any], now_utc: int, user_id: int) -> dict | None:
     est, tz, day_start = settings["estimate"], settings["time"].timezone, settings["time"].grid_spec().day_start
-    is_default = default_pace_days(conn, settings, user_id)
+    is_default = not_on_break(conn, user_id)
     since = format_utc(now_utc - est.window_days * 1440)
     found = [
         r

@@ -44,13 +44,27 @@ def test_new_items_use_learned_lengths_once_approved(app: App) -> None:
     assert hard["duration_min"] > flexible["duration_min"]  # the cautious p80 for hard work
 
 
-def test_a_sick_week_teaches_nothing(app: App) -> None:
-    app.do("pace", name="Easy", for_days=14)
+def test_a_break_teaches_nothing(app: App) -> None:
+    """A sick week is a break (Light or Off): what's timed then isn't how long things take."""
+    app.at("2026-09-30T09:00").do("vacation_add", name="Sick", start="2026-10-01", end="2026-10-14", mode="light")
     for n in range(8):
         finish(app, f"problem set {n + 1}", 400, n + 1)
     app.at("2026-10-12T09:00")
     learn_nightly(app.conn, app.now_utc)
     assert kv_get(app.conn, "learned_durations") is None
+
+
+def test_push_and_easy_days_teach_lengths_too(app: App) -> None:
+    """23 Nov, your answer ("Count every day"): a task takes as long on a Push or Easy day as on any other; they were
+    left out, and Insights said what you timed then "didn't count" (Friday Notes: "completed on push/easy days were
+    not recorded")."""
+    app.at("2026-09-30T09:00").do("pace", name="Push", until="2026-10-04")
+    app.do("pace", name="Easy", start="2026-10-05", until="2026-10-09")
+    for n in range(8):
+        finish(app, f"problem set {n + 1}", 180, n + 1)
+    app.at("2026-10-12T09:00")
+    learn_nightly(app.conn, app.now_utc)
+    assert kv_get(app.conn, "learned_durations")["model"]["n"] == 8
 
 
 def test_hours_where_planned_work_keeps_slipping_get_a_price_once_approved(app: App) -> None:
