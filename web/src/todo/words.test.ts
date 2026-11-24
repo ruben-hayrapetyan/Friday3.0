@@ -83,6 +83,11 @@ describe("the list's words and order", () => {
     expect(summary([item(1, { remaining_min: 90 }), item(2, { remaining_min: 30 }), item(3, { status: "done", remaining_min: 0 })])).toBe("2 open, 2h left")
   })
 
+  it("counts the rows the list shows: a repeating task once, as its next time (23 Nov, the agreement check: the header said 446 open above 22 rows)", () => {
+    const lunches = [1, 2, 3, 4].map((n) => item(10 + n, { series_id: 7, remaining_min: 30, due: `2026-11-2${n}T13:00` }))
+    expect(summary([item(1, { remaining_min: 90 }), ...lunches])).toBe("2 open, 2h left")
+  })
+
   it("hints a tag's add line by its name, and the done section takes no adds", () => {
     expect(addHint("Tag", "MATH 1910")).toBe("Add to MATH 1910…")
     expect(addHint("Tag", "No tag")).toBe("Add anything else…")

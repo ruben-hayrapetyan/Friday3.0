@@ -4,6 +4,7 @@
 // work that's pointless once late) is left off: it's on the To-do page.
 
 import type { Item } from "@/api/client"
+import { lateBy } from "./format"
 import { addDays, fromMin, toMin } from "./time"
 
 export type Late = { item_id: number; hours: number; planned?: boolean }
@@ -68,18 +69,12 @@ export function overdueBy(due: string, now: number): string {
   return `${days} day${days === 1 ? "" : "s"} overdue`
 }
 
-/** What a row says of Friday's plan for it, when the plan has it late: you decide whether to find the time. */
+/** What a row says of Friday's plan for it, when the plan has it late: you decide whether to find the time. How late
+ * in the words every other place uses (lateBy; 23 Nov, the agreement check: the same 30 hours read "30h late" here and
+ * "1 day late" on the To-do row, the Plan page's note and the Inbox). */
 export function lateWarning(late: Late | undefined): string | null {
   if (!late) return null
-  return late.planned === false || !late.hours ? "Friday has no time for it" : `Friday has it ${hoursText(late.hours)} late`
-}
-
-function hoursText(hours: number): string {
-  const minutes = Math.round(hours * 60)
-  if (minutes < 60) return `${minutes}m`
-  if (minutes >= 600) return `${Math.round(minutes / 60)}h` // past ten hours, minutes are noise
-  const h = Math.floor(minutes / 60)
-  return minutes % 60 ? `${h}h ${minutes % 60}m` : `${h}h`
+  return late.planned === false || !late.hours ? "Friday has no time for it" : `Friday has it ${lateBy(late.hours)} late`
 }
 
 function byDue(a: Item, b: Item): number {

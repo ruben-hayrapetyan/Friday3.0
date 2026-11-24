@@ -15,7 +15,7 @@ import { moveBlock, retimeEvent } from "@/hooks/useDrop"
 import { useGhosts, useItems, useMeals, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
 import { clock, hms, weekday, when } from "@/lib/format"
-import { type Axis, addDays, fitAxis, fromMin, hourMarks, hoursByDate, layout, nowSpan, type Placed, type Span, toMin } from "@/lib/time"
+import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, nowSpan, type Placed, type Span, toMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
@@ -130,8 +130,10 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const news = ghosts.filter((g) => !planned.has(g.key))
   // The same time of day in every column: strong on today, faint on the others.
   const nowAt = now - toMin(dated) - axis.startMin
-  // The day headers' hours by calendar date, as the columns show them: work over midnight counts on each side of it
-  const hours = hoursByDate(plan.blocks)
+  // The day headers' hours: the server's, the one number every page reads (work over midnight counts on each side
+  // of it; 23 Nov, the agreement check: worked out here, a header said "0.5 h over" of a day the rest counted at its
+  // usual hours)
+  const hours = plan.day_hours
   const cols = `52px repeat(${dates.length}, minmax(0,1fr))`
   return (
     <div

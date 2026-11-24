@@ -87,10 +87,10 @@ describe("the calendar split at midnight", () => {
     expect(screen.queryByText("12am")).toBeNull()
   })
 
-  it("counts each date's hours in its header: work over midnight on each side of it", () => {
-    // 23:00–01:30 with 1h a day: 1h on the 13th, none over; 1.5h on the 14th, half an hour over. The server counts
-    // it all on the day it starts (`day_hours`), which had the 13th 1.5h over and the 14th none.
-    open([block("T11@2026-11-13T23:00", "Essay", "2026-11-13T23:00", "2026-11-14T01:30")], { "2026-11-13": 2.5 })
+  it("says each date's hours in its header as the server counts them: work over midnight on each side of it", () => {
+    // 23:00–01:30 with 1h a day: 1h on the 13th, none over; 1.5h on the 14th, half an hour over. The header reads the
+    // server's `day_hours` (23 Nov: worked out here, it disagreed with the Plan page's note and the day panel).
+    open([block("T11@2026-11-13T23:00", "Essay", "2026-11-13T23:00", "2026-11-14T01:30")], { "2026-11-13": 1, "2026-11-14": 1.5 })
     const [over] = screen.getAllByText(/h over$/)
     expect(over.textContent).toBe("0.5 h over")
     expect(over.closest("[data-drop-day]")?.getAttribute("data-drop-day")).toBe("2026-11-14")

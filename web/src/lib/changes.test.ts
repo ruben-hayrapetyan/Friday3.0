@@ -13,16 +13,16 @@ const changes: Schemas["ChangeOut"] = {
 describe("change list", () => {
   it("counts items, not blocks, and says when deadlines hold", () => {
     expect(summary(changes)).toBe("3 items change · all deadlines met")
-    expect(summary({ late_hours: { PS5: 1.5 } })).toBe("Nothing moves · PS5 1.5 h late")
+    expect(summary({ late_hours: { PS5: 1.5 } })).toBe("Nothing moves · PS5 1h 30m late")
   })
 
   it("a preview names only what the change makes later (18 Nov: Push said an overdue draft was 11.02 h late)", () => {
     const draft = { late_hours: { "edit article draft": 11.02 } }
     expect(summary({ ...draft, late_hours_before: { "edit article draft": 11.02 } })).toBe("Nothing moves · nothing new is late")
-    expect(summary({ late_hours: { "edit article draft": 11.02, essay: 2 }, late_hours_before: { "edit article draft": 11.02, essay: 0.5 } })).toBe("Nothing moves · essay 2 h late")
-    expect(summary({ late_hours: { PS5: 1.5 }, late_hours_before: {} })).toBe("Nothing moves · PS5 1.5 h late")
+    expect(summary({ late_hours: { "edit article draft": 11.02, essay: 2 }, late_hours_before: { "edit article draft": 11.02, essay: 0.5 } })).toBe("Nothing moves · essay 2h late")
+    expect(summary({ late_hours: { PS5: 1.5 }, late_hours_before: {} })).toBe("Nothing moves · PS5 1h 30m late")
     expect(summary({ late_hours_before: { PS5: 1.5 } })).toBe("Nothing moves · all deadlines met")
-    expect(summary(draft)).toBe("Nothing moves · edit article draft 11.02 h late") // What changed: the plan's lateness
+    expect(summary(draft)).toBe("Nothing moves · edit article draft 11h late") // What changed: the plan's lateness
   })
 
   it("gives each item one line", () => {

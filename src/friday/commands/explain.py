@@ -78,7 +78,13 @@ def sentence(ctx: Ctx, block: dict[str, Any], costs: dict[str, int]) -> str:
         slack = report.get("slack_minutes", {}).get(str(item.id))
         due_at = to_local(parse_utc(item.due_utc), ctx.tz)
         due = f"Due {due_at:%a %-d %b} {clock_time(due_at)}"
-        parts.append(f"{due}; {room(slack)}" if slack is not None else due)
+        # late work says it's late, as the Plan page's note and the To-do tag do (23 Nov, the agreement check: its
+        # block said "no room to spare: it has to happen as planned")
+        late = report.get("late_hours", {}).get(str(item.id))
+        if late:
+            parts.append(f"{due}; the plan finishes it about {late_by(late)} after it's due")
+        else:
+            parts.append(f"{due}; {room(slack)}" if slack is not None else due)
     start, end = block["start_utc"], block["end_utc"]
     pinned = one(
         ctx.conn, "SELECT kind FROM pins WHERE item_id = ? AND start_utc < ? AND end_utc > ?", [item.id, end, start]
@@ -101,6 +107,16 @@ def sentence(ctx: Ctx, block: dict[str, Any], costs: dict[str, int]) -> str:
     if label and label != ctx.settings["pace"].default:
         parts.append(f"{label} pace that day")
     return ". ".join(p[0].upper() + p[1:] for p in parts) + "." if parts else "Nothing in particular shaped it."
+
+
+def late_by(hours: float) -> str:
+    """How late, in the web's words (lateBy, web/src/lib/format.ts): whole days from a day, else to the quarter hour."""
+    if hours >= 24:
+        days = round(hours / 24)
+        return f"{days} day{'' if days == 1 else 's'}"
+    m = max(15, round(hours * 60 / 15) * 15)
+    h, r = divmod(m, 60)
+    return f"{h}h {r}m" if h and r else f"{h}h" if h else f"{r}m"
 
 
 def room(slack_min: int) -> str:

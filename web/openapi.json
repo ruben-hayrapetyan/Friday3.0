@@ -21821,6 +21821,17 @@
       },
       "type": "array",
       "title": "Depends On"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
      }
     },
     "additionalProperties": false,

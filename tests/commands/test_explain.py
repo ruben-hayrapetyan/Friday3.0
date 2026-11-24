@@ -170,3 +170,38 @@ def test_a_meal_with_nowhere_else_says_its_time_and_whats_around_it(app: App) ->
     assert app.do("why_not", key=key)["wall"] == "Lunch goes between 11:30 and 14:30, around CHEM 2090 Lecture"
     app.at("2026-10-19T12:00")  # begun: by when it goes
     assert app.do("why_not", key=key)["wall"] == "Lunch goes by 14:30, around CHEM 2090 Lecture"
+
+
+# 23 Nov, the agreement check (web/scripts/agreement-check.mjs): a late item's block said "no room to spare: it has to
+# happen as planned" while the Plan page said it will be late. The block now says it's late, as the Plan page does.
+def test_a_late_items_block_says_its_late_not_that_it_has_no_room_to_spare(app: App) -> None:
+    app.do("add", title="Class", when="fixed", start="2026-10-19T10:00", end="2026-10-19T23:00")
+    report = app.do("add", title="Lab report", due="2026-10-19T12:00", duration_min=180, firmness="hard")["item"]["id"]
+    app.do("replan")
+    [late] = [i for i in app.do("status")["late_items"] if i["item_id"] == report]
+    said = why_of(app, report)
+    assert "no room to spare" not in said and "on time" not in said
+    assert said.startswith("Due Mon 19 Oct 12pm; the plan finishes it about ") and said.split("about ")[1].startswith(
+        late_words(late["hours"])
+    )
+
+
+def late_words(hours: float) -> str:
+    """The web's lateBy: whole days from a day, else to the quarter hour (web/src/lib/format.ts)."""
+    if hours >= 24:
+        days = round(hours / 24)
+        return f"{days} day{'' if days == 1 else 's'}"
+    m = max(15, round(hours * 60 / 15) * 15)
+    return f"{m // 60}h {m % 60}m" if m // 60 and m % 60 else f"{m // 60}h" if m // 60 else f"{m}m"
+
+
+# 23 Nov, the agreement check: the late list read the saved plan's lateness of any item, so until the next plan a
+# finished or deleted task still "will be late" on the Plan page.
+@pytest.mark.parametrize("gone", ["done", "drop"])
+def test_finished_or_deleted_work_isnt_late(app: App, gone: str) -> None:
+    app.do("add", title="Class", when="fixed", start="2026-10-19T10:00", end="2026-10-19T23:00")
+    report = app.do("add", title="Lab report", due="2026-10-19T12:00", duration_min=180, firmness="hard")["item"]["id"]
+    app.do("replan")
+    assert [i["item_id"] for i in app.do("status")["late_items"]] == [report]
+    app.do(gone, id=report)
+    assert app.do("status")["late_items"] == []

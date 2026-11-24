@@ -1,14 +1,14 @@
 // A full preview's change list, read for people: one summary line and a line per changed item.
 
 import type { Schemas } from "@/api/client"
-import { clock, when } from "./format"
+import { clock, lateBy, when } from "./format"
 
 type Changes = Schemas["ChangeOut"]
 
 // A finish this much later past its due counts as the change's doing (whatif.py NOISE_H)
 const LATER_H = 0.25
 
-/** "3 items change · essay 2 h late". A preview (late_hours_before given) names only what the change makes later:
+/** "3 items change · essay 2h late". A preview (late_hours_before given) names only what the change makes later:
  *  18 Nov, Push for today said "edit article draft 11.02 h late", an overdue draft late before and after. */
 export function summary(changes: Changes): string {
   const all = [...(changes.added ?? []), ...(changes.removed ?? []), ...(changes.moved ?? [])]
@@ -18,7 +18,9 @@ export function summary(changes: Changes): string {
   const later = before ? late.filter(([title, h]) => h - (before[title] ?? 0) >= LATER_H) : late
   const parts = [
     ids.size ? `${ids.size} ${ids.size === 1 ? "item" : "items"} change` : "Nothing moves",
-    later.length ? later.map(([title, h]) => `${title} ${h} h late`).join(", ") : late.length ? "nothing new is late" : "all deadlines met",
+    // how late in the words every other place uses (lateBy; 23 Nov, the agreement check: "11.02 h late" here, "11h late"
+    // on the To-do row and the Plan page's note)
+    later.length ? later.map(([title, h]) => `${title} ${lateBy(h)} late`).join(", ") : late.length ? "nothing new is late" : "all deadlines met",
   ]
   return parts.join(" · ")
 }

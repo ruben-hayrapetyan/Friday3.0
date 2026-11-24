@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { addDays, ampm, dayRange, fitAxis, fromMin, hourMarks, hoursByDate, layout, nearestAt, nowSpan, pageStart, toMin } from "./time"
+import { addDays, ampm, dayRange, fitAxis, fromMin, hourMarks, layout, nearestAt, nowSpan, pageStart, toMin } from "./time"
 
 const axis = { startMin: 7 * 60 + 30, endMin: 24 * 60 + 30 }
 const block = (start: string, end: string, name = "") => ({ start, end, name })
@@ -75,13 +75,6 @@ describe("fitAxis", () => {
   })
   it("is a day long at most: usual hours past midnight wait for something there", () => {
     expect(fitAxis({ startMin: 360, endMin: 28 * 60 }, [], week)).toEqual({ startMin: 360, endMin: 1440 })
-  })
-})
-
-describe("hours by date", () => {
-  it("counts work over midnight on each side of it, and what runs by itself as its first quarter hour", () => {
-    expect(hoursByDate([block("2026-10-26T23:00", "2026-10-27T01:30"), block("2026-10-27T09:00", "2026-10-27T10:00")])).toEqual({ "2026-10-26": 1, "2026-10-27": 2.5 })
-    expect(hoursByDate([{ ...block("2026-10-26T23:00", "2026-10-27T03:00"), background: true }])).toEqual({ "2026-10-26": 0.25 })
   })
 })
 

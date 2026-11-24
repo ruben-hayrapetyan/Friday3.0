@@ -291,14 +291,14 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
               <span className="tnum">
                 {clock(b.start)}–{clock(b.end)}
               </span>
-              <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>{b.pinned === "locked" ? "Locked · won’t move" : b.pinned ? "Pinned here · resists moving" : b.tentative ? "Tentative · could fit here" : "Planned · Friday decides"}</span>
+              <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>{sessionWords(b, item.id)}</span>
             </span>
             <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>
               {dur(toMin(b.end) - toMin(b.start))}
             </span>
           </button>
         ))}
-        {!detail.blocks.length && <span className="fr-kicker">Nothing planned. Friday will find time once it has a due date or an estimate.</span>}
+        {!detail.blocks.length && <span className="fr-kicker">{nothingPlanned(detail.note, item)}</span>}
       </div>
       {why && (
         <div style={{ padding: 12, borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-accent) 8%, var(--color-bg))", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -347,4 +347,19 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
       </div>
     </aside>
   )
+}
+
+/** What a planned session is: a project's are its steps', named (23 Nov, the agreement check: a project whose steps
+ * had time said "Nothing planned"). */
+export function sessionWords(b: { item_id: number; title?: string | null; pinned?: string | null; tentative?: boolean | null }, own: number): string {
+  const how = b.pinned === "locked" ? "Locked · won’t move" : b.pinned ? "Pinned here · resists moving" : b.tentative ? "Tentative · could fit here" : "Planned · Friday decides"
+  return b.item_id !== own && b.title ? `${b.title} · ${how.split(" · ")[1]}` : how
+}
+
+/** Why nothing is planned: the plan's own words when it has them ("No room before its due", "Waits for …"), else
+ * what's missing; never "once it has a due date or an estimate" of work that has both. */
+export function nothingPlanned(note: string | null | undefined, item: { due?: string | null; duration_min?: number | null; remaining_min?: number | null }): string {
+  if (note) return `Nothing planned: ${note[0].toLowerCase()}${note.slice(1)}.`
+  if (!item.due && !item.duration_min) return "Nothing planned. Friday will find time once it has a due date or an estimate."
+  return "Nothing planned yet."
 }

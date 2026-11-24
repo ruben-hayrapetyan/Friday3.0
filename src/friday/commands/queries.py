@@ -2,7 +2,7 @@
 
 import json
 import os
-from datetime import timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from friday.api.commands import (
@@ -30,6 +30,7 @@ from friday.api.views import (
 )
 from friday.commands.decisions import decisions
 from friday.commands.fields import event_facts, item_out, require_item, waiting_on
+from friday.commands.horizon import saved_plan, step_notes
 from friday.commands.registry import Ctx, query
 from friday.commands.timer import all_running, elapsed_seconds, running
 from friday.commands.timer import timer_out as timing
@@ -294,12 +295,7 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
     if not inp.with_hidden:  # a calendar you hid shows only in the plan, under Show (planner/hidden.py)
         fixed = [f for f in fixed if not f.hidden_calendar]
     fixed = optional_marked(ctx, fixed, blocks)
-    hours: dict[str, float] = {}
-    for b in blocks:
-        day = b.start[:10]
-        # A task that runs by itself asks only its first quarter hour of you.
-        minutes = UNIT_MIN if b.background else parse_utc(ctx.utc(b.end)) - parse_utc(ctx.utc(b.start))
-        hours[day] = hours.get(day, 0) + minutes / 60
+    hours = hours_by_date(ctx, blocks)
     plan_id = saved["id"] if saved else None
     return PlanOut(
         plan_id=plan_id,
@@ -311,6 +307,28 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
         sessions=sittings(ctx, lo, hi),
         paused=paused,
     )
+
+
+def hours_by_date(ctx: Ctx, blocks: list[BlockOut]) -> dict[str, float]:
+    """Hours planned on each date: work over midnight counts on each side of it, as the week's day headers have since
+    15 Nov; one number every page reads (23 Nov, the agreement check: the header said "0.5 h over" of a day the Plan
+    page's note, the day panel and the month counted at its usual hours). A task that runs by itself asks only its
+    first quarter hour of you."""
+    hours: dict[str, float] = {}
+    for b in blocks:
+        lo = parse_utc(ctx.utc(b.start))
+        hi = lo + UNIT_MIN if b.background else parse_utc(ctx.utc(b.end))
+        day = date.fromisoformat(b.start[:10])
+        while True:
+            midnight = to_utc(datetime.combine(day, time()), ctx.tz)
+            following = to_utc(datetime.combine(day + timedelta(days=1), time()), ctx.tz)
+            if midnight >= hi:
+                break
+            minutes = min(hi, following) - max(lo, midnight)
+            if minutes > 0:
+                hours[day.isoformat()] = hours.get(day.isoformat(), 0) + minutes / 60
+            day += timedelta(days=1)
+    return hours
 
 
 def optional_marked(ctx: Ctx, fixed: list[ItemOut], blocks: list[BlockOut]) -> list[ItemOut]:
@@ -554,7 +572,11 @@ def item(ctx: Ctx, inp: ItemRef) -> ItemDetail:
     """One item with its blocks, progress and dependencies."""
     found = require_item(ctx, inp.id)
     saved = current_plan(ctx.conn, ctx.user_id)
-    pins = rows(ctx.conn, "SELECT * FROM pins WHERE item_id = ? ORDER BY created_utc DESC", [inp.id])
+    # a project's sessions are its steps' (23 Nov, the agreement check: a project whose steps had time said "Nothing
+    # planned"), each named by its step
+    ids = [inp.id, *steps_under(ctx, inp.id)]
+    marks = ",".join("?" * len(ids))
+    pins = rows(ctx.conn, f"SELECT * FROM pins WHERE item_id IN ({marks}) ORDER BY created_utc DESC", ids)  # noqa: S608
     blocks = [
         block_out(
             ctx,
@@ -566,8 +588,8 @@ def item(ctx: Ctx, inp: ItemRef) -> ItemDetail:
         )
         for r in rows(
             ctx.conn,
-            "SELECT * FROM blocks WHERE plan_id = ? AND item_id = ? ORDER BY start_utc",
-            [saved["id"] if saved else -1, inp.id],
+            f"SELECT * FROM blocks WHERE plan_id = ? AND item_id IN ({marks}) ORDER BY start_utc",  # noqa: S608 (?s)
+            [saved["id"] if saved else -1, *ids],
         )
     ]
     progress = [
@@ -579,7 +601,23 @@ def item(ctx: Ctx, inp: ItemRef) -> ItemDetail:
         for r in rows(ctx.conn, "SELECT * FROM dependencies WHERE item_id = ?", [inp.id])
     ]
     done = minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)
-    return ItemDetail(item=item_out(ctx, found, done), blocks=blocks, progress=progress, depends_on=deps)
+    # why it has no time, in the plan's words (the Projects page's: horizon.step_notes), never worked out here
+    _, report = saved_plan(ctx)
+    behind = {int(k): int(v) for k, v in (report.get("waiting") or {}).items()}
+    note = None if blocks else step_notes(ctx, behind).get(str(inp.id))
+    return ItemDetail(
+        item=item_out(ctx, found, done), blocks=blocks, progress=progress, depends_on=deps, note=note
+    )
+
+
+def steps_under(ctx: Ctx, root: int) -> list[int]:
+    """Every step under `root`, however deep."""
+    found, todo = [], [root]
+    while todo:
+        kids = [r["id"] for r in rows(ctx.conn, "SELECT id FROM items WHERE parent_id = ?", [todo.pop()])]
+        found += kids
+        todo += kids
+    return found
 
 
 @query("parse")
@@ -681,8 +719,10 @@ def status(ctx: Ctx, inp: Empty) -> StatusOut:
         r["id"]: r
         for r in rows(
             ctx.conn,
+            # only work still to do: until the next plan, the saved one still has finished or deleted work late
+            # (23 Nov, the agreement check)
             "SELECT i.id, i.title, COALESCE(i.due_utc, p.due_utc) AS due_utc FROM items i "
-            "LEFT JOIN items p ON p.id = i.parent_id WHERE i.user_id = ?",
+            "LEFT JOIN items p ON p.id = i.parent_id WHERE i.user_id = ? AND i.status = 'todo'",
             [ctx.user_id],
         )
     }

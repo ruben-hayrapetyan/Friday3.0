@@ -89,21 +89,6 @@ export function fitAxis(axis: Axis, things: Span[], dates: string[]): Axis {
   return { startMin: Math.max(0, startMin), endMin: Math.min(1440, endMin) }
 }
 
-/** Hours planned on each calendar date, as the day headers count them: a block over midnight counts on each side of
- * it (15 Nov), one that runs by itself only its first quarter hour (as the server's `day_hours`). */
-export function hoursByDate(blocks: (Span & { background?: boolean | null })[]): Record<string, number> {
-  const out: Record<string, number> = {}
-  for (const b of blocks) {
-    const lo = toMin(b.start)
-    const hi = b.background ? lo + 15 : toMin(b.end)
-    for (let date = b.start.slice(0, 10); toMin(date) < hi; date = addDays(date, 1)) {
-      const minutes = Math.min(hi, toMin(date) + 1440) - Math.max(lo, toMin(date))
-      if (minutes > 0) out[date] = (out[date] ?? 0) + minutes / 60
-    }
-  }
-  return out
-}
-
 export interface Placed<T> {
   item: T
   top: number // minutes from the column's top

@@ -52,12 +52,14 @@ def suggestion_effect(ctx: Ctx, inp: EffectInput) -> EffectOut:
         and not ctx.hidden.calendar(i.id)  # not named: a calendar you hid (planner/hidden.py)
     ]
     saved = current_plan(ctx.conn, ctx.user_id)
+    # only work still to do: until the next plan, the saved one still has blocks of work you've just finished or
+    # deleted, which the calendar no longer shows (23 Nov, the agreement check)
     takes = [
         span(ctx, r["title"], r["start_utc"], r["end_utc"])
         for r in rows(
             ctx.conn,
             "SELECT b.start_utc, b.end_utc, i.title FROM blocks b JOIN items i ON i.id = b.item_id "
-            "WHERE b.plan_id = ? AND b.start_utc < ? AND b.end_utc > ? ORDER BY b.start_utc",
+            "WHERE b.plan_id = ? AND b.start_utc < ? AND b.end_utc > ? AND i.status = 'todo' ORDER BY b.start_utc",
             [saved["id"] if saved else -1, format_utc(hi), format_utc(lo)],
         )
     ]

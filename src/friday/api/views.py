@@ -19,9 +19,10 @@ class PlanOut(Model):
 
 class ItemDetail(Model):
     item: ItemOut
-    blocks: list[BlockOut]
+    blocks: list[BlockOut]  # a project's: its steps'
     progress: list[dict[str, Any]]
     depends_on: list[dict[str, Any]]
+    note: str | None = None  # with no time: why, in the plan's words ("No room before its due", "Waits for …")
 
 
 class ParseOutput(Model):

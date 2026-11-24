@@ -6621,6 +6621,8 @@ export interface components {
             depends_on: {
                 [key: string]: unknown;
             }[];
+            /** Note */
+            note?: string | null;
         };
         /** ItemIds */
         ItemIds: {

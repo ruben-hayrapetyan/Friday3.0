@@ -146,7 +146,9 @@ describe("what a row says of Friday's lateness", () => {
     expect(lateWarning(undefined)).toBeNull()
     expect(lateWarning({ item_id: 1, hours: 0.5 })).toBe("Friday has it 30m late")
     expect(lateWarning({ item_id: 1, hours: 2.25 })).toBe("Friday has it 2h 15m late")
-    expect(lateWarning({ item_id: 1, hours: 14.8 })).toBe("Friday has it 15h late")
+    expect(lateWarning({ item_id: 1, hours: 14.8 })).toBe("Friday has it 14h 45m late")
+    // the same words as the To-do row, the Plan page's note and the Inbox (lateBy): 30 hours is a day, not "30h"
+    expect(lateWarning({ item_id: 1, hours: 30 })).toBe("Friday has it 1 day late")
     expect(lateWarning({ item_id: 1, hours: 0, planned: false })).toBe("Friday has no time for it")
   })
 })

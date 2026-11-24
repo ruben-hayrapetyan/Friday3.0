@@ -79,3 +79,15 @@ def test_a_task_or_an_answered_suggestion_says_nothing(app: App) -> None:
 def test_an_edited_time_that_ends_before_it_starts_is_refused(app: App) -> None:
     with pytest.raises(FieldError, match="the event ends before it starts"):
         app.do("suggestion_effect", id=suggested(app, screening()), start="2026-10-19T21:00", end="2026-10-19T19:00")
+
+
+# 23 Nov, the agreement check: "Takes the time planned for X" read the saved plan's blocks of any item, so until the
+# next plan it named work you'd just finished or deleted, which the calendar no longer showed.
+@pytest.mark.parametrize("gone", ["done", "drop"])
+def test_finished_or_deleted_work_isnt_said_to_be_in_its_time(app: App, gone: str) -> None:
+    essay = app.do("add", title="Essay", due="2026-10-19T23:00", duration_min=600, preset="Assignment")["item"]["id"]
+    replan(app.conn, app.now_utc)
+    sid = suggested(app, screening())
+    assert [t["title"] for t in app.do("suggestion_effect", id=sid)["takes"]] == ["Essay"]
+    app.do(gone, id=essay)
+    assert app.do("suggestion_effect", id=sid)["takes"] == []

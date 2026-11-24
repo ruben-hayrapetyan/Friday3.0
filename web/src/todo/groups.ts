@@ -68,8 +68,10 @@ export function progress(item: Item): { pct: number; text: string } {
   return { pct: Math.round((done / total) * 100), text: `${dur(done)} of ${dur(total)}` }
 }
 
+/** What the list holds, as its rows show it: a repeating task once, at its next time (23 Nov, the agreement check: the
+ * header counted every time of every repeating task, "446 open" above 22 rows). */
 export function summary(items: Item[]): string {
-  const open = items.filter((i) => i.status === "todo")
+  const open = nextOccurrences(items.filter((i) => i.status === "todo"), new Map()).map((r) => r.item)
   const left = open.reduce((s, i) => s + (i.remaining_min ?? 0), 0)
   return `${open.length} open, ${dur(left)} left`
 }
