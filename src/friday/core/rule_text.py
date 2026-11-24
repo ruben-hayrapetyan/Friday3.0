@@ -1501,12 +1501,25 @@ AWAY_TOO = (
 )
 
 
+# 23 Nov: "Things that can happen during other events can't happen during meals" means things that run by themselves
+OVERLAPPING = (
+    r"\b(?:tasks?|things?|stuff|what(?:ever)?) (?:that|which) (?:can|may|could) (?:happen|go|run|be done)"
+    r" (?:during|alongside|with|over|while) (?:other |my )?(?:events?|things?|tasks?|work)\b"
+)
+MEALS_TOO = (
+    r"\b(?:during|in|at|through|over|across|while (?:i'?m |i am )?(?:eating|at))(?: (?:my|a|the))?"
+    r" (?:meals?|lunch(?:es)?|dinners?|breakfasts?|eating)\b"
+)
+
+
 def read_running(t: str, negated: bool) -> Reading | None:
     """What runs by itself only while you're there to see to it: `background tasks only during work time, not during
     events`, `things that run by themselves must not run during class`, `run laundry-like tasks while I work`,
     `model training should only run while I'm at my desk`, `renders shouldn't run while I'm at practice`."""
-    if not (re.search(RUNNING, t) or re.search(RUNNING_NAMED, t)):
+    if not (re.search(RUNNING, t) or re.search(RUNNING_NAMED, t) or re.search(OVERLAPPING, t)):
         return None
+    if re.search(MEALS_TOO, t):  # off your meals too, as they're planned (planner/solve.py `off_meals`)
+        return Reading("runs_while_working", "work", events=("meals",))
     if re.search(WORKING, t) or re.search(THERE, t) or (negated and (re.search(AWAY, t) or re.search(AWAY_TOO, t))):
         return Reading("runs_while_working", "work")
     return None
@@ -1904,6 +1917,8 @@ def said(r: Reading) -> str:
     if r.kind == "fit_gaps":
         return "Short tasks in short gaps, long ones in long stretches"
     if r.kind == "runs_while_working":
+        if "meals" in (r.events or ()):
+            return "Things that run by themselves run while you work, not during events, meals or your sleep"
         return "Things that run by themselves run while you work, not during events or your sleep"
     if r.kind == "late_cutoff":
         day = NAMES_OF[(r.days or ("sun",))[0]]
@@ -2131,8 +2146,9 @@ def spec(
                 "params": {}}  # fmt: skip
     if r.kind == "runs_while_working":  # Always: never started where it would run through an event or the night
         price = "forbid" if strength == "Always" else PRICE[strength]
+        meals = {"meals": True} if "meals" in (r.events or ()) else {}
         return {"name": name, "type": "runs_while_working", "weight": 1.0, "scope": None, "reason": sentence(r),
-                "params": {"price": price}}  # fmt: skip
+                "params": {"price": price, **meals}}  # fmt: skip
     if r.kind == "spacing":  # not a planner rule: the repeat's min_gap_days (commands/rules.py, planner/spacing.py)
         return {"name": name, "type": "spacing", "weight": 0.0, "scope": None, "reason": sentence(r),
                 "params": {"title": r.subject, "days": r.amount}}  # fmt: skip

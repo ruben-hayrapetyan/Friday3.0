@@ -16,7 +16,7 @@ from datetime import date
 
 import numpy as np
 
-from friday.core.time import planning_date
+from friday.core.time import UNIT_MIN, planning_date
 from friday.engine.allocator import Allocation, allocate, apply_quotas
 from friday.engine.executor import ExecutorInput, edf
 from friday.engine.problem import Plan, Problem
@@ -75,8 +75,57 @@ def solve(snapshot: Snapshot, warm: bool, cancel: np.ndarray | None = None, thre
         stages = ("deadlines", "wellbeing", "preferences") if kept else ("deadlines", "wellbeing")
         better = [new[stage] for stage in stages] <= [old[stage] + allowed.get(stage, 0) for stage in stages]
         if better:
-            return Solved(inp2, problem2, allocation, deadlines, overloaded, solved2)
-    return Solved(inp, problem, allocation, deadlines, overloaded, result)
+            return off_meals(Solved(inp2, problem2, allocation, deadlines, overloaded, solved2), config, cancel)
+    return off_meals(Solved(inp, problem, allocation, deadlines, overloaded, result), config, cancel)
+
+
+def off_meals(solved: Solved, config: SchedulerConfig, cancel: np.ndarray | None, rounds: int = 2) -> Solved:
+    """Things that run by themselves off your meals as the plan puts them, when a rule says so (23 Nov, your choice:
+    "off the planned meal"): a meal is planned like work, so where it goes is known only once planned. Where a run
+    crosses a planned meal, the plan again from this one, those meals' times kept clear of runs. Meals cost far more
+    to move, so they stay and the run moves; a second round in case one did move."""
+    for _ in range(rounds):
+        if cancel is not None and cancel[0]:
+            break
+        names = [r.name for r in solved.inp.settings["rules"] if r.type == "runs_while_working" and r.enabled
+                 and (r.params or {}).get("meals")]  # fmt: skip
+        problem, plan = solved.problem, solved.result.plan
+        meal = {s for k, it in problem.items.items() if it.meal_window is not None for s in plan.get(k, ())}
+        if not names or not meal or not crosses(problem, plan, meal):
+            break
+        keep = sorted(meal | set(next((r.params or {}).get("meal_slots", []) for r in solved.inp.settings["rules"]
+                                      if r.name == names[0])))  # fmt: skip
+        rules = tuple(
+            r.model_copy(update={"params": r.params | {"meal_slots": keep}}) if r.name in names else r
+            for r in solved.inp.settings["rules"]
+        )
+        inp2 = dataclasses.replace(solved.inp, settings=solved.inp.settings | {"rules": rules})
+        problem2 = build_problem(inp2)
+        apply_quotas(problem2.items.values(), solved.allocation, problem2.grid.horizon_end, problem2.grid.units)
+        for key, item in problem2.items.items():  # from this plan
+            item.current = frozenset(plan.get(key, ())) | item.preferred
+        quick = dataclasses.replace(config, use_fallback=False)
+        result2 = schedule(problem2, quick, warm=True, cancel=cancel, overloaded=solved.overloaded)
+        solved = Solved(inp2, problem2, solved.allocation, solved.executor, solved.overloaded, result2)
+    return solved
+
+
+def crosses(problem: Problem, plan: Plan, meal: set[int]) -> bool:
+    """Whether a thing that runs by itself runs through one of these meal slots: from the end of the quarter hour it's
+    started in, for as long as it runs."""
+    grid = problem.grid
+    eating = [(int(grid.start[s]), int(grid.end[s])) for s in meal]
+    for key, item in problem.items.items():
+        if item.runs_units <= 0:
+            continue
+        slots = sorted(plan.get(key, ()))
+        starts = [s for i, s in enumerate(slots) if i == 0 or slots[i - 1] != s - 1]
+        for s in starts:
+            lo = int(grid.end[s])
+            hi = lo + item.runs_units * UNIT_MIN
+            if any(a < hi and lo < b for a, b in eating):
+                return True
+    return False
 
 
 def kept_worth(problem: Problem, kept: dict[str, set[int]]) -> dict[str, float]:

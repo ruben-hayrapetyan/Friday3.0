@@ -158,9 +158,12 @@ def read_out(ctx: Ctx, reading: Reading, strength: str, editing: str = "") -> Ru
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
     new = spec(reading, strength, "preview", areas, presets, ctx.settings["time"].day_start)
     effect = EFFECT.get(reading.kind if reading.kind in ("ahead", "meals_kept") else new["type"], "")
+    if reading.kind == "runs_while_working" and "meals" in (reading.events or ()):  # 23 Nov
+        planned = "your events, your meals as they're planned and your sleep"
+        effect = effect.replace("your events and your sleep", planned)
     if reading.kind == "meals_learned" and not ctx.settings["meal_tracking"].on:
         effect += ". Meal tracking is off: turn it on in Insights → Meals so Friday has something to learn from"
-    if reading.events:
+    if reading.events and reading.kind != "runs_while_working":  # there it says meals, not an event's name
         found = events_named(ctx, reading.events)
         effect += f". Matches {', '.join(found)}" if found else ". No event has those words in its title yet"
     if reading.kind == "pace":

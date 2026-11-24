@@ -425,6 +425,8 @@ class RunsWhileWorking(Rule):
     class Params(Rule.Params):
         price: float | Literal["forbid"] = FORBID
         sleep: bool = True
+        meals: bool = False  # off your meals too, as the plan puts them (23 Nov)
+        meal_slots: list[int] = []  # the slots the plan put meals in, kept clear on planning again (planner/solve.py)
 
     def applies_also(self, item):
         return item.runs_units > 0
@@ -433,6 +435,9 @@ class RunsWhileWorking(Rule):
         super().prepare(problem)
         grid = problem.grid
         away = problem.events[: grid.S] | (problem.core[: grid.S] if self.p.sleep else False)
+        if self.p.meals and self.p.meal_slots:
+            away = away.copy()
+            away[[s for s in self.p.meal_slots if s < grid.S]] = True
         # Units away (at an event, asleep) before each slot, so any stretch's are a subtraction.
         self.away_before = np.concatenate([[0], np.cumsum(np.where(away, grid.units[: grid.S], 0))])
 
