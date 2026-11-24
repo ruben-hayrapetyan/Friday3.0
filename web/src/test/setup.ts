@@ -29,6 +29,14 @@ export const friday = {
     const answer = await window.fetch(`${base}/api/c/${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
     return (await answer.json()) as T
   },
+  /** Until the plan has caught up with every change made so far, as a page waits for it (up to a minute). */
+  async planned(): Promise<void> {
+    for (const until = Date.now() + 60_000; Date.now() < until; await new Promise((r) => setTimeout(r, 300))) {
+      const status = await this.q<{ plan_generation: number | null; generation: number }>("status")
+      if (status.plan_generation !== null && status.plan_generation >= status.generation) return
+    }
+    throw new Error("the plan didn't catch up within a minute")
+  },
 }
 
 beforeAll(async () => {

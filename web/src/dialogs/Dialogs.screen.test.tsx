@@ -114,10 +114,12 @@ describe("what gives when it can't all fit", () => {
     const due = `${dayOn(2)}T12:00`
     const made = await friday.c<{ result: { item: { id: number } } }>("add", { title: "Capstone report", duration_min: 1500, due, shape: "split" })
     const id = made.result.item.id
+    await friday.planned() // late now is the plan's (24 Nov), as the Plan page says it
     let triage = await friday.q<{ late: Record<string, number>; options: { action: string; skip_title: string | null; late_hours_saved: number }[] }>("triage")
     for (const minutes of [2200, 3000, 4000, 5000]) {
       if (triage.options.some((o) => !o.skip_title && o.late_hours_saved > 0)) break
       await friday.c("edit", { id, duration_min: minutes })
+      await friday.planned()
       triage = await friday.q("triage")
     }
     const option = triage.options.find((o) => !o.skip_title && o.late_hours_saved > 0)
