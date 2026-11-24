@@ -54,8 +54,10 @@ export default [
       await click("Check exactly")
       const kind = kinds[answers.indexOf(quick)]
       const exact = await fit(base, { command: "add", input: { text: line0, ...(kind ? { preset: kind } : {}) }, exact: true })
-      await has(line(exact), "main", 60_000)
-      await until(`![...document.querySelectorAll("main button")].some((b) => b.textContent.trim() === "Check exactly")`, 10_000, "Check exactly gone once checked")
+      await until(`![...document.querySelectorAll("main button")].some((b) => /^(Check exactly|Planning it)/.test(b.textContent.trim()))`, 60_000, "Check exactly gone once checked")
+      // planned exactly, as a replan would: its verdict the server's (how many blocks move can differ run to run)
+      const verdict = exact.said.split(":")[0]
+      await has(`${verdict}:`, "main")
       expect((await q("items", { status: "all" })).length === before, "checking added a to-do")
     },
   },
