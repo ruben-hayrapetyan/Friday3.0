@@ -1,8 +1,9 @@
 // Pro tips (#23, 24 Nov, the user: "a popup on the bottom right corner that just slides in for 5s. they should be very
 // short and just tell the user on features that they could be missing out based on their usage. don't tell them that
-// its based on the usage"). The server picks the tip (commands/tips.py: at most one a day, the same one at most three
-// times a week apart); here it slides in a few seconds after Friday opens, stays five seconds and slides out. A click
-// opens the page the feature is on. Never over the tour, Setup or a dialog, and above the Now bar.
+// its based on the usage"; then "the pro tips should show up for 10seconds and have a 'take me there' button"). The
+// server picks the tip (commands/tips.py: at most one a day, the same one at most three times a week apart); here it
+// slides in a few seconds after Friday opens, stays ten seconds and slides out. "Take me there" opens the page the
+// feature is on. Never over the tour, Setup or a dialog, and above the Now bar.
 
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
@@ -11,7 +12,7 @@ import { Icon } from "@/components/fr/controls"
 import { useShell } from "./ShellContext"
 
 export const TIP_AFTER_MS = 4000 // after Friday opens: the page has settled
-export const TIP_FOR_MS = 5000 // the user's five seconds
+export const TIP_FOR_MS = 10_000 // the user's ten seconds (24 Nov: five, then "10seconds")
 const OUT_MS = 260 // the slide out
 
 type Tip = Schemas["TipOut"]
@@ -60,19 +61,24 @@ export function ProTip() {
 
   if (!tip?.text) return null
   return (
-    <button
-      type="button"
-      role="status"
-      className="fr-tip"
-      data-leaving={leaving ? "" : undefined}
-      onClick={() => {
-        if (tip.page) navigate(tip.page)
-        setLeaving(true)
-      }}
-      style={{ bottom: bottom() }}
-    >
-      <Icon name="lightbulb" size={15} style={{ flex: "none", color: "var(--fr-mark)", marginTop: 1 }} />
-      <span>{tip.text}</span>
-    </button>
+    <div role="status" className="fr-tip" data-leaving={leaving ? "" : undefined} style={{ bottom: bottom() }}>
+      <Icon name="lightbulb" size={15} style={{ flex: "none", color: "var(--fr-mark)", marginTop: 2 }} />
+      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
+        <span>{tip.text}</span>
+        {tip.page && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              navigate(tip.page!)
+              setLeaving(true)
+            }}
+            style={{ fontSize: 12, padding: "3px 10px", minHeight: 0 }}
+          >
+            Take me there
+          </button>
+        )}
+      </span>
+    </div>
   )
 }

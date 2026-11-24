@@ -938,8 +938,8 @@ kbd.fr-kbd {
   .fr-going-name.is-short { flex: none; }
 }
 
-/* A pro tip (shell/ProTip.tsx, #23): slides in at the bottom right for five seconds and out again. Flat, like the
-   toasts; set above the Now bar by its own bottom. */
+/* A pro tip (shell/ProTip.tsx, #23): slides in at the bottom right for ten seconds and out again, with "Take me
+   there". Flat, like the toasts; set above the Now bar by its own bottom. */
 .fr-tip {
   position: fixed;
   right: 24px;
@@ -956,7 +956,6 @@ kbd.fr-kbd {
   font-size: 13px;
   line-height: 1.4;
   text-align: left;
-  cursor: pointer;
   animation: fr-tip-in 260ms ease-out both;
 }
 .fr-tip[data-leaving] { animation: fr-tip-out 260ms ease-in both; }

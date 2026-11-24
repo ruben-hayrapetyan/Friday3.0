@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-// Pro tips (#23, 24 Nov, the user: "slides in for 5s"): when it comes, how long it stays, and never over the tour.
+// Pro tips (#23, 24 Nov, the user: "slides in for 5s", then "show up for 10seconds and have a 'take me there'
+// button"): when it comes, how long it stays, its button, and never over the tour.
 import { act, render, screen } from "@testing-library/react"
 import { useEffect } from "react"
 import { MemoryRouter } from "react-router"
@@ -33,16 +34,18 @@ const open = (touring = false) =>
   )
 const after = (ms: number) => act(async () => void (await vi.advanceTimersByTimeAsync(ms)))
 
-describe("a pro tip's five seconds", () => {
+describe("a pro tip's ten seconds", () => {
   beforeEach(() => (sent.length = 0, vi.useFakeTimers()))
   afterEach(() => vi.useRealTimers())
 
-  it("comes a few seconds after Friday opens, stays five seconds, then slides out", async () => {
+  it("comes a few seconds after Friday opens, stays ten seconds, then slides out", async () => {
+    expect(TIP_FOR_MS).toBe(10_000)
     open()
     await after(TIP_AFTER_MS - 100)
     expect(screen.queryByText(TEXT)).toBeNull()
     await after(200)
     expect(screen.getByText(TEXT)).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Take me there" })).toBeTruthy()
     expect(sent).toEqual(["tip_shown"])
     await after(TIP_FOR_MS - 200)
     expect(screen.getByText(TEXT).closest("[data-leaving]")).toBeNull() // still in

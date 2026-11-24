@@ -1,5 +1,5 @@
-// Pro tips (#23, 24 Nov): a short line that slides in at the bottom right a few seconds after Friday opens, for five
-// seconds, then out; Friday counts it, so nothing else is shown that day. A click opens the page the feature is on.
+// Pro tips (#23, 24 Nov): a short line that slides in at the bottom right a few seconds after Friday opens, for ten
+// seconds, then out; Friday counts it, so nothing else is shown that day. "Take me there" opens the feature's page.
 import { screen, waitFor } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { openFriday } from "@/test/friday"
@@ -21,13 +21,13 @@ async function aTip(): Promise<Tip> {
 }
 
 describe("a pro tip", () => {
-  it("slides in a few seconds after Friday opens, opens its page when clicked, and is counted for the day", async () => {
+  it("slides in a few seconds after Friday opens, Take me there opens its page, and it's counted for the day", async () => {
     const tip = await aTip()
     const { user } = await openFriday("/settings/appearance")
     expect(screen.queryByText(tip.text!)).toBeNull() // not at once
-    const shown = await screen.findByText(tip.text!, {}, { timeout: TIP_AFTER_MS + 4000 })
+    await screen.findByText(tip.text!, {}, { timeout: TIP_AFTER_MS + 4000 })
     await waitFor(async () => expect((await friday.q<Tip>("tips")).id).toBeNull()) // one a day: counted
-    await user.click(shown)
+    await user.click(screen.getByRole("button", { name: "Take me there" }))
     await waitFor(() => expect(route()).toBe(tip.page))
     await waitFor(() => expect(screen.queryByText(tip.text!)).toBeNull())
   }, 30_000)
