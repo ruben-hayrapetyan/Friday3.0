@@ -11,12 +11,17 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from tests.system.test_beat_plan_system import TZ, Friday
+from tests.system.test_beat_plan_system import Friday, zone_for_hour
+
+# about noon now (25 Nov): before the 4am day start the plan reaches a day less far, and these tests' break days fall at
+# its end (tests/commands/test_horizon_before_day_start.py, kept failing: the user held the change back)
+TZ = zone_for_hour(12)
 
 
 @pytest.fixture(scope="module")
 def friday(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Friday]:
     server = Friday(tmp_path_factory.mktemp("vacations"))
+    server.c("settings_set", key="time", value=server.q("settings")["time"] | {"timezone": TZ})
     yield server
     server.stop()
 
