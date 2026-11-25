@@ -151,6 +151,8 @@ def test_spans_cover_each_recognized_token() -> None:
         ("x /nosuch", "unknown preset /nosuch"),
         ('x after:"nothing here"', "unknown dependency nothing here"),
         ("meet at fri 3pm", "no length given; 1 h assumed"),
+        # 24 Nov, the new pipeline tests: a length given (~30m) makes the time a window, whose end was the hour assumed
+        ("run every mon,wed 7am ~30m", "no end time given: until 8am assumed"),
         ("due fri", "no title"),
     ],
 )
@@ -311,3 +313,9 @@ def test_morning_hours_written_so_stay_morning() -> None:
     assert quick("gym 06:30-07:30 tue")["start_local"].endswith("06:30")
     assert quick("gym 7:30am-9am tue")["start_local"].endswith("07:30")
     assert quick("lecture 10:10-11:25 mon")["start_local"].endswith("10:10")
+
+
+def test_a_given_length_is_never_said_to_be_missing() -> None:
+    result = parse("run 7am ~30m", NOW, areas=AREAS, presets=DEFAULT_PRESETS, find_item=lambda t: None)
+    assert result.fields["duration_units"] == 2
+    assert not any("no length given" in w for w in result.warnings), result.warnings

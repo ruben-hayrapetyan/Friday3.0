@@ -515,6 +515,12 @@ class Parser:
             return False
         self.fields["release_local"] = self.fields.pop("start_local")
         self.fields["due_local"] = self.fields.pop("end_local")
+        # the hour assumed was the window's, not the work's: say so (24 Nov: "run 7am ~30m" warned "no length given")
+        if "no length given; 1 h assumed" in self.result.warnings:
+            until = datetime.fromisoformat(self.fields["due_local"])
+            self.result.warnings[self.result.warnings.index("no length given; 1 h assumed")] = (
+                f"no end time given: until {clock_time(until)} assumed"
+            )
         # `groceries /errand at 10am 45m`: the 45 minutes is the errand's length, not only its window's (it took the
         # kind's hour instead, which didn't fit the window, 27 Oct).
         if self.timed_length is not None and "length_min" not in self.fields and "elastic_min" not in self.fields:
