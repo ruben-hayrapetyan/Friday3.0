@@ -28,8 +28,9 @@ export function when(local: string, today: string): string {
   // A repeat's window ends as the next planning day starts (your day start): that is the end of the day before.
   if (local.slice(11, 16) === dayStartClock()) return `${when(new Date((toMin(date) - 1440) * 60000).toISOString().slice(0, 10), today)}, end of day`
   if (local.startsWith(today) && time) return time
-  const days = Math.abs(toMin(date) - toMin(today)) / 1440
-  const day = days < 7 ? weekday(date) : `${weekday(date)} ${Number(date.slice(8, 10))} ${MONTH[Number(date.slice(5, 7)) - 1]}`
+  // a weekday alone only for the days ahead: a Monday gone and the Monday coming read alike (24 Nov, the late list)
+  const days = (toMin(date) - toMin(today)) / 1440
+  const day = days >= 0 && days < 7 ? weekday(date) : `${weekday(date)} ${Number(date.slice(8, 10))} ${MONTH[Number(date.slice(5, 7)) - 1]}`
   return time ? `${day} ${time}` : day
 }
 

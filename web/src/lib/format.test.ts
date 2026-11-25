@@ -16,6 +16,14 @@ describe("when", () => {
     expect(when("2026-10-23", "2026-10-19")).toBe("Fri")
   })
 
+  // 24 Nov, the user's Inbox: Laundry "due Mon 8pm, about 2 days late" and another Laundry "due Mon 8pm, about 4h
+  // late": yesterday's Monday and next Monday read the same. A weekday alone is only for the days ahead.
+  it("names a day that has passed by its date, never its weekday alone", () => {
+    expect(when("2026-11-23T20:00", "2026-11-24")).toBe("Mon 23 Nov 8pm")
+    expect(when("2026-11-30T20:00", "2026-11-24")).toBe("Mon 8pm")
+    expect(when("2026-11-23", "2026-11-24")).toBe("Mon 23 Nov")
+  })
+
   it("reads a repeat's window ending at the day start as the end of the day before", () => {
     expect(when("2026-10-27T04:00", "2026-10-20")).toBe("Mon, end of day")
   })
