@@ -19,8 +19,23 @@ type Timer = Schemas["TimerOut"]
 export function timerStarted(client: QueryClient, input: { id?: number; alongside?: boolean } | null): void {
   const id = input?.id
   if (typeof id !== "number") return
+  // a meal's routine started is that meal eaten, as the server records it (25 Nov, the user: Start on Dinner timed it
+  // and logged no meal): shown as eating at once, not as a timer that the server's answer then takes back
+  const meal = mealRoutine(client, id)
+  if (meal) return mealStarted(client, { kind: meal })
   client.setQueryData<Status>(["status"], (s) => s && started(s, id, !!input?.alongside))
   client.setQueryData<Now>(["now"], (n) => n && { ...n, current_source: "timer" })
+}
+
+const MEALS = ["breakfast", "lunch", "dinner"] as const
+
+/** The meal an item is the routine for (Dinner's), when meals are tracked: as the server's `meal_of` reads it. */
+export function mealRoutine(client: QueryClient, id: number): string | null {
+  if (!client.getQueryData<Meals>(["meals"])?.on) return null
+  const lists = client.getQueriesData<Schemas["ItemOut"][]>({ queryKey: ["items"] }).flatMap(([, d]) => (Array.isArray(d) ? d : []))
+  const item = lists.find((i) => i.id === id)
+  if (!item || item.preset !== "Routine" || item.series_id == null) return null
+  return MEALS.find((m) => item.title.toLowerCase().includes(m)) ?? null
 }
 
 export function started(s: Status, id: number, alongside: boolean): Status {

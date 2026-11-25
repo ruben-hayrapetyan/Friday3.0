@@ -11,6 +11,7 @@ from friday.api.commands import (
     DoneInput,
     ItemResult,
     LogInput,
+    MealStartInput,
     ProgressInput,
     ReviewSubmitInput,
     ReviewTaskInput,
@@ -67,6 +68,12 @@ def start(ctx: Ctx, inp: StartInput) -> TimerOut:
     item = require_item(ctx, inp.id)
     if item.status != "todo" or item.when == "fixed":
         raise FieldError("id", f"T{inp.id} isn't something to work on now")
+    if (kind := meal_of(ctx, item)) is not None:
+        # a meal's routine started is that meal eaten, as Eating now records it (25 Nov, the user: "when i hit start
+        # on dinner it doesn't log it as a meal ... very confusing"): one way to eat, whichever button you press
+        from friday.commands.eating import meal_start
+
+        return TimerOut(item_id=None, started=None, message=meal_start(ctx, MealStartInput(kind=kind)).message)
     others = [t for t in all_running(ctx) if t["item_id"] != inp.id]
     if inp.alongside and len(others) >= MAX_AT_ONCE:
         raise FieldError("alongside", f"{MAX_AT_ONCE} things are being timed already; stop one first")
@@ -86,6 +93,19 @@ def start(ctx: Ctx, inp: StartInput) -> TimerOut:
         else ""
     )
     return timer_out(ctx, running(ctx, inp.id) or {}, f"Timing {item.title}{also}")
+
+
+def meal_of(ctx: Ctx, item: Item) -> str | None:
+    """The meal an item is the routine for (that day's Dinner), when you track meals; else None."""
+    if not ctx.settings["meal_tracking"].on or item.preset != "Routine" or item.series_id is None:
+        return None
+    from friday.commands.eating import PLANNED, routine_of
+
+    for kind in PLANNED:
+        routine = routine_of(ctx, kind, date.fromisoformat(item.occurrence_date)) if item.occurrence_date else None
+        if routine is not None and routine["id"] == item.id:
+            return kind
+    return None
 
 
 def chose_over(ctx: Ctx, item: Item) -> None:

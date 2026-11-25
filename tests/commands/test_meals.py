@@ -323,3 +323,33 @@ def test_done_eating_within_the_same_minute_counts_a_minute(app: App) -> None:
     app.do("meal_end")
     eaten = [m for d in app.do("meals")["days"] for m in d["meals"] if m["end"]]
     assert [m["minutes"] for m in eaten] == [1]
+
+
+def dinner_routine(app: App) -> int:
+    app.do("series_add", title="Dinner", preset="Routine", every="day", release_offset_min=13 * 60,
+           due_offset_min=17 * 60, min_min=20, ideal_min=30, max_min=45)  # fmt: skip
+    (row,) = [r for r in app.table("items") if r["title"] == "Dinner" and r["occurrence_date"] == "2026-10-19"]
+    return row["id"]
+
+
+def test_start_on_a_meals_routine_is_eating_that_meal(app: App) -> None:
+    """25 Nov, the user: "when i hit start on dinner it doesn't log it as a meal ... very confusing": Start on the
+    Dinner block timed the routine like any task, while Eating now recorded a meal. With meal tracking on, Start on a
+    meal's routine is eating that meal; without it, it times the routine as before."""
+    on(app)
+    dinner = dinner_routine(app)
+    at(app, "18:30")
+    out = app.do("start", id=dinner)
+    assert out["message"] == "Eating dinner since 6:30pm"
+    assert app.do("meals")["eating"]["kind"] == "dinner" and app.do("meals")["eating"]["item_id"] == dinner
+    assert app.table("timer") == []  # a meal, not a timer on the routine
+    at(app, "19:00")
+    app.do("meal_end")
+    assert [r["status"] for r in app.table("items") if r["id"] == dinner] == ["done"]
+
+
+def test_start_on_a_meals_routine_with_tracking_off_times_it(app: App) -> None:
+    dinner = dinner_routine(app)
+    at(app, "18:30")
+    assert app.do("start", id=dinner)["message"] == "Timing Dinner"
+    assert [t["item_id"] for t in app.table("timer")] == [dinner]
