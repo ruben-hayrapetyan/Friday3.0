@@ -113,16 +113,22 @@ async function main() {
   const files = readdirSync(HERE).filter((f) => f.endsWith(".e2e.mjs")).sort()
   const chosen = files.filter((f) => !only || only.includes(f.replace(".e2e.mjs", "")))
   const given = option("--url")
-  const sample = given ? { base: given.replace(/\/$/, ""), folder: option("--folder"), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-" })
+  // Each file on a sample of its own (24 Nov: run all together on one, what one file made, late work say, changed what
+  // the next saw, and tests that passed alone failed); --url: all on that one Friday, as before.
+  const sampleFor = async () =>
+    given ? { base: given.replace(/\/$/, ""), folder: option("--folder"), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-" })
   const { page, close, answer } = await openChrome()
   const failed = []
   let passed = 0
   const started = Date.now()
+  let sample = null
   try {
     await page("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
-    const t = tools(page, sample.base, sample.folder, answer)
-    await t.planned()
     for (const file of chosen) {
+      sample?.stop()
+      sample = await sampleFor()
+      const t = tools(page, sample.base, sample.folder, answer)
+      await t.planned()
       const tests = (await import(pathToFileURL(path.join(HERE, file)).href)).default
       for (const test of tests) {
         const label = `${file.replace(".e2e.mjs", "")}: ${test.name}`
@@ -149,7 +155,7 @@ async function main() {
     }
   } finally {
     close()
-    sample.stop()
+    sample?.stop()
   }
   console.log(`${passed} passed, ${failed.length} failed, in ${Math.round((Date.now() - started) / 1000)}s`)
   process.exit(failed.length ? 1 : 0)

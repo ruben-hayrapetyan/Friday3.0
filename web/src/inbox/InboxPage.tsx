@@ -69,6 +69,13 @@ export function InboxPage() {
   const showPane = !tight || reading
   // only a changed list makes a new one: the same keys kept give back the same array, so nothing re-renders for it
   useEffect(() => setGone((was) => (was.every((k) => messages.some((m) => m.key === k)) ? was : was.filter((k) => messages.some((m) => m.key === k)))), [messages])
+  // an Undo brings back what it undid: one dealt with here and undone before the list caught up stayed hidden for good
+  // (24 Nov, the new browser tests: "Not now" then its Undo, and the question never came back until a reload)
+  useEffect(() => {
+    const undone = (e: Event) => (e as CustomEvent<{ name: string }>).detail?.name === "undo" && setGone([])
+    window.addEventListener("friday:command", undone)
+    return () => window.removeEventListener("friday:command", undone)
+  }, [])
   useEffect(() => {
     const press = (e: KeyboardEvent) => {
       if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return
