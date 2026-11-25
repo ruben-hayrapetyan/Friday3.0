@@ -20,4 +20,11 @@ describe("an event's held task, as the plan has it", () => {
     expect(heldSaid({}, true, today)).toBe("Friday tries it here first; any work can have the rest.")
     expect(heldSaid({}, false, today)).toBe("Friday tries it here first; other work keeps off it.")
   })
+
+  // 24 Nov, the user's LING 1100: a to-do held in a class that starts after it's due, and nothing said so
+  it("says first when the task is due before the event starts", () => {
+    const held = { title: "Final Presentations", due_before: true, elsewhere: "2026-11-24T14:00" }
+    expect(heldSaid(held, false, today)).toBe("This event starts after Final Presentations is due. Not planned here: Friday has it Tue 2pm.")
+    expect(heldSaid({ ...held, due_before: false }, false, today)).toBe("Not planned here: Friday has it Tue 2pm.")
+  })
 })

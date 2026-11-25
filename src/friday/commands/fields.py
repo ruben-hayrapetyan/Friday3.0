@@ -195,7 +195,8 @@ def held_task(ctx: Ctx, event_id: int | None, event: Item | None = None) -> dict
     task_id = ctx.memo["event_holds"].get(str(event_id))
     if task_id is None:
         return None
-    found = one(ctx.conn, "SELECT id, title, status FROM items WHERE id = ? AND user_id = ?", [task_id, ctx.user_id])
+    found = one(ctx.conn, "SELECT id, title, status, due_utc FROM items WHERE id = ? AND user_id = ?",
+                [task_id, ctx.user_id])  # fmt: skip
     if found is None or found["status"] != "todo":
         return None
     if "event_holds_loose" not in ctx.memo:
@@ -203,6 +204,10 @@ def held_task(ctx: Ctx, event_id: int | None, event: Item | None = None) -> dict
     out = {"id": found["id"], "title": found["title"], "loose": event_id in ctx.memo["event_holds_loose"]}
     if event is None or not event.start_utc or not event.end_utc:
         return out
+    # due before the event starts: its time can't be here, and the panel says why (24 Nov, the user's LING 1100: "Work
+    # through it" held a to-do due before the class, and the panel only said it was planned elsewhere)
+    if found["due_utc"] and parse_utc(found["due_utc"]) <= parse_utc(event.start_utc):
+        out["due_before"] = True
     if "plan_id" not in ctx.memo:
         plan = one(ctx.conn, "SELECT id FROM plans WHERE user_id = ? AND status = 'current'", [ctx.user_id])
         ctx.memo["plan_id"] = plan["id"] if plan else None

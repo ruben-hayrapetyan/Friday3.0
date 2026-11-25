@@ -425,7 +425,13 @@ function ChoiceCard({ label, note, on, onClick }: { label: string; note: string;
 
 /** What the plan did with the task an event holds, as the plan has it (23 Nov, a test user's screenshot: "Planned
  * here first" while the plan had it the next afternoon and called it late): its time here, or where it is instead. */
-export function heldSaid(held: { loose?: boolean; here?: [string, string]; elsewhere?: string | null }, open: boolean, today: string): string {
+export function heldSaid(held: { title?: string; due_before?: boolean; loose?: boolean; here?: [string, string]; elsewhere?: string | null }, open: boolean, today: string): string {
+  // due before the event starts, said first, whatever the plan did (24 Nov, the user's LING 1100: wording theirs)
+  const placed = placement(held, open, today)
+  return held.due_before && held.title ? `This event starts after ${held.title} is due. ${placed}` : placed
+}
+
+function placement(held: { loose?: boolean; here?: [string, string]; elsewhere?: string | null }, open: boolean, today: string): string {
   if (held.loose) return "Planned here when it can: you let it move when holding it made work late. Yes again holds it."
   const rest = open ? "any work can have the rest." : "other work keeps off the rest."
   if (held.here) return `Planned here, ${clock(held.here[0])}–${clock(held.here[1])}; ${rest}`
@@ -453,7 +459,7 @@ function HeldFor({ event, only, open = event.left_out === "skipped" || event.lef
     // refused: what it was holds again, not the pick (the audit, 12 Nov)
     void saveHold(task_id == null ? { id } : { id, task_id }).then((out) => out || setPicked((now) => (now === shown ? undefined : now)))
   }
-  const held = (picked !== undefined ? picked : event.holds) as { id: number; title: string; loose?: boolean; here?: [string, string]; elsewhere?: string | null } | null | undefined
+  const held = (picked !== undefined ? picked : event.holds) as { id: number; title: string; due_before?: boolean; loose?: boolean; here?: [string, string]; elsewhere?: string | null } | null | undefined
   const { today } = useShell()
   const likely = held ? null : likelyTask(event.title, tasks)
   const found = ranked(event.title, tasks.filter((t) => t.title.toLowerCase().includes(text.trim().toLowerCase()))).slice(0, 6)

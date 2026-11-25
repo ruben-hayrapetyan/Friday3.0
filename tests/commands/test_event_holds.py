@@ -175,3 +175,22 @@ def test_a_hold_that_makes_work_late_is_asked_about_and_let_move_when_you_say(ap
 def test_held_asks_rather_than_holds_for_a_loosened_event() -> None:
     _, pins = held((item(1, minutes=45), item(9, "fixed", 21 * H, 23 * H)), (), {9: 1}, {}, DAY, frozenset({9}))
     assert [p.kind for p in pins] == ["preferred"]
+
+
+def test_a_task_due_before_the_event_starts_is_said_to_be(app: App) -> None:
+    """24 Nov, the user's LING 1100: "Work through it" held a to-do due before the class started, and the panel didn't
+    say so. The event now says the task is due before it starts (the panel: "This event starts after <task> is due."),
+    wherever the plan has it."""
+    talk = app.do("add", title="Final Presentations", duration_min=60, due="2026-10-20T12:00")["item"]["id"]
+    later = app.do("add", title="LING 1100", when="fixed", start="2026-10-20T14:00", end="2026-10-20T15:15")["item"][
+        "id"
+    ]
+    app.do("event_hold", id=later, task_id=talk)
+    replan(app.conn, app.now_utc)
+    held_ = next(f for f in app.do("plan")["fixed"] if f["id"] == later)["holds"]
+    assert held_["due_before"] is True
+    # due after the event starts: nothing said
+    essay = app.do("add", title="Essay", duration_min=60, due="2026-10-21T12:00")["item"]["id"]
+    app.do("event_hold", id=later, task_id=essay)
+    replan(app.conn, app.now_utc)
+    assert "due_before" not in next(f for f in app.do("plan")["fixed"] if f["id"] == later)["holds"]
