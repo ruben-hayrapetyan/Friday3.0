@@ -7,8 +7,11 @@
 //   node web/e2e/run.mjs [--only items,rules] [--case alex] [--url http://127.0.0.1:8791] [--shots DIR]
 //
 // A test file: `export default [{ name, run }]`, run({ page, open, click, type, text, has, until, q, c, planned, day,
-// expect }) → throws on what's wrong. click(name, { within: selector }) presses only inside that part of the page. Exit 0: all passed; 1: some failed (listed); 2: it couldn't run. Build web/dist
-// first.
+// expect, answer, gone, request }) → throws on what's wrong. click(name, { within: selector }) presses only inside that
+// part of the page; `answer({ name: json })` makes the page's questions to /api/q/<name> get that answer (a state the
+// sample hasn't got), until the test ends; `gone(words)` waits for words to leave the page; `request(method, path,
+// body, headers)` is a raw call to the server, for refusals ({ status, body }).
+// Exit 0: all passed; 1: some failed (listed); 2: it couldn't run. Build web/dist first.
 
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import path from "node:path"
@@ -26,7 +29,7 @@ export class Failed extends Error {}
 const TEST_LIMIT_S = Number(process.env.E2E_TEST_LIMIT_S ?? 180) // per test; a loaded Mac may need more
 
 /** What a test is given: the page, the server, and the steps a person takes. */
-function tools(page, base) {
+function tools(page, base, answer = async () => {}) {
   const q = async (name, params = {}) => {
     const r = await fetch(`${base}/api/q/${name}?${new URLSearchParams(params)}`)
     if (!r.ok) throw new Error(`${name}: ${r.status} ${(await r.text()).slice(0, 200)}`)
@@ -60,11 +63,19 @@ function tools(page, base) {
   /** Whether the page (or `selector`) shows `words`, waiting for it a while. */
   const has = (words, selector = "body", ms = 10_000) =>
     until(`(document.querySelector(${JSON.stringify(selector)})?.innerText ?? "").replace(/\\s+/g, " ").includes(${JSON.stringify(words)})`, ms, `"${words}" on the page`)
+  /** Waits until the page (or `selector`) no longer shows `words`. */
+  const gone = (words, selector = "body", ms = 10_000) =>
+    until(`!(document.querySelector(${JSON.stringify(selector)})?.innerText ?? "").replace(/\\s+/g, " ").includes(${JSON.stringify(words)})`, ms, `"${words}" gone from the page`)
+  /** A raw request to the server: its status and its JSON (a refusal's message), nothing thrown. */
+  const request = async (method, route, body, headers = {}) => {
+    const r = await fetch(`${base}${route}`, { method, headers: { "content-type": "application/json", ...headers }, body: body === undefined ? undefined : JSON.stringify(body) })
+    return { status: r.status, body: await r.json().catch(() => null) }
+  }
   /** Presses the button named `name` (its words or aria-label), the first showing, inside `within` if given: a row's
    * circle and the detail panel's button can share a name ("Mark done"). */
   const click = async (name, { within = null } = {}) => {
     await until(CLICK(name, within), 10_000, `a button "${name}"${within ? ` in ${within}` : ""}`)
-    await evaluate(page, SETTLE)
+    await evaluate(page, SETTLE).catch(() => {}) // a button that reloads the page leaves nothing to settle
   }
   /** Types into the field labelled `label` (its aria-label, placeholder or label text), as keys, then Enter if asked. */
   const type = async (label, words, { enter = false } = {}) => {
@@ -86,7 +97,13 @@ function tools(page, base) {
     const d = new Date(Date.now() + n * 86_400_000)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
   }
-  return { page, open, click, type, text, has, until, q, c, planned, day, expect, wait, press: (k) => press(page, k) }
+  let answering = false
+  const answered = async (given) => {
+    answering = !!given
+    await answer(given)
+  }
+  const done = async () => answering && (await answered(null))
+  return { page, open, click, type, text, has, gone, until, q, c, request, planned, day, expect, wait, answer: answered, done, press: (k) => press(page, k) }
 }
 
 async function main() {
@@ -94,13 +111,13 @@ async function main() {
   const chosen = files.filter((f) => !only || only.includes(f.replace(".e2e.mjs", "")))
   const given = option("--url")
   const sample = given ? { base: given.replace(/\/$/, ""), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-" })
-  const { page, close } = await openChrome()
+  const { page, close, answer } = await openChrome()
   const failed = []
   let passed = 0
   const started = Date.now()
   try {
     await page("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
-    const t = tools(page, sample.base)
+    const t = tools(page, sample.base, answer)
     await t.planned()
     for (const file of chosen) {
       const tests = (await import(pathToFileURL(path.join(HERE, file)).href)).default
@@ -122,6 +139,8 @@ async function main() {
             const { data } = await page("Page.captureScreenshot", { format: "png" })
             writeFileSync(path.join(shots, `${label.replace(/[^a-z0-9]+/gi, "-")}.png`), Buffer.from(data, "base64"))
           }
+        } finally {
+          await t.done() // a test's made-up answers end with it
         }
       }
     }
