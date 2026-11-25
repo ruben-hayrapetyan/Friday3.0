@@ -22,7 +22,17 @@ import httpx
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-TZ = "America/New_York"
+
+
+def zone_for_hour(hour: int) -> str:
+    """A zone where it's `hour` o'clock now (Etc/ zones' signs are reversed: Etc/GMT-5 is UTC+5)."""
+    offset = (hour - datetime.now(ZoneInfo("UTC")).hour + 12) % 24 - 12  # UTC-12 to UTC+11
+    return "UTC" if offset == 0 else f"Etc/GMT{'-' if offset > 0 else '+'}{abs(offset)}"
+
+
+# The server tests' zone. FRIDAY_TEST_HOUR=3 runs them where it's 3am now (24 Nov: the meals test only passed before
+# 7pm): TESTING.md runs the suite at several hours, so a test that holds only by daylight is found.
+TZ = zone_for_hour(int(os.environ["FRIDAY_TEST_HOUR"])) if os.environ.get("FRIDAY_TEST_HOUR") else "America/New_York"
 SLEEP = {d: {"bedtime": "23:30", "wake": "07:30", "margin_min": 60} for d in ("mon", "tue", "wed", "thu", "fri",
                                                                             "sat", "sun")}  # fmt: skip
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")

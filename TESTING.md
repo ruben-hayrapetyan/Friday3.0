@@ -46,6 +46,14 @@ and `tests/test_features.py` fails if something is missing from it or listed but
 - Words Friday says about the plan are checked against the plan: a new number or sentence gets a check in
   `web/scripts/agreement-check.mjs`.
 
+## Any hour of the day
+
+The server tests run against the real clock. A test that sets something up "today" can hold only by daylight (24 Nov:
+the meals test made a 5-7pm Dinner and failed when run after 7pm, since a repeat made after its time rightly isn't
+backfilled). `FRIDAY_TEST_HOUR=H` runs the server tests in a zone where it's H o'clock now; before a release, run
+`tests/system` at 23, 3, 4 (the day's start), 7 and 19 (on debian, it's heavy). A test that needs a time of day says so
+itself (`TZ = zone_for_hour(12)`), not by when it happens to run.
+
 ## What "in depth" means
 
 Line coverage only says a line ran. A mutation run changes the code on purpose, one small change at a time (a `<`

@@ -14,17 +14,11 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from friday.core.time import clock_time
-from tests.system.test_beat_plan_system import SLEEP, Friday
+from tests.system.test_beat_plan_system import SLEEP, Friday, zone_for_hour
 
-
-def midday_zone() -> str:
-    """A zone where it's about noon now: the tests set up today's 5-7pm Dinner, which a repeat made after 7pm rightly
-    doesn't backfill (24 Nov: run in the evening, the tests found no Dinner today and failed)."""
-    hours = 12 - datetime.now(ZoneInfo("UTC")).hour  # UTC-11 to UTC+12
-    return "UTC" if hours == 0 else f"Etc/GMT{'-' if hours > 0 else '+'}{abs(hours)}"  # Etc/ signs are reversed
-
-
-TZ = midday_zone()
+# about noon now: the tests set up today's 5-7pm Dinner, which a repeat made after 7pm rightly doesn't backfill (24 Nov:
+# run in the evening, the tests found no Dinner today and failed)
+TZ = zone_for_hour(12)
 
 DAY_START = "04:00"
 DINNER = (17 * 60, 19 * 60)  # the Dinner routine's window, local minutes
