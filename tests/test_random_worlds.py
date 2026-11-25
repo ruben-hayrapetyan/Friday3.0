@@ -6,7 +6,8 @@ import pytest
 from tests.stress.random_worlds import play
 
 
-@pytest.mark.parametrize("seed", [101, 202])
+# 7: a light week asleep by day; 15: short nights (overloaded worlds take minutes each: the big runs have them)
+@pytest.mark.parametrize("seed", [101, 202, 7, 15])
 def test_a_random_world_breaks_nothing(seed: int) -> None:
     outcome = play(seed, changes=6)
     assert outcome.steps == 6, outcome.issues

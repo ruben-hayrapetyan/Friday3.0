@@ -56,10 +56,27 @@ VIEWS = [("status", {}), ("now", {}), ("plan", {}), ("items", {"status": "all"})
          ("ongoing_projects", {}), ("learning", {}), ("brief", {})]  # fmt: skip
 
 
+# How full a world's weeks are (24 Nov, the user: "make sure to stress test on very loaded schedules"): classes a week,
+# one-off events, to-dos, how long they are (times), and the days they're due within. Overloaded: more work due within
+# days than the week holds, so Friday has to say what's late and what doesn't fit, and say it the same everywhere.
+LOADS: dict[str, dict[str, Any]] = {
+    "light": {"classes": (0, 3), "events": (0, 2), "todos": (1, 6), "longer": 1, "due_days": (2, 16), "projects": 1},
+    "usual": {"classes": (2, 7), "events": (0, 4), "todos": (3, 25), "longer": 1, "due_days": (-2, 16), "projects": 1},
+    "heavy": {"classes": (6, 11), "events": (3, 9), "todos": (25, 60), "longer": 2, "due_days": (-2, 10),
+              "projects": 3},
+    "overloaded": {"classes": (8, 13), "events": (5, 12), "todos": (50, 90), "longer": 3, "due_days": (0, 5),
+                   "projects": 4},
+}  # fmt: skip
+LOAD_ODDS = {"light": 2, "usual": 4, "heavy": 3, "overloaded": 2}
+# When you sleep (24 Nov: asleep 11:15am-7:15pm, an ongoing project never got time: no world here slept by day)
+SLEEPERS = {"usual": 6, "night owl": 2, "day sleeper": 1, "short nights": 1}
+
+
 @dataclass
 class Outcome:
     seed: int
     issues: list[dict[str, Any]] = field(default_factory=list)
+    world: dict[str, str] = field(default_factory=dict)  # its zone, load and sleep
     fingerprints: list[dict[str, Any]] = field(default_factory=list)
     steps: int = 0
 
@@ -68,10 +85,20 @@ def hhmm(minutes: int) -> str:
     return f"{minutes // 60 % 24:02d}:{minutes % 60:02d}"
 
 
-def settings_of(rng: random.Random) -> dict[str, Any]:
-    """Sleep that differs by night, bedtimes from 9:30pm to 2am and wakes from 5am to 10:30am."""
+def pick(rng: random.Random, odds: dict[str, int]) -> str:
+    return rng.choices(list(odds), weights=list(odds.values()))[0]
+
+
+def settings_of(rng: random.Random, sleeper: str = "usual") -> dict[str, Any]:
+    """Sleep that differs by night: usually bedtimes from 9:30pm to 2am and wakes from 5am to 10:30am; a night owl's
+    2-4am to 10am-noon; a day sleeper's (night shifts) 8-11am to 4-7pm; short nights, five hours or so."""
     night = {}
-    usual_bed, usual_wake = rng.randrange(21 * 60 + 30, 26 * 60, 15), rng.randrange(5 * 60, 10 * 60 + 31, 15)
+    usual_bed, usual_wake = {
+        "usual": (rng.randrange(21 * 60 + 30, 26 * 60, 15), rng.randrange(5 * 60, 10 * 60 + 31, 15)),
+        "night owl": (rng.randrange(26 * 60, 28 * 60 + 1, 15), rng.randrange(10 * 60, 12 * 60 + 1, 15)),
+        "day sleeper": (rng.randrange(8 * 60, 11 * 60 + 1, 15), rng.randrange(16 * 60, 19 * 60 + 1, 15)),
+        "short nights": (b := rng.randrange(24 * 60, 25 * 60 + 31, 15), b + rng.choice([270, 300, 330]) - 24 * 60),
+    }[sleeper]
     for d in DAYS:
         bed = usual_bed + (rng.choice([0, 0, 30, 60, 90]) if d in ("fri", "sat") else rng.choice([0, 0, -30, 30]))
         wake = usual_wake + (rng.choice([0, 60, 90, 120]) if d in ("sat", "sun") else rng.choice([0, 0, -30, 30]))
@@ -83,9 +110,11 @@ def local(day: date, minutes: int) -> str:
     return (datetime.combine(day, datetime.min.time()) + timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M")
 
 
-def build(world: World, rng: random.Random, monday: date) -> None:
-    """The schedule: classes, events, to-dos, a project with waits, repeating to-dos, an ongoing project."""
-    for n in range(rng.randrange(2, 7)):  # classes, on two or three weekdays
+def build(world: World, rng: random.Random, monday: date, load: str = "usual") -> None:
+    """The schedule: classes, events, to-dos, projects with waits, repeating to-dos, an ongoing project; as many and as
+    long as the load says."""
+    shape = LOADS[load]
+    for n in range(rng.randrange(*shape["classes"])):  # classes, on two or three weekdays
         start = rng.randrange(8 * 60, 18 * 60, 5)
         for d in rng.sample(range(5), rng.choice([2, 3])):
             day = monday + timedelta(days=d)
@@ -93,7 +122,7 @@ def build(world: World, rng: random.Random, monday: date) -> None:
                 at = day + timedelta(days=7 * week)
                 world.try_do("add", title=f"Class {n}", when="fixed", start=local(at, start),
                              end=local(at, start + rng.choice([50, 75, 110, 170])))  # fmt: skip
-    for _ in range(rng.randrange(0, 4)):  # one-off events, some all day, some overlapping
+    for _ in range(rng.randrange(*shape["events"])):  # one-off events, some all day, some overlapping
         day = monday + timedelta(days=rng.randrange(0, 13))
         if rng.random() < 0.3:
             world.try_do("add", title="All-day thing", when="fixed", start=local(day, 0), end=local(day, 1440))
@@ -102,9 +131,11 @@ def build(world: World, rng: random.Random, monday: date) -> None:
             world.try_do(
                 "add", title="Event", when="fixed", start=local(day, s), end=local(day, s + rng.choice([30, 60, 120]))
             )
-    for _ in range(rng.randrange(3, 25)):
-        add_todo(world, rng, monday)
-    if rng.random() < 0.7:  # a project whose steps wait for each other
+    for _ in range(rng.randrange(*shape["todos"])):
+        add_todo(world, rng, monday, shape)
+    for _ in range(shape["projects"]):  # projects whose steps wait for each other
+        if rng.random() >= 0.7:
+            continue
         project = world.try_do("add", title="Project", preset="Project", firmness=rng.choice(["hard", "soft"]),
                                due=local(monday + timedelta(days=rng.randrange(3, 20)), 17 * 60))  # fmt: skip
         if isinstance(project, dict):
@@ -132,14 +163,16 @@ def build(world: World, rng: random.Random, monday: date) -> None:
         world.try_do("rule_add", text=text, strength=rng.choice(["Always", "Prefer"]))
 
 
-def add_todo(world: World, rng: random.Random, monday: date) -> Any:
+def add_todo(world: World, rng: random.Random, monday: date, shape: dict[str, Any] | None = None) -> Any:
+    shape = shape or LOADS["usual"]
     fields: dict[str, Any] = {"title": f"{rng.choice(TITLES)} {rng.randrange(100)}"}
     if rng.random() < 0.8:
         fields["due"] = local(
-            monday + timedelta(days=rng.randrange(-2, 16)), rng.choice([9 * 60, 12 * 60, 17 * 60, 23 * 60 + 59])
+            monday + timedelta(days=rng.randrange(*shape["due_days"])),
+            rng.choice([9 * 60, 12 * 60, 17 * 60, 23 * 60 + 59]),
         )
     if rng.random() < 0.85:
-        fields["duration_min"] = rng.choice([15, 30, 45, 60, 90, 120, 180, 240, 360, 600])
+        fields["duration_min"] = rng.choice([15, 30, 45, 60, 90, 120, 180, 240, 360, 600]) * shape["longer"]
     for key, choices in (("firmness", ["hard", "soft", "none"]), ("importance", [1, 2, 3, 4, 5]),
                          ("shape", ["split", "one_sitting"]), ("energy", ["deep", "light"])):  # fmt: skip
         if rng.random() < 0.4:
@@ -231,9 +264,12 @@ def change(world: World, rng: random.Random, monday: date) -> str:
     return "time passes"
 
 
-def checks(world: World, step: str) -> list[str]:
-    """What the plan report doesn't already check: every page's query answers, the late lists agree, sleep is kept."""
+def checks(world: World, step: str, load: str = "usual") -> list[str]:
+    """What the plan report doesn't already check: every page's query answers, the late lists agree, sleep is kept,
+    and in a light week an ongoing project gets time."""
     out = []
+    if load == "light":
+        out += ongoing_get_time(world)
     for name, params in VIEWS:
         try:
             world.do(name, **params)
@@ -249,6 +285,20 @@ def checks(world: World, step: str) -> list[str]:
     except Exception as error:  # noqa: BLE001
         out.append(f"late lists couldn't be compared: {error}")
     out += sleep_kept(world)
+    return out
+
+
+def ongoing_get_time(world: World) -> list[str]:
+    """A light week has room: an ongoing project with three days or more of its week left gets some of them (24 Nov:
+    asleep by day, one got none at all)."""
+    out = []
+    for o in world.do("ongoing_projects"):
+        week = o.get("week")
+        if not o["active"] or not week or week["planned_min"] + week["done_min"] > 0:
+            continue
+        left = datetime.fromisoformat(week["end"]) - datetime.fromisoformat(world.local(world.now))
+        if left >= timedelta(days=3):
+            out.append(f"{o['title']}: no time this week with {left.days} days of it left, in a light week")
     return out
 
 
@@ -271,14 +321,30 @@ def sleep_kept(world: World) -> list[str]:
     day_start = minutes_of(settings["time"].day_start)
     out = []
     first = datetime.fromisoformat(world.local(world.now)).date() - timedelta(days=1)
+    planner = getattr(getattr(world, "problem", None), "nights", {})
+    fixed = [
+        parse_utc(r[0])
+        for r in world.conn.execute(  # classes and events (the to-do list hasn't them)
+            "SELECT start_utc FROM items WHERE when_kind = 'fixed' AND status = 'todo' AND start_utc IS NOT NULL"
+        )
+    ]
     nights = []
     for n in range(9):
         d = first + timedelta(days=n)
         try:
             bed, wake, margin = night_times(settings, overrides, d, world.tz, day_start)
-            nights.append((d, bed + margin, wake))  # the margin past bedtime is the plan's to use (Settings → Schedule)
         except Exception:  # noqa: BLE001,S112  (a night the setting has no times for: nothing to check)
             continue
+        night = planner.get(d)
+        if night is not None and night.wake_utc < wake:
+            # woken early for an event you go to (planner.build.early_event): one must start then, within the
+            # morning's routine of the new wake (24 Nov: day sleepers' worlds had work inside their sleep, all of it
+            # after an event the planner had rightly woken them for; the check now knows, and checks the reason)
+            if not any(night.wake_utc <= start <= night.wake_utc + 180 for start in fixed):
+                out.append(f"the night of {d} ends at {world.local(night.wake_utc)}, before {world.local(wake)}, "
+                           "with no event to get up for")  # fmt: skip
+            wake = night.wake_utc
+        nights.append((d, bed + margin, wake))  # the margin past bedtime is the plan's to use (Settings → Schedule)
     for b in plan["blocks"]:
         if b.get("background") or b.get("pinned") or b.get("state"):
             continue
@@ -318,19 +384,24 @@ def play(seed: int, changes: int = 30) -> Outcome:
         try:
             world = World.fresh(folder, f"seed{seed}", f"{monday}T{hhmm(rng.randrange(7 * 60, 22 * 60, 30))}", tz=tz,
                                 horizon_days=rng.choice([7, 14, 21]))  # fmt: skip
-            world.do("settings_set", key="sleep", value=settings_of(rng))
-            build(world, rng, monday)
+            load, sleeper = pick(rng, LOAD_ODDS), pick(rng, SLEEPERS)
+            out.world = {"zone": tz, "load": load, "sleep": sleeper}
+            world.do("settings_set", key="sleep", value=settings_of(rng, sleeper))
+            build(world, rng, monday, load)
             step = "the starting week"
             for n in range(changes + 1):
                 record = world.replan(step)
-                found = [*record.issues, *checks(world, step)]
-                out.issues += [{"seed": seed, "step": n, "after": step, "zone": tz, "issue": i} for i in found]
+                found = [*record.issues, *checks(world, step, load)]
+                out.issues += [{"seed": seed, "step": n, "after": step, **out.world, "issue": i} for i in found]
                 out.fingerprints.append({"seed": seed, "step": n, "after": step, **fingerprint(world)})
                 out.steps = n
                 if n < changes:
-                    step = change(world, rng, monday)
+                    # several changes before Friday plans again, as when you're quick (the user, 24 Nov: "varying
+                    # input speeds"): the plan must come out right from any pile of changes, not only one at a time
+                    burst = rng.choice([1, 1, 1, 2, 3, 6])
+                    step = "; ".join(change(world, rng, monday) for _ in range(burst))
         except Exception as error:  # noqa: BLE001
-            out.issues.append({"seed": seed, "step": out.steps, "after": "?", "zone": tz,
+            out.issues.append({"seed": seed, "step": out.steps, "after": "?", "zone": tz, **out.world,
                                "issue": f"crash: {type(error).__name__}: {error}",
                                "trace": traceback.format_exc()[-1500:]})  # fmt: skip
     return out

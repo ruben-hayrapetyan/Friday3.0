@@ -151,6 +151,7 @@ class World:
         t3 = time.perf_counter()
         save_plan(self.conn, snapshot, assembled, step)
         t4 = time.perf_counter()
+        self.problem = solved.problem  # its nights: the checks compare the plan with the nights the planner had
         issues = [f"wall {v}" for v in check(solved.problem, solved.result.plan)]
         grid = solved.problem.grid
         coarse = [int(grid.start[s]) for s in range(grid.S) if int(grid.units[s]) > 1]
