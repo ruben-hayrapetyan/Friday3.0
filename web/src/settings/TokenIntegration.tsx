@@ -127,7 +127,7 @@ export function TokenIntegration({ entry }: { entry: Entry }) {
       {mine.map((c) => (
         <ConnectedRow key={c.id} c={c} />
       ))}
-      {mine.length === 0 &&
+      {(mine.length === 0 || mine.some((c) => c.needs_sign_in)) &&
         (entry.onMac ? (
           <MacConnect entry={entry} />
         ) : entry.script ? (
@@ -461,7 +461,10 @@ function ConnectedRow({ c }: { c: Connected }) {
   const [leaving, setLeaving] = useState(false)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {c.reading && !c.last_error ? (
+      {c.needs_sign_in ? (
+        // a disconnect undone: its token was forgotten and Undo can't bring a secret back (24 Nov, your answer)
+        <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>Its token was removed when you disconnected: sign in again to read it.</span>
+      ) : c.reading && !c.last_error ? (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
           <Spinner />
           Reading {c.name} for the first time…

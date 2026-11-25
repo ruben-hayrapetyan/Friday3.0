@@ -5267,6 +5267,11 @@ export interface components {
              * @default false
              */
             signs_in?: boolean;
+            /**
+             * Needs Sign In
+             * @default false
+             */
+            needs_sign_in?: boolean;
         };
         /** DateInput */
         DateInput: {

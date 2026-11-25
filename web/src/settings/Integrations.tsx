@@ -129,7 +129,8 @@ function useStatuses(): (e: Entry) => Status {
 
 /** The box of one connected by token, sign-in, script or the Mac app: a problem first, then its first read under
  * way (a spinner, 13 Nov), then connected. */
-export function integrationStatus(mine: Pick<Schemas["Connected"], "last_error" | "reading">[]): Status {
+export function integrationStatus(mine: Pick<Schemas["Connected"], "last_error" | "reading" | "needs_sign_in">[]): Status {
+  if (mine.some((c) => c.needs_sign_in)) return ["Sign in again", "var(--fr-warn)", true]
   if (!mine.length) return null
   if (mine.some((c) => c.last_error)) return ["Needs a look", "var(--fr-warn)", true]
   return [mine.some((c) => c.reading) ? "Reading" : "Connected", "var(--color-accent-300)", true, mine.some((c) => c.reading)]

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 import { integrationStatus } from "./Integrations"
 import { pollWhile, READING_POLL_MS } from "./TokenIntegration"
 
-type Row = { last_error: string | null; reading: boolean }
+type Row = { last_error: string | null; reading: boolean; needs_sign_in?: boolean }
 const row = (over: Partial<Row> = {}): Row => ({ last_error: null, reading: false, ...over })
 const asked = (data?: Row[]) => ({ state: { data: data as never } })
 
@@ -18,6 +18,10 @@ describe("a connected integration's box", () => {
     expect(integrationStatus([row({ reading: true, last_error: "Todoist is having trouble (503)" })])).toEqual(["Needs a look", "var(--fr-warn)", true])
     expect(integrationStatus([row(), row({ reading: true })])?.[3]).toBe(true) // a second account still being read
     expect(integrationStatus([])).toBeNull()
+  })
+
+  it("asks to sign in again when its token is gone (a disconnect undone, 24 Nov)", () => {
+    expect(integrationStatus([row({ needs_sign_in: true })])).toEqual(["Sign in again", "var(--fr-warn)", true])
   })
 })
 

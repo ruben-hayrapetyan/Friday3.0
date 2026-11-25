@@ -17718,6 +17718,11 @@
       "type": "boolean",
       "title": "Signs In",
       "default": false
+     },
+     "needs_sign_in": {
+      "type": "boolean",
+      "title": "Needs Sign In",
+      "default": false
      }
     },
     "additionalProperties": false,

@@ -322,6 +322,30 @@ def check_disconnecting_keeps_or_drops_what_it_brought_and_forgets_the_token(w: 
     assert len(w.fake.requests) == asked, "a disconnected integration was still read"
 
 
+def check_undoing_a_disconnect_asks_to_sign_in_again_then_reconnects_the_same(w: World) -> None:
+    """24 Nov (the new pipeline tests; your answer, "Ask to sign in again"): disconnecting forgets the token, and Undo
+    can't bring a secret back; Undo brings back the connection and what it brought, and the row asks to sign in again.
+    Signing in again fills in that same row (not a second one), and it reads again."""
+    w.h.add(w.fake, "Brought in", THU)
+    source_id = w.connect()
+    w.sync()
+    gone = w.app.full("integration_disconnect", payload={"id": source_id, "keep": False})
+    w.app.do("undo", command_id=gone.command_id)
+    [row] = [c for c in w.app.do("integrations") if c["id"] == source_id]
+    assert row["needs_sign_in"] == (not w.h.on_mac), f"needs_sign_in {row['needs_sign_in']} after undo"
+    assert "Brought in" in [i["title"] for i in w.items()], "undo didn't bring back what it brought"
+    if w.h.on_mac:
+        return
+    again = w.connect()
+    assert again == source_id, f"signing in again made a second connection ({again}, not {source_id})"
+    [row] = [c for c in w.app.do("integrations") if c["id"] == source_id]
+    assert not row["needs_sign_in"]
+    w.errors.clear()
+    w.sync()
+    assert not w.errors, f"after signing in again it didn't read: {w.errors}"
+    assert [i["title"] for i in w.items()].count("Brought in") == 1
+
+
 def check_until_the_mac_app_is_heard_from_nothing_is_taken_as_done(w: World) -> None:
     """A Mac-fed integration (Apple Reminders) not yet read: no to-do it brought in is marked done for missing."""
     if not w.h.on_mac:

@@ -1182,6 +1182,7 @@ class Connected(Model):
     off_removes: bool = False  # a list switched off takes its to-dos out of Friday at once, without asking
     reading: bool = False  # connected, its first read not done yet (and nothing wrong): the box shows a spinner
     signs_in: bool = False  # connected by signing in on the service's page (integration_sign_in), not a token
+    needs_sign_in: bool = False  # its token is gone (a disconnect undone, 24 Nov): sign in again to read it
 
 
 class ConnectOutput(Model):

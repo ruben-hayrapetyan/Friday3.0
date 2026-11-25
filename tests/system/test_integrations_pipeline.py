@@ -146,13 +146,17 @@ def test_disconnect_and_remove_drops_what_it_brought_and_undo_brings_it_back(fri
     assert [c["id"] for c in friday.q("integrations")] == [todoist["id"]]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG: undoing a disconnect turns the integration back on without its token "
-    "(forgotten from secrets.toml, which undo doesn't restore): its next read fails, 'No Todoist token'",
-)
-def test_after_undoing_a_disconnect_it_reads_again(world: tuple[Friday, FakeTodoist], todoist: dict) -> None:
+# 24 Nov: this test found that Undo brought the connection back without its token (forgotten at disconnect, and a
+# secret Undo can't bring back); your answer, "Ask to sign in again": the row says so, and signing in again fills in
+# that same row, which then reads.
+def test_after_undoing_a_disconnect_it_asks_to_sign_in_again_then_reads(
+    world: tuple[Friday, FakeTodoist], todoist: dict
+) -> None:
     friday, fake = world
+    (row,) = friday.q("integrations")
+    assert row["needs_sign_in"] is True
+    again = friday.c("integration_connect", kind="todoist", token=HARNESS.token)["source"]
+    assert again["id"] == todoist["id"] and again["needs_sign_in"] is False  # the same row, not a second
     fake.add("Book the venue", f"{datetime.now(ZoneInfo(TZ)).date() + timedelta(days=4)}", 60)
     friday.c("sync_now")
 

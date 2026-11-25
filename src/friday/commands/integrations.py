@@ -58,6 +58,19 @@ def add_source(
 ) -> int:
     """A connected integration's row, its token kept in secrets.toml (none for one on the Mac), read in the minute."""
     make = sync.CONNECTORS[kind]
+    # signing in again where a disconnect was undone (its token gone): that same row gets the token, and what it
+    # brought stays linked to it, not to a second one (24 Nov)
+    sql = "SELECT id FROM sources WHERE user_id = ? AND kind = ? AND enabled = 1 ORDER BY id"
+    enabled = rows(conn, sql, [user_id, kind])
+    waiting = [r for r in enabled if not make.caps.on_mac and not sync.token_of(int(r["id"]))]
+    if waiting:
+        source_id = int(waiting[0]["id"])
+        old = json.loads(one(conn, "SELECT config FROM sources WHERE id = ?", [source_id])["config"] or "{}")
+        conn.execute("UPDATE sources SET config = ?, last_error = NULL WHERE id = ?",
+                     [json.dumps(old | {"account": account} | given), source_id])  # fmt: skip
+        sync.keep_token(source_id, kind, token)
+        sync.read_soon(conn, user_id)
+        return source_id
     taken = {r["name"] for r in rows(conn, "SELECT name FROM sources WHERE kind = ?", [kind])}
     name = next(n for n in [make.name, *(f"{make.name} {i}" for i in range(2, 99))] if n not in taken)
     arrival = getattr(make, "arrival", "inbox_first")
@@ -310,6 +323,8 @@ def connected(ctx: Ctx, source_id: int) -> Connected:
         off_removes=sync.CONNECTORS[s["kind"]].caps.off_removes,
         reading=not config.get("synced") and not s["last_error"],
         signs_in=hasattr(sync.CONNECTORS[s["kind"]], "provider"),
+        # a disconnect forgets the token and Undo can't bring a secret back: the row asks to sign in again (24 Nov)
+        needs_sign_in=not sync.CONNECTORS[s["kind"]].caps.on_mac and not sync.token_of(source_id),
     )
 
 
