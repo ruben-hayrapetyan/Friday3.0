@@ -190,7 +190,7 @@ def change(world: World, rng: random.Random, monday: date) -> str:
     open_ = [i for i in items if i["status"] == "todo"]
     pick = rng.choice(open_) if open_ else None
     kinds = ["add", "add", "edit", "done", "drop", "pin", "lock", "unpin", "depend", "time", "progress", "undo",
-             "pace", "break", "override", "rule", "late", "skip", "reopen", "later"]  # fmt: skip
+             "pace", "break", "override", "rule", "late", "skip", "reopen", "later", "tick", "tick"]  # fmt: skip
     kind = rng.choice(kinds)
     now_local = world.local(world.now)
     if kind == "add" or pick is None:
@@ -260,8 +260,29 @@ def change(world: World, rng: random.Random, monday: date) -> str:
         if late:
             world.try_do("late_accept", item_ids=late[:1])
         return "accept lateness"
+    if kind == "tick":
+        world.later(15)
+        return TICK
     world.later(rng.choice([60, 180, 600, 1440]))
     return "time passes"
+
+
+TICK = "15 minutes pass"
+
+
+def deadlines_now(world: World) -> int:
+    row = world.conn.execute("SELECT stage_values FROM plans ORDER BY id DESC LIMIT 1").fetchone()
+    return int(json.loads(row["stage_values"])["deadlines"]) if row else 0
+
+
+def tick_kept(before: int, after: int, step: str) -> list[str]:
+    """Only the clock moved (the worker's tick): the plan may not get much worse (24 Nov, the user's Laundry: a tick at
+    10:04pm saved a plan scoring 9.8 million against 186 thousand the tick before, then went back)."""
+    if any(part != TICK for part in step.split("; ")):
+        return []
+    if after > before * 1.05 + 1000:
+        return [f"a tick with nothing changed made the plan worse: deadlines {before:,} -> {after:,}"]
+    return []
 
 
 def checks(world: World, step: str, load: str = "usual") -> list[str]:
@@ -390,8 +411,11 @@ def play(seed: int, changes: int = 30) -> Outcome:
             build(world, rng, monday, load)
             step = "the starting week"
             for n in range(changes + 1):
+                before = deadlines_now(world) if n else 0
                 record = world.replan(step)
                 found = [*record.issues, *checks(world, step, load)]
+                if n:
+                    found += tick_kept(before, deadlines_now(world), step)
                 out.issues += [{"seed": seed, "step": n, "after": step, **out.world, "issue": i} for i in found]
                 out.fingerprints.append({"seed": seed, "step": n, "after": step, **fingerprint(world)})
                 out.steps = n
