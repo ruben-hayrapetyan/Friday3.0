@@ -118,6 +118,7 @@ export async function runCommand<N extends CommandName>(
     instant?.(client, input as never)
     if (optimistic) drawn = pending.collect(() => optimistic(client, input))
   }
+  let unannounced = false
   try {
     const out = await inTurn(laneOf(input), () => command(name, input))
     // The quick placement made after a change is the plan the calendar reads until the replan lands (the plan query
@@ -129,6 +130,11 @@ export async function runCommand<N extends CommandName>(
     if (id !== null) {
       lastCommands = [id]
       if (!quiet) toast({ message, action: { label: "Undo", run: () => undo(client, toast, id) } })
+    } else {
+      // kept out of the undo log (a token, a secret, the updater): the server doesn't announce it, so the page reads
+      // what it touches itself, and its words show, with nothing to undo (24 Nov: Make token showed no new token)
+      unannounced = true
+      if (!quiet && label) toast({ message })
     }
     return out
   } catch (error) {
@@ -148,7 +154,7 @@ export async function runCommand<N extends CommandName>(
     // new project or prep didn't show without the stream), and this would only read it all a second time. Without it,
     // what the stream's events would have made stale (the audit, 12 Nov: a hand-kept list left settings, paces, areas,
     // repeats and calendars stale after a change).
-    if (!streamLive) staleSoon(client, [...refreshFor("items.changed", name), ...refreshFor("plan.changed")])
+    if (!streamLive || unannounced) staleSoon(client, [...refreshFor("items.changed", name), ...refreshFor("plan.changed")])
   }
 }
 

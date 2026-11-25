@@ -79,10 +79,8 @@ export default [
     // the server announces only logged ones (server/app.py execute → announce); the page refreshes itself only when
     // the live stream is down (hooks/useCommand.ts). So Stop reading forgets the mailbox, but its panel still says
     // "Reading …" with its Stop reading button until the page is read again.
-    name: "BUG: Stop reading takes the mailbox off its panel at once",
+    name: "Stop reading takes the mailbox off its panel at once (fixed 24 Nov)",
     async run({ open, click, has, until, folder, expect }) {
-      console.log("      skipped: BUG, Stop reading leaves 'Reading …' on the panel until the page is read again")
-      if (Date.now()) return
       writeFileSync(path.join(folder, "secrets.toml"), `[mail_app]\nprovider = "other"\naddress = "${ADDRESS}"\npassword = "x"\nhost = "${HOST}"\n`)
       await open("/settings/integrations")
       await click("Other mail (IMAP), Connected")

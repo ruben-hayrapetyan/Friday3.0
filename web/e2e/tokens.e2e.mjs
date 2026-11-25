@@ -71,10 +71,8 @@ export default [
     // announces only logged ones (server/app.py execute → announce), while the page refreshes itself only when the
     // live stream is down (hooks/useCommand.ts). So with the stream up, Make token shows the token but "Your tokens"
     // doesn't list it until the page is read again. ai_key_set, mail_app_set and mail_app_forget are the same.
-    name: "BUG: a token made is listed in Your tokens at once, without reading the page again",
+    name: "a token made is listed in Your tokens at once, without reading the page again (fixed 24 Nov)",
     async run({ open, type, click, has, q, expect }) {
-      console.log("      skipped: BUG, a token made isn't listed until the page is read again (unlogged commands aren't announced)")
-      if (Date.now()) return
       await open("/settings/tokens")
       await type("Token name", "e2e-listed")
       await click("Make token")
