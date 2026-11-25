@@ -126,6 +126,7 @@ class BuildInput:
     hidden: frozenset[int] = frozenset()  # events of calendars you hid (planner/hidden.py): not named in the notes
     away: tuple[str, int, int] | None = None  # a nap or a snack now: no work from start to end (`prepare.away_hold`)
     paused_tags: Mapping[tuple[str, ...], Sequence[str]] = field(default_factory=dict)  # a break's tags: their days
+    last_quotas: Mapping[int, Mapping[int, int]] = field(default_factory=dict)  # the current plan's weekly shares
 
 
 def key_of(item_id: int) -> str:

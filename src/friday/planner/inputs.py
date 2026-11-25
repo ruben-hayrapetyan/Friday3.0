@@ -63,6 +63,7 @@ def allocator_input(inp: BuildInput, problem: Problem) -> AllocatorInput:
         grid.horizon_end,
         planner.utilization,
         planner.pacing_weight,
+        {f"item:{k}": dict(v) for k, v in inp.last_quotas.items()},
     )
 
 

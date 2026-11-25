@@ -7,7 +7,7 @@ from datetime import timedelta
 import pytest
 
 from friday.core.pace import DayScales
-from friday.engine.allocator import AllocatorInput, AllocDay, allocate, day_capacities, pacing_fraction
+from friday.engine.allocator import AllocatorInput, AllocDay, allocate, day_capacities, held, pacing_fraction
 from friday.engine.problem import DepSpec, EngineItem
 from friday.engine.rules import Rule
 from tests.engine.helpers import MONDAY, at, item, problem
@@ -100,6 +100,31 @@ def test_quotas_cover_the_horizon_weeks_of_items_due_after_it() -> None:
     assert "soon" not in alloc.quotas
     assert set(alloc.quotas["project"]) == {0, 1}
     assert all(abs(q - 28) <= 2 for q in alloc.quotas["project"].values())
+
+
+# 24 Nov, the user's Laundry: rounded afresh each tick, a share near a half moved a quarter hour each way as today's
+# free time shrank by the minute ("to plan 165 -> 180 min" and back between ticks), and work turned late and back with
+# nothing changed. A share holds while the amount stays within a quarter hour of it.
+def test_a_share_holds_while_the_amount_stays_within_a_quarter_hour_of_it() -> None:
+    ticks = [27.49, 27.51, 27.49, 27.6, 27.4]
+    shares, last = [], None
+    for amount in ticks:
+        last = held(amount, last)
+        shares.append(last)
+    assert shares == [27, 27, 27, 27, 27]  # rounded afresh it was 27, 28, 27, 28, 27
+    assert held(28.1, 27) == 28  # a whole quarter hour off: it moves
+    assert held(25.6, 27) == 26
+    assert held(27.5, None) == round(27.5)  # nothing to hold: as before
+
+
+def test_the_last_plans_shares_hold_in_the_allocation() -> None:
+    project = work("project", 112, 27, pacing="linear")
+    first = run([project]).quotas["project"]
+    nudged = {week: units + 1 for week, units in first.items()}  # within a quarter hour of what it allocates
+    again = run([work("project", 112, 27, pacing="linear")], last_quotas={"project": nudged}).quotas["project"]
+    assert again == {w: u for w, u in nudged.items() if abs(u - first[w]) <= 1}
+    far = {week: units + 5 for week, units in first.items()}
+    assert run([work("project", 112, 27, pacing="linear")], last_quotas={"project": far}).quotas["project"] == first
 
 
 def test_dependent_work_waits_for_its_source_and_the_lag() -> None:

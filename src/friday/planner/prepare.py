@@ -277,6 +277,7 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         away=away_hold(snapshot),
         day_overrides=break_caps(snapshot),
         paused_tags=break_tags(snapshot),
+        last_quotas=snapshot.last_quotas,
         end_utc=end_utc,
         multipliers=snapshot.multipliers,
         debt_hours=debt_hours(snapshot),

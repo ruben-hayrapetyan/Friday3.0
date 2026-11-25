@@ -48,6 +48,7 @@ class AllocatorInput:
     horizon_end_utc: int
     utilization: float = 0.8
     pacing_weight: float = 2.0  # points per hour behind the pacing line, at each week boundary
+    last_quotas: dict[str, dict[int, int]] = field(default_factory=dict)  # the current plan's, by item key and week
 
 
 @dataclass
@@ -194,6 +195,11 @@ def effective_due_days(todo: list[EngineItem], day_of: DayIndex, caps: list[int]
     return due
 
 
+def held(amount: float, last: int | None) -> int:
+    """A week's share in quarter hours: the last plan's while the amount is within a quarter hour of it, or rounded."""
+    return last if last is not None and abs(amount - last) < 1 else round(amount)
+
+
 def quotas(inp: AllocatorInput, todo: list[EngineItem], units: dict[str, list[float]]) -> dict[str, dict[int, int]]:
     """Weekly quotas inside the scheduler's horizon, for items due after it; due inside, `late_work` acts."""
     out: dict[str, dict[int, int]] = {}
@@ -204,7 +210,12 @@ def quotas(inp: AllocatorInput, todo: list[EngineItem], units: dict[str, list[fl
         for d in range(min(inp.horizon_days, len(inp.days))):
             week = inp.days[d].week
             per_week[week] = per_week.get(week, 0.0) + units[item.key][d]
-        rounded = {week: round(amount) for week, amount in per_week.items() if round(amount) > 0}
+        # A share holds unless it's a whole quarter hour off (24 Nov, the user's Laundry): rounded afresh each tick, a
+        # share near a half moved a quarter hour each way as today's free time shrank by the minute, a to-do came and
+        # went whole (its first quarter hour is a whole sitting), and work turned late and back with nothing changed.
+        last = inp.last_quotas.get(item.key, {})
+        rounded = {week: held(amount, last.get(week)) for week, amount in per_week.items()}
+        rounded = {week: units for week, units in rounded.items() if units > 0}
         if rounded:
             out[item.key] = rounded
     return out

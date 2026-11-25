@@ -98,6 +98,7 @@ class Snapshot:
     multipliers: dict[str, float] = field(default_factory=dict)  # learned θ in effect (DESIGN §21.8)
     profile_version: int = 0  # 0: nothing learned yet
     cold_once: bool = False  # the next solve starts afresh, not from the current plan (a picked other way)
+    last_quotas: dict[int, dict[int, int]] = field(default_factory=dict)  # the current plan's weekly shares, by item
     sleep: SleepFacts | None = None
     eating: tuple[int, int] | None = None  # the routine of the meal you're eating (Sleep & meals), and its start
     going: frozenset[int] = frozenset()  # optional events you said you'd go to this time (`event_keep`): walled off
@@ -210,6 +211,12 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         plan_blocks=plan_blocks,
         next_stability=kv_get(conn, "next_stability", None, user_id),
         cold_once=kv_get(conn, "next_cold", None, user_id) is not None,
+        last_quotas={
+            int(k): {int(w): int(u) for w, u in v.items()}
+            for k, v in (json.loads(plan["report"]).get("quotas") or {}).items()
+        }
+        if plan
+        else {},  # fmt: skip
         sleep=sleep_facts(conn, now_utc, settings, user_id),
         eating=eating(conn, user_id) if settings["meal_tracking"].on else None,
         away=away(conn, now_utc, settings, user_id),
