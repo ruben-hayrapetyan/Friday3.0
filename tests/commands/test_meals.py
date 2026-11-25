@@ -313,3 +313,13 @@ def test_a_new_length_covers_what_you_take(app: App, took: int, offered: int | N
     assert changes == [{"kind": "lunch", "planned_min": 30, "usual_min": took, "new_min": offered}]
     assert f"planned at {offered} min" in app.do("meal_use_length", kind="lunch")["message"]
     assert todays_lunch(app)["ideal_units"] == offered // 15
+
+
+def test_done_eating_within_the_same_minute_counts_a_minute(app: App) -> None:
+    """24 Nov, the new browser tests: Eating now then Done eating in the same minute was refused "that's before you
+    started"; the same minute counts as a minute."""
+    on(app)
+    app.do("meal_start")
+    app.do("meal_end")
+    eaten = [m for d in app.do("meals")["days"] for m in d["meals"] if m["end"]]
+    assert [m["minutes"] for m in eaten] == [1]

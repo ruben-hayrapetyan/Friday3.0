@@ -197,3 +197,13 @@ def test_up_at_a_time_you_give_must_be_after_you_lay_down_and_not_too_long(app: 
 def test_putting_right_a_nap_that_isnt_there_says_so(app: App) -> None:
     with pytest.raises(FieldError, match="no nap 99"):
         app.do("nap_edit", id=99, start="2026-10-19T14:00")
+
+
+# 24 Nov, the new browser tests: Taking a nap, then I'm up within the same minute, was refused "that's before you lay
+# down" (times are to the minute: the end equalled the start). The same minute counts as a minute's nap; only a time
+# really before is refused.
+def test_up_within_the_same_minute_counts_a_minute(app: App) -> None:
+    app.do("nap_start")
+    app.do("nap_end")
+    [(_, end, minutes)] = naps(app)
+    assert end is not None and minutes == 1

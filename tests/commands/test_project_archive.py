@@ -100,3 +100,18 @@ def test_something_that_isnt_a_project_is_refused(app: App) -> None:
     project, steps = essay(app)
     with pytest.raises(FieldError, match="isn't a project"):
         app.do("project_archive", id=steps["Draft"])  # a step isn't a project of its own
+
+
+def test_finished_counts_your_steps_not_fridays_more_on_step(app: App) -> None:
+    """A guard (24 Nov: a test agent saw Finished count an Essay's own "More on" step among its steps; not reproduced
+    here): Finished counts your steps, as the Projects page does, not Friday's "More on" step."""
+    from friday.commands.project_steps import REST
+    from friday.planner.store import kv_get
+
+    made = app.do("template_apply", template="Essay", title="Seminar paper", hours=6, due="2026-12-10T17:00")["item"]
+    mine = [i for i in app.do("items", status="all") if i["parent_id"] == made["id"]]
+    rest = kv_get(app.conn, REST, {}).get(str(made["id"]))
+    yours = [i for i in mine if i["id"] != rest]
+    app.do("project_archive", id=made["id"])
+    [finished] = app.do("projects_finished")
+    assert finished["steps"] == len(yours), (finished["steps"], [i["title"] for i in mine])

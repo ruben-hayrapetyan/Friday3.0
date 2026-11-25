@@ -142,8 +142,9 @@ def nap_end(ctx: Ctx, inp: NapEndInput) -> Changed:
     if nap is None:
         raise FieldError("at", "you aren't napping")
     end, start = moment_of(ctx, inp.at), parse_utc(nap["start_utc"])
-    if end <= start:
+    if end < start:
         raise FieldError("at", "that's before you lay down")
+    end = max(end, start + 1)  # up within the same minute: a minute's nap (24 Nov: refused as "before")
     if inp.at is None and end - start > FORGOT_MIN:
         length = end_at(ctx, nap, start + usual(ctx))
         return Changed(

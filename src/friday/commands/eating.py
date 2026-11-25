@@ -136,8 +136,9 @@ def kind_at(ctx: Ctx, moment: int) -> str:
 
 def finish(ctx: Ctx, meal: dict, end: int) -> int:
     start = parse_utc(meal["start_utc"])
-    if end <= start:
+    if end < start:
         raise FieldError("at", "that's before you started")
+    end = max(end, start + 1)  # done within the same minute: a minute's meal (24 Nov: refused as "before")
     end = min(end, start + LONGEST_MIN)
     routine = meal["item_id"] or open_routine(ctx, meal["kind"], date.fromisoformat(meal["date"]))
     ticked = tick_off(ctx, routine, "done", end)
