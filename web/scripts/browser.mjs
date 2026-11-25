@@ -51,7 +51,7 @@ export async function serveSample({ case: who = "alex", ready = true, prefix = "
   const setup = await (await fetch(`${base}/api/q/setup`)).json()
   if (!setup.done) await post("setup_save", { ...setup.answers, brief: false })
   await post("tour_offered", {})
-  return { base, stop: () => (end(), rmSync(folder, { recursive: true, force: true, maxRetries: 5 })) }
+  return { base, folder, stop: () => (end(), rmSync(folder, { recursive: true, force: true, maxRetries: 5 })) }
 }
 
 /** Ends a process started `detached` and everything it started. */
@@ -119,14 +119,16 @@ export async function openChrome() {
   // to one server: a few pages on, a page load waited a minute behind them. The page talks to the server directly.
   await page("Network.enable")
   await page("Network.setBypassServiceWorker", { bypass: true })
-  // A state's made-up answers (`answer`): the page's questions to /api/q/<name> answered here, the rest let through.
+  // A state's made-up answers (`answer`): the page's questions to /api/q/<name> (and, keyed "c/<name>", its commands
+  // to /api/c/<name>) answered here, the rest let through.
   let answers = {}
   // a page asking before it's left (What if's changes not kept) would hold everything: it's answered yes
   listeners.add((msg) => msg.method === "Page.javascriptDialogOpening" && msg.sessionId === sessionId && page("Page.handleJavaScriptDialog", { accept: true }).catch(() => {}))
   listeners.add((msg) => {
     if (msg.method !== "Fetch.requestPaused" || msg.sessionId !== sessionId) return
     const { requestId, request } = msg.params
-    const name = new URL(request.url).pathname.replace(/^\/api\/q\//, "")
+    // a query by its name; a command as "c/<name>"
+    const name = new URL(request.url).pathname.replace(/^\/api\/q\//, "").replace(/^\/api\/c\//, "c/")
     if (name in answers) {
       const body = Buffer.from(JSON.stringify(answers[name])).toString("base64")
       page("Fetch.fulfillRequest", { requestId, responseCode: 200, responseHeaders: [{ name: "content-type", value: "application/json" }], body }).catch(() => {})
@@ -134,7 +136,8 @@ export async function openChrome() {
   })
   const answer = async (given) => {
     answers = given ?? {}
-    if (given) await page("Fetch.enable", { patterns: [{ urlPattern: "*/api/q/*" }] })
+    const commands = Object.keys(answers).some((k) => k.startsWith("c/")) ? [{ urlPattern: "*/api/c/*" }] : []
+    if (given) await page("Fetch.enable", { patterns: [{ urlPattern: "*/api/q/*" }, ...commands] })
     else await page("Fetch.disable")
   }
   const close = () => {

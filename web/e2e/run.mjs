@@ -4,13 +4,15 @@
 // server has. This serves one sample (Alex's lived-in one unless --case), opens Chrome once and runs each file's
 // tests in turn, each on a fresh page load.
 //
-//   node web/e2e/run.mjs [--only items,rules] [--case alex] [--url http://127.0.0.1:8791] [--shots DIR]
+//   node web/e2e/run.mjs [--only items,rules] [--case alex] [--url http://127.0.0.1:8791 [--folder DIR]] [--shots DIR]
 //
-// A test file: `export default [{ name, run }]`, run({ page, open, click, type, text, has, until, q, c, planned, day,
-// expect, answer, gone, request }) → throws on what's wrong. click(name, { within: selector }) presses only inside that
-// part of the page; `answer({ name: json })` makes the page's questions to /api/q/<name> get that answer (a state the
-// sample hasn't got), until the test ends; `gone(words)` waits for words to leave the page; `request(method, path,
-// body, headers)` is a raw call to the server, for refusals ({ status, body }).
+// A test file: `export default [{ name, run }]`, run({ page, base, folder, open, click, type, text, has, gone, until,
+// q, c, request, planned, day, expect, evaluate, answer, stub }) → throws on what's wrong. click(name, { within })
+// presses only inside that part of the page; `gone(words)` waits for words to leave the page; `request(method, path,
+// body, headers)` is a raw call to the server, for refusals ({ status, body }). `base` is the sample's address; `folder`
+// its own data and config folder (its friday.toml and secrets.toml), or undefined with --url (give --folder).
+// `answer({ name: json, "c/name": json })` (also called `stub`) answers the page's queries and commands so named
+// itself (a state the sample hasn't got, an AI's answer), until the test ends.
 // Exit 0: all passed; 1: some failed (listed); 2: it couldn't run. Build web/dist first.
 
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs"
@@ -29,7 +31,7 @@ export class Failed extends Error {}
 const TEST_LIMIT_S = Number(process.env.E2E_TEST_LIMIT_S ?? 180) // per test; a loaded Mac may need more
 
 /** What a test is given: the page, the server, and the steps a person takes. */
-function tools(page, base, answer = async () => {}) {
+function tools(page, base, folder, answer = async () => {}) {
   const q = async (name, params = {}) => {
     const r = await fetch(`${base}/api/q/${name}?${new URLSearchParams(params)}`)
     if (!r.ok) throw new Error(`${name}: ${r.status} ${(await r.text()).slice(0, 200)}`)
@@ -103,21 +105,22 @@ function tools(page, base, answer = async () => {}) {
     await answer(given)
   }
   const done = async () => answering && (await answered(null))
-  return { page, open, click, type, text, has, gone, until, q, c, request, planned, day, expect, wait, answer: answered, done, press: (k) => press(page, k) }
+  return { page, base, folder, open, click, type, text, has, gone, until, q, c, request, planned, day, expect, wait,
+           answer: answered, stub: answered, done, press: (k) => press(page, k), evaluate: (expression) => evaluate(page, expression) }
 }
 
 async function main() {
   const files = readdirSync(HERE).filter((f) => f.endsWith(".e2e.mjs")).sort()
   const chosen = files.filter((f) => !only || only.includes(f.replace(".e2e.mjs", "")))
   const given = option("--url")
-  const sample = given ? { base: given.replace(/\/$/, ""), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-" })
+  const sample = given ? { base: given.replace(/\/$/, ""), folder: option("--folder"), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-" })
   const { page, close, answer } = await openChrome()
   const failed = []
   let passed = 0
   const started = Date.now()
   try {
     await page("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
-    const t = tools(page, sample.base, answer)
+    const t = tools(page, sample.base, sample.folder, answer)
     await t.planned()
     for (const file of chosen) {
       const tests = (await import(pathToFileURL(path.join(HERE, file)).href)).default
@@ -140,7 +143,7 @@ async function main() {
             writeFileSync(path.join(shots, `${label.replace(/[^a-z0-9]+/gi, "-")}.png`), Buffer.from(data, "base64"))
           }
         } finally {
-          await t.done() // a test's made-up answers end with it
+          await t.done() // a test's made-up answers (`answer`, `stub`) end with it
         }
       }
     }

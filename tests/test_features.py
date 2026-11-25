@@ -40,8 +40,14 @@ def texts(system: bool) -> tuple[str, ...]:
     return tuple(found)
 
 
+# A command is tested where a test sends it: app.do("name", …), friday.c("name", …), .q, .full, .try_do, run(conn,
+# "name", …), or its address /api/c/name. A quoted word that happens to be a name (an answer's key, a choice) isn't
+# (24 Nov: "changes", "progress" and "tokens" counted as tested by answer keys).
+SENDS = r"(?:\b(?:do|try_do|full|c|q|preview|run|dispatch|command|query)\(\s*(?:[\w.\[\]]+\s*,\s*)?)"
+
+
 def named(name: str, system: bool) -> bool:
-    pattern = re.compile(rf"[\"']{re.escape(name)}[\"']|\bc\(\s*[\"']{re.escape(name)}|\bq\(\s*[\"']{re.escape(name)}")
+    pattern = re.compile(rf"{SENDS}[\"']{re.escape(name)}[\"']|/api/[cq]/{re.escape(name)}\b")
     return any(pattern.search(text) for text in texts(system))
 
 
