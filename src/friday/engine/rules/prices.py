@@ -147,7 +147,7 @@ class LateNight(Rule):
         wake = self.wake_on.get(slot.date)
         routine = self.routine_on.get(slot.date)
         morning = self.p.morning_min if routine is None else routine
-        waking = self.p.morning if wake is not None and slot.start_utc < wake + morning else 0.0
+        waking = self.p.morning if wake is not None and wake <= slot.start_utc < wake + morning else 0.0
         night = self.problem.nights[slot.date]  # after "Done with work" nothing is planned: the night's wall (core)
         wind = night.wind_down_min
         winding = self.p.evening if wind and slot.end_utc > night.bedtime_utc - wind else 0.0

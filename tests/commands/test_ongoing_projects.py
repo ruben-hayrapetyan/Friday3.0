@@ -346,3 +346,20 @@ def test_an_ongoing_projects_hours_are_all_planned_each_week(tmp_path: Path) -> 
     replan(app.conn, app.now_utc)
     for week in weeks(app, series)[:2]:
         assert sum(planned_by_day(app, week["id"]).values()) >= 600, week["occurrence_date"]
+
+
+@pytest.mark.parametrize(("bed", "wake"), [("11:15", "19:15"), ("02:00", "10:00"), ("07:00", "15:00")])
+def test_its_hours_are_planned_whenever_you_sleep(tmp_path: Path, bed: str, wake: str) -> None:
+    """24 Nov, the new pipeline tests (run at 9pm, sleep set 14 hours on): asleep 11:15am-7:15pm, an ongoing project
+    got no time all week. The late-night rule's "first hour after waking costs more" had no start: every hour of the
+    day before waking (4-11:15am, awake) was priced as just up, and the goal wasn't worth it. Only the hour after."""
+    app = new_app(tmp_path).at("2026-10-20T21:15")  # a Tuesday evening
+    week = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+    app.do("settings_set", key="sleep", value=dict.fromkeys(week, {"bedtime": bed, "wake": wake, "margin_min": 0}))
+    app.do("ongoing_add", title="Guitar", hours_per_week=3)
+    item = next(o for o in app.do("ongoing_projects") if o["title"] == "Guitar")["week"]["item_id"]
+    replan(app.conn, app.now_utc)
+    blocks = [
+        b for b in app.do("plan", start="2026-10-20T21:15", end="2026-10-26T04:00")["blocks"] if b["item_id"] == item
+    ]
+    assert blocks, f"asleep {bed}-{wake}: no time for it this week"
