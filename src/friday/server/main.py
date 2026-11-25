@@ -113,6 +113,9 @@ def serve_forever(db_path: Path, host: str, port: int | None, clock: Callable[[]
     conn = connect(db_path)
     server = load_settings(conn)["server"]
     conn.close()
+    # the port this Friday answers on, for links it hands out (a phone's pairing link, 24 Nov: it named Settings' port
+    # when started with --port, so a scanned code opened whatever answered there)
+    os.environ["FRIDAY_SERVING_PORT"] = str(port or server.port)
     where = logs.install(db_path.parent, server.log_level)
     logging.getLogger("friday").info(
         "fridayd starting on %s:%s, data in %s, log %s", host, port or server.port, db_path.parent, where

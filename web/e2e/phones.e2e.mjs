@@ -79,13 +79,11 @@ export default [
     },
   },
   {
-    name: "BUG: the pairing link names the port in Settings, not the one Friday was started on",
+    name: "the pairing link names the port Friday was started on, not the one in Settings (fixed 24 Nov)",
     async run({ c, q, until, expect }) {
       // 24 Nov: `fridayd serve --port N` (or `demo --port N`) answers on the tailnet on port N
       // (server/main.py's TailnetListener), but phone_pair's link is built from settings' server.port (8765), so a
       // phone scanning it opens whatever answers on 8765, not this Friday. Expected: the link's port is N.
-      const skip = true
-      if (skip) return console.log("      (skipped: BUG, the pairing link's port is settings' server.port)")
       await c("phone_set", { on: true })
       const status = await q("phone_status")
       if (!(status.name ?? status.address)) return await c("phone_set", { on: false })

@@ -6,6 +6,7 @@ opens it, and the phone keeps a sign-in of its own (only its hash is kept here) 
 
 import hashlib
 import json
+import os
 import secrets
 import sqlite3
 from collections.abc import Iterator
@@ -77,7 +78,8 @@ def phone_pair(ctx: Ctx, inp: Empty) -> PairCode:
         codes[digest(code)] = {"until": ctx.now_utc + PAIR_MINUTES}
         store(ctx.conn, ctx.user_id, "phone_codes", codes)
     # The code after the #: a browser never sends that part, so it's in no address log on the way.
-    url = f"http://{where}:{ctx.settings['server'].port}/pair#{code}"
+    port = os.environ.get("FRIDAY_SERVING_PORT") or ctx.settings["server"].port  # where this Friday answers (24 Nov)
+    url = f"http://{where}:{port}/pair#{code}"
     return PairCode(url=url, svg=qr_svg(url), minutes=PAIR_MINUTES)
 
 

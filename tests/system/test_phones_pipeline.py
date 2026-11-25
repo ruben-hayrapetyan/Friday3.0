@@ -92,11 +92,7 @@ def test_3_a_code_pairs_one_phone_once(friday: Friday) -> None:
 
 
 @on_tailscale
-@pytest.mark.xfail(
-    reason="BUG: phone_pair's link names settings' server.port (8765), not the port `fridayd serve --port N` "
-    "answers on (its tailnet listener uses N): a phone scanning it opens whatever answers on 8765",
-    strict=True,
-)
+# 24 Nov: found by this test (the link named Settings' port, not --port's); fixed
 def test_3b_the_pairing_link_names_the_port_friday_answers_on(friday: Friday) -> None:
     url = friday.c("phone_pair")["url"].split("#", 1)[0]
     assert url.endswith(f":{friday.port}/pair")
