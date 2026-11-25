@@ -13,8 +13,11 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from tests.system.test_beat_plan_system import SLEEP, TZ, Friday
+from tests.system.test_beat_plan_system import SLEEP, Friday
 
+# New York, whatever FRIDAY_TEST_HOUR says (24 Nov): the sample to-dos' dues are fixed UTC instants, read back as New
+# York's local times (2026-12-04T22:00Z is 5pm there), so the server's zone is New York's too
+TZ = "America/New_York"
 MAC = {"X-Friday-Client": "mac"}
 
 
@@ -22,6 +25,7 @@ MAC = {"X-Friday-Client": "mac"}
 def friday(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Friday]:
     server = Friday(tmp_path_factory.mktemp("importing_pipeline"))
     server.c("settings_set", key="sleep", value=SLEEP)
+    server.c("settings_set", key="time", value=server.q("settings")["time"] | {"timezone": TZ})
     yield server
     server.stop()
 

@@ -21,7 +21,9 @@ from friday.server.app import wall_clock
 from tests.system.test_beat_plan_system import REPO, TZ, Friday, local
 
 NOW = datetime.now(ZoneInfo(TZ)).replace(second=0, microsecond=0)
-TOMORROW = (NOW + timedelta(days=1)).replace(hour=0, minute=0)
+# the day after Friday's day, which starts at 4am (24 Nov: at 3am Friday's day is still yesterday, so the job rightly
+# asks about the calendar's today; the test had looked for the calendar's tomorrow)
+TOMORROW = (NOW - timedelta(hours=4) + timedelta(days=1)).replace(hour=0, minute=0)
 LATE = "you:no-work-after-11pm"
 EARLY = "you:no-work-before-7am"
 

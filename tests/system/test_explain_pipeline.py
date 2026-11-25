@@ -11,13 +11,35 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from tests.system.test_beat_plan_system import TZ, Friday
-from tests.system.test_decisions_pipeline import at, awake, planned
+from tests.system.test_beat_plan_system import WEEKDAYS, Friday, zone_for_hour
+from tests.system.test_decisions_pipeline import planned
+
+# about noon now (24 Nov): `lighten` is asked for the week from Friday's day, and before 4am that day is yesterday's
+# last hour, so the week is six days ahead; run at 3am, the plan put all of the novel notes on the seventh, after it,
+# and there was nothing in the week to lighten
+TZ = zone_for_hour(12)
+
+
+def quarter() -> datetime:
+    """The next quarter hour, local: where the plan's slots start."""
+    now = datetime.now(ZoneInfo(TZ)).replace(second=0, microsecond=0)
+    return now + timedelta(minutes=15 - now.minute % 15)
+
+
+def at(minutes: int) -> str:
+    return (quarter() + timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M")
+
+
+def awake(friday: Friday) -> None:
+    bed = quarter() + timedelta(hours=14)
+    times = {"bedtime": bed.strftime("%H:%M"), "wake": (bed + timedelta(hours=8)).strftime("%H:%M"), "margin_min": 0}
+    friday.c("settings_set", key="sleep", value=dict.fromkeys(WEEKDAYS, times))
 
 
 @pytest.fixture(scope="module")
 def friday(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Friday]:
     server = Friday(tmp_path_factory.mktemp("explain"))
+    server.c("settings_set", key="time", value=server.q("settings")["time"] | {"timezone": TZ})
     awake(server)
     planned(server)
     yield server

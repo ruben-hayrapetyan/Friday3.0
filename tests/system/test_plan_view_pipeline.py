@@ -10,8 +10,12 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from tests.system.test_beat_plan_system import TZ, Friday, local
+from tests.system.test_beat_plan_system import Friday, local, zone_for_hour
 
+# about noon now (24 Nov): what fits now is what fits while you're awake (at 3 or 4am, asleep until 7:30, nothing does),
+# the soonest due fits first when the plan does it first (just before bedtime the plan starts the essay first
+# tomorrow), and a pace for three days counts from Friday's day, which before 4am is still yesterday
+TZ = zone_for_hour(12)
 NOW = datetime.now(ZoneInfo(TZ)).replace(second=0, microsecond=0)
 TOMORROW = (NOW + timedelta(days=1)).replace(hour=0, minute=0)
 ESSAY_DUE = local(TOMORROW + timedelta(days=4, hours=17))
@@ -21,6 +25,7 @@ LAB_DUE = local(TOMORROW + timedelta(days=2, hours=17))
 @pytest.fixture(scope="module")
 def friday(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Friday]:
     server = Friday(tmp_path_factory.mktemp("plan-view"))
+    server.c("settings_set", key="time", value=server.q("settings")["time"] | {"timezone": TZ})
     yield server
     server.stop()
 
