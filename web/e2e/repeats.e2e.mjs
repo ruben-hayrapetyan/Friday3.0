@@ -117,13 +117,16 @@ export default [
     },
   },
   {
-    name: "BUG: an event time the Mac app sends that isn't a time is taken, and then breaks reading its calendar",
-    async run() {
-      // 24 Nov (found writing these tests): mac_sync checks `since` and `until` but not each event's times, so an
-      // event ending "T18:90:00-05:00" is stored, and every sync after fails the whole calendar with "E2E Studio
-      // failed in a way Friday didn't expect (ValueError: minute must be in 0..59)", nothing on it read. Expected: the
-      // event refused at once with a 422 naming it (or left out alone), the calendar's other events read.
-      return console.log("      (skipped: BUG, mac_sync takes event times that aren't times)")
+    name: "an event time the Mac app sends that isn't a time is refused, naming the event (fixed 24 Nov)",
+    async run({ request, day, expect }) {
+      // found writing these tests: a time like 18:90 was taken, and every later read of its calendar failed
+      const calendar = { id: "e2e-cal", name: "E2E Studio", type: "local" }
+      const at = (h) => `${day(1)}T${h}:00-05:00`
+      const sent = await request("POST", "/api/c/mac_sync", {
+        calendars: [calendar], since: `${day(0)}T00:00:00-05:00`, until: `${day(7)}T00:00:00-05:00`,
+        events: [{ id: "e2e-bad", calendar: "e2e-cal", title: "Bad studio", start: at("18:00"), end: at("18:90") }],
+      })
+      expect(sent.status === 422 && JSON.stringify(sent.body).includes("Bad studio"), `taken: ${JSON.stringify(sent)}`)
     },
   },
 ]

@@ -58,6 +58,12 @@ def mac_sync(ctx: Ctx, inp: MacSyncInput) -> Changed:
     strays = {e.calendar for e in inp.events} - known
     if strays:
         raise FieldError("events", f"events on calendars not listed: {', '.join(sorted(strays))}")
+    for e in inp.events:  # a time that isn't one, taken, broke every later read of its calendar (24 Nov)
+        try:
+            for at in (e.start, e.end):
+                (date.fromisoformat if e.all_day else datetime.fromisoformat)(at)
+        except ValueError:
+            raise FieldError("events", f"{e.title or e.id}: {e.start} to {e.end} isn't a time") from None
     events: dict[str, list[dict[str, Any]]] = {c.id: [] for c in inp.calendars}
     for e in inp.events:
         events[e.calendar].append(google_shape(e))

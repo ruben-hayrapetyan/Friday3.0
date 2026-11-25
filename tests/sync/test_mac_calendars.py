@@ -724,3 +724,23 @@ def test_an_event_made_to_repeat_here_repeats_on_the_mac_and_comes_back_as_one_s
     salsas = [i for i in app.table("items") if i["title"] == "Salsa" and i["status"] == "todo"]
     assert len(salsas) == 4 and salsa["id"] in {i["id"] for i in salsas}  # this week's kept, the rest come in
     assert len({i["series_id"] for i in salsas}) == 1 and salsas[0]["series_id"] is not None
+
+
+# 24 Nov, the new browser tests: an event time the Mac app sent that isn't a time (18:90) was taken, and then every
+# later read of that calendar failed ("minute must be in 0..59") and none of its events came in. Such a sync is refused
+# when it arrives, naming the event; the calendar's next good one reads as ever.
+def test_an_event_time_that_isnt_a_time_is_refused_naming_it_and_breaks_nothing(tmp_path: Path) -> None:
+    from friday.commands.fetching import sync
+    from friday.core.items import FieldError
+    from tests.commands.helpers import new_app
+
+    app = new_app(tmp_path)
+    home = calendar("home", "Home")
+    bad = mac_event("x1", "home", "Studio", "2026-10-21T18:00", "2026-10-21T18:90")
+    with pytest.raises(FieldError, match="Studio"):
+        app.do("mac_sync", calendars=[home], events=[bad], since=SINCE, until=UNTIL)
+    good = mac_event("x2", "home", "Seminar", "2026-10-21T18:00", "2026-10-21T19:00")
+    app.do("mac_sync", calendars=[home], events=[good], since=SINCE, until=UNTIL)
+    sync(app.conn, app.now_utc)
+    fixed = app.do("plan", start="2026-10-21T00:00", end="2026-10-22T00:00")["fixed"]
+    assert "Seminar" in [f["title"] for f in fixed] + [s.get("title") for s in app.do("inbox")["suggestions"]]
