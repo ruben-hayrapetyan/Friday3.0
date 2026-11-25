@@ -14,7 +14,17 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from friday.core.time import clock_time
-from tests.system.test_beat_plan_system import SLEEP, TZ, Friday
+from tests.system.test_beat_plan_system import SLEEP, Friday
+
+
+def midday_zone() -> str:
+    """A zone where it's about noon now: the tests set up today's 5-7pm Dinner, which a repeat made after 7pm rightly
+    doesn't backfill (24 Nov: run in the evening, the tests found no Dinner today and failed)."""
+    hours = 12 - datetime.now(ZoneInfo("UTC")).hour  # UTC-11 to UTC+12
+    return "UTC" if hours == 0 else f"Etc/GMT{'-' if hours > 0 else '+'}{abs(hours)}"  # Etc/ signs are reversed
+
+
+TZ = midday_zone()
 
 DAY_START = "04:00"
 DINNER = (17 * 60, 19 * 60)  # the Dinner routine's window, local minutes
@@ -29,7 +39,7 @@ def friday(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Friday]:
             "margin_min": 60}  # fmt: skip
     server.c("settings_set", key="sleep", value=dict.fromkeys(SLEEP, away))  # never asleep while the tests run
     server.c("settings_set", key="meal_tracking", value={"on": True, "min_days": 2})
-    server.c("settings_set", key="time", value=server.q("settings")["time"] | {"day_start": DAY_START})
+    server.c("settings_set", key="time", value=server.q("settings")["time"] | {"day_start": DAY_START, "timezone": TZ})
     server.c("series_add", title="Lunch", preset="Routine", every="day", release_offset_min=0,
              due_offset_min=24 * 60 - 1, min_min=15, ideal_min=30, max_min=30)  # fmt: skip
     server.c("series_add", title="Dinner", preset="Routine", every="day", release_offset_min=DINNER[0] - 4 * 60,

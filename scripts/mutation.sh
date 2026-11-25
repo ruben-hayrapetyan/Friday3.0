@@ -2,7 +2,7 @@
 # The depth check (TESTING.md, "What in depth means"): mutmut changes the code of one module at a time on purpose (a
 # `<` made `<=`, a branch taken away, a number off by one, a string changed) and runs the tests that reach each change;
 # every change must fail a test. What survives is a missing test, listed at the end with the change that survived.
-# Heavy: run it on debian (remote-run, ~/.claude/CLAUDE.md):
+# Heavy: run it on a bigger machine, e.g. with remote-run:
 #
 #   remote-run -o .mutants -- sh -c 'export PATH="$HOME/.local/bin:$PATH"; scripts/mutation.sh src/friday/commands/tips.py'
 #

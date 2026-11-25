@@ -1,5 +1,5 @@
 """Random worlds (24 Nov, the user: "stress test on a lot of sample settings, schedules, and situations to see if there
-is any unexpected behaviour because of any changes"; "the randomly generated situation/settings tester which should be
+is any unexpected behavior because of any changes"; "the randomly generated situation/settings tester which should be
 exhaustive in and of itself"). A seed makes one world, the same every time: its settings (time zone, sleep by night,
 day start, horizon, meals, rules typed in words), its schedule (classes, events all-day and overlapping, to-dos of every
 kind, projects with waits, repeating to-dos, ongoing projects) and a stream of changes (add, edit, finish, delete,
@@ -7,7 +7,7 @@ skip, pin, lock, wait for, time, progress, undo, pace, breaks, one-day changes, 
 moving on. After each change Friday plans again and every check runs: what a plan must never do (harness.plan_issues),
 every page's query answering, the late lists agreeing, sleep kept; an error that isn't a refusal with a reason is a
 crash. Each replan leaves a fingerprint (the week's blocks, what's late), so two versions of Friday can be run on the
-same seeds and compared (`compare`): a difference no change explains is the "unexpected behaviour".
+same seeds and compared (`compare`): a difference no change explains is the "unexpected behavior".
 
     PYTHONPATH=src:. uv run python -m tests.stress.random_worlds --seeds 0-199 --changes 30 --out DIR [--jobs 5]
     PYTHONPATH=src:. uv run python -m tests.stress.random_worlds --compare OLD_DIR NEW_DIR

@@ -11,7 +11,7 @@ const settle = async (check, what, ms = 20_000) => {
 const TITLE = "E2E history essay"
 const project = async (q) => (await q("projects")).find((p) => p.item.title === TITLE)
 const steps = (p) => p.children.filter((c) => c.parent_id === p.item.id)
-/** Presses the button labelled `label` on the step row showing `title`. */
+/** Presses the button labeled `label` on the step row showing `title`. */
 const onStep = (evaluate, title, label) =>
   evaluate(`(() => {
     const rows = [...document.querySelectorAll("[role=dialog] *")].filter((el) => el.children.length && [...el.querySelectorAll("button")].some((b) => (b.getAttribute("aria-label") ?? "") === ${JSON.stringify(label)}) && el.innerText.includes(${JSON.stringify(title)}))

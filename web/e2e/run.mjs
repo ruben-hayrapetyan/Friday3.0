@@ -79,7 +79,7 @@ function tools(page, base, folder, answer = async () => {}) {
     await until(CLICK(name, within), 10_000, `a button "${name}"${within ? ` in ${within}` : ""}`)
     await evaluate(page, SETTLE).catch(() => {}) // a button that reloads the page leaves nothing to settle
   }
-  /** Types into the field labelled `label` (its aria-label, placeholder or label text), as keys, then Enter if asked. */
+  /** Types into the field labeled `label` (its aria-label, placeholder or label text), as keys, then Enter if asked. */
   const type = async (label, words, { enter = false } = {}) => {
     const found = await until(`(() => {
       const want = ${JSON.stringify(label)}
