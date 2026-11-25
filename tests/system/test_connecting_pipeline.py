@@ -203,11 +203,7 @@ def test_removing_an_account_forgets_it_and_only_it(friday: Friday) -> None:
 
 
 # Last: what it leaves behind (a 500) can't be cleaned up by the app.
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG: offline with an expired sign-in, google_tasks_connect answers 500 "
-    "(TransportError) instead of saying Google can't be reached",
-)
+# 24 Nov: found by this test (a 500); fixed
 def test_tasks_with_an_expired_sign_in_and_google_out_of_reach_is_said_in_words(friday: Friday) -> None:
     sign_in(friday, "expired@gmail.com", [CALENDAR, TASKS], expiry="2020-01-01T00:00:00Z")
     answer = friday.http.post("/api/c/google_tasks_connect", json={"account": "expired@gmail.com"})

@@ -21,6 +21,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, ClassVar, Literal
 
+import google.auth.exceptions
+
 from friday.integrations.base import Caps, ConnectorError, Http, Remote, Transport
 from friday.sync import google_auth
 
@@ -33,7 +35,12 @@ REDEPLOY = "Deploy → Manage deployments → ✎ → Version: New version → D
 
 def access_token(folder: Path, account: str) -> str:
     """The account's Google access token, when it has allowed Tasks."""
-    creds = google_auth.credentials(folder, account)
+    try:
+        creds = google_auth.credentials(folder, account)
+    except google.auth.exceptions.TransportError:  # renewing it, Google out of reach (24 Nov: it answered 500)
+        raise ConnectorError(
+            "down", "Friday couldn't reach Google. Check the internet connection, then try again."
+        ) from None
     if creds is None:
         raise ConnectorError("token", f"{account} isn't signed in to Google any more: sign in again in the Google box")
     if not creds.has_scopes([google_auth.TASKS_SCOPE]):

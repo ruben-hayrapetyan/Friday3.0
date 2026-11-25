@@ -53,6 +53,13 @@ def integration_connect(ctx: Ctx, inp: ConnectInput) -> ConnectOutput:
     return ConnectOutput(message=said, source=connected(ctx, source_id))
 
 
+def lost_token(kind: str, config: dict, source_id: int) -> bool:
+    """Connected with a token of its own (not on the Mac, not riding a Google sign-in), and that token is gone: a
+    disconnect undone (24 Nov). Rows from before `own_token` was kept: every kind but Google Tasks has one."""
+    own = config.get("own_token", kind != "google_tasks") and not sync.CONNECTORS[kind].caps.on_mac
+    return bool(own) and not sync.token_of(source_id)
+
+
 def add_source(
     conn: sqlite3.Connection, user_id: int, kind: str, token: str, given: dict[str, str], account: str
 ) -> int:
@@ -60,14 +67,14 @@ def add_source(
     make = sync.CONNECTORS[kind]
     # signing in again where a disconnect was undone (its token gone): that same row gets the token, and what it
     # brought stays linked to it, not to a second one (24 Nov)
-    sql = "SELECT id FROM sources WHERE user_id = ? AND kind = ? AND enabled = 1 ORDER BY id"
-    enabled = rows(conn, sql, [user_id, kind])
-    waiting = [r for r in enabled if not make.caps.on_mac and not sync.token_of(int(r["id"]))]
+    found = rows(conn, "SELECT id, config FROM sources WHERE user_id = ? AND kind = ? AND enabled = 1 ORDER BY id",
+                 [user_id, kind])  # fmt: skip
+    waiting = [r for r in found if lost_token(kind, json.loads(r["config"] or "{}"), int(r["id"]))]
     if waiting:
         source_id = int(waiting[0]["id"])
         old = json.loads(one(conn, "SELECT config FROM sources WHERE id = ?", [source_id])["config"] or "{}")
-        conn.execute("UPDATE sources SET config = ?, last_error = NULL WHERE id = ?",
-                     [json.dumps(old | {"account": account} | given), source_id])  # fmt: skip
+        config = old | {"account": account, "own_token": bool(token.strip())} | given
+        conn.execute("UPDATE sources SET config = ?, last_error = NULL WHERE id = ?", [json.dumps(config), source_id])
         sync.keep_token(source_id, kind, token)
         sync.read_soon(conn, user_id)
         return source_id
@@ -76,7 +83,12 @@ def add_source(
     arrival = getattr(make, "arrival", "inbox_first")
     cursor = conn.execute(
         "INSERT INTO sources (user_id, kind, name, config, trusted) VALUES (?, ?, ?, ?, 0)",
-        [user_id, kind, name, json.dumps({"arrival": arrival, "account": account} | given)],
+        [
+            user_id,
+            kind,
+            name,
+            json.dumps({"arrival": arrival, "account": account, "own_token": bool(token.strip())} | given),
+        ],
     )
     source_id = int(cursor.lastrowid or 0)
     if not make.caps.on_mac:  # Apple Reminders has no token: macOS asks instead
@@ -324,7 +336,7 @@ def connected(ctx: Ctx, source_id: int) -> Connected:
         reading=not config.get("synced") and not s["last_error"],
         signs_in=hasattr(sync.CONNECTORS[s["kind"]], "provider"),
         # a disconnect forgets the token and Undo can't bring a secret back: the row asks to sign in again (24 Nov)
-        needs_sign_in=not sync.CONNECTORS[s["kind"]].caps.on_mac and not sync.token_of(source_id),
+        needs_sign_in=lost_token(s["kind"], config, source_id),
     )
 
 
