@@ -159,7 +159,6 @@ export function QuickLine({ placeholder = "Add a to-do" }: { placeholder?: strin
   const [text, setText] = useState("")
   const parsed = readFields(useParsed(text)?.fields ?? {})
   const add = useAdd()
-  const sending = useRef(false) // ↩ held or pressed twice adds it once
   const chips = [
     ["Kind", parsed.preset],
     ["Tag", parsed.area],
@@ -175,10 +174,12 @@ export function QuickLine({ placeholder = "Add a to-do" }: { placeholder?: strin
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={async (e) => {
-            if (e.key === "Enter" && text.trim() && !sending.current) {
-              sending.current = true
-              if (await add({ text })) setText("")
-              sending.current = false
+            if (e.key === "Enter" && text.trim()) {
+              // out of the box as it's sent, so the next line can be typed meanwhile; back if it fails (24 Nov: what
+              // was typed during the wait was wiped with the line when the answer came)
+              const sent = text
+              setText((now) => (now.startsWith(sent) ? now.slice(sent.length).trimStart() : now))
+              if (!(await add({ text: sent }))) setText((now) => (now.trim() ? now : sent))
             }
             if (e.key === "Escape") setText("")
           }}

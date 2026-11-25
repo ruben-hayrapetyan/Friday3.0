@@ -36,3 +36,25 @@ export async function waitForSent(name: string, timeout = 5000) {
   }
   throw new Error(`no ${name} was sent; sent: ${sent.map((s) => s.name).join(", ") || "nothing"}`)
 }
+
+/** Holds the server's answer to every `name` command until `release()`: a slow answer, to see what the page does
+ * meanwhile (24 Nov, the speed tests). `restore()` puts fetch back; call it in a finally. */
+export function holdCommand(name: string) {
+  const real = globalThis.fetch
+  let release!: () => void
+  const gate = new Promise<void>((go) => (release = go))
+  const held = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+    if (url.includes(`/api/c/${name}`)) await gate
+    return real(input, init)
+  }) as typeof fetch
+  globalThis.fetch = held
+  window.fetch = held
+  return {
+    release,
+    restore: () => {
+      globalThis.fetch = real
+      window.fetch = real
+    },
+  }
+}

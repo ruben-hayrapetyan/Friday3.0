@@ -4,7 +4,7 @@
 import { configure, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
-import { friday, openFriday, waitForSent } from "@/test/friday"
+import { friday, holdCommand, openFriday, waitForSent } from "@/test/friday"
 
 // A real server, replanning after each change: a moment longer than the default second to answer.
 configure({ asyncUtilTimeout: 5000 })
@@ -67,6 +67,26 @@ describe("the to-do drawer", () => {
     await user.type(line, "something else")
     await user.keyboard("{Escape}")
     expect((line as HTMLInputElement).value).toBe("")
+  })
+
+  it("is empty the moment a line is sent, so the next can be typed while it's on its way (24 Nov)", async () => {
+    const { user, line } = await drawer()
+    const held = holdCommand("add")
+    try {
+      await user.type(line, "quick drawer one due fri{Enter}")
+      await waitFor(() => expect((line as HTMLInputElement).value).toBe(""))
+      await user.type(line, "quick drawer two due fri{Enter}")
+      await user.type(line, "and th")
+      held.release()
+      // both on the server, once each (the drawer's list, on a server other files have filled, may not show them)
+      await waitFor(async () => {
+        const titles = (await friday.q<Item[]>("items", { status: "all" })).map((i) => i.title).filter((t) => t.startsWith("quick drawer"))
+        expect(titles.sort()).toEqual(["quick drawer one", "quick drawer two"])
+      }, { timeout: 20_000 })
+      expect((line as HTMLInputElement).value).toBe("and th")
+    } finally {
+      held.restore()
+    }
   })
 
   it("lists by when or by tag, sorted as asked, and keeps the view for next time", async () => {

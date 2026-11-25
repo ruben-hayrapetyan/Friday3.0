@@ -106,24 +106,34 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
    * not on the Long term list, it asks first unless `anyway`. */
   const submit = async (extra: Manual = {}, anyway = false) => {
     if (!text.trim() || sending.current) return
-    sending.current = true // a second Enter while this one is on its way adds nothing more
-    try {
-      const manual = { ...mine.current, ...extra }
-      if (!anyway && !("due" in manual) && !manual.repeat && !longTerm) {
-        // The line as read now, not the reading of a moment ago: "pset due today" and a quick Enter has a due.
-        const now = ai.fields ? readFields(ai.fields) : await query("parse", { text }).then((p) => readFields(p.fields ?? {}), () => parsed)
-        if (!now.due && !now.every) return setAsking(true)
+    // The line leaves the box the moment it's sent, so the next can be typed and sent while it's on its way (24 Nov,
+    // the speed tests: ten lines typed fast, one added; what was typed during the wait was glued onto this line or
+    // wiped with it). What's typed meanwhile stays; a line that fails comes back.
+    sending.current = true // ↩ held: this line once
+    const sent = text
+    const manual = { ...mine.current, ...extra }
+    const body = payload(manual)
+    const fields = ai.fields
+    setText((now) => (now.startsWith(sent) ? now.slice(sent.length).trimStart() : now))
+    reset()
+    line.current?.focus()
+    sending.current = false
+    if (!anyway && !("due" in manual) && !manual.repeat && !longTerm) {
+      // The line as read now, not the reading of a moment ago: "pset due today" and a quick Enter has a due.
+      const read = fields ? readFields(fields) : await query("parse", { text: sent }).then((p) => readFields(p.fields ?? {}), () => parsed)
+      // No due: back in the box to ask, unless you've gone on to the next line (it's added as it is, not lost)
+      if (!read.due && !read.every && !(line.current?.value ?? "").trim()) {
+        setText(sent)
+        mine.current = manual
+        setManual(manual)
+        return setAsking(true)
       }
-      const out = await add(payload(manual))
-      if (!out) return
-      if (out.result.item) onAdded(out.result.item.id)
-      setText("")
-      reset()
-      line.current?.focus()
-    } finally {
-      sending.current = false
     }
+    const out = await add(body)
+    if (!out) return setText((now) => (now.trim() ? now : sent))
+    if (out.result.item) onAdded(out.result.item.id)
   }
+
   // Shift-Enter anywhere in the box adds it; a field still being typed (a length) is set as it's left.
   const sendFromAnywhere = (e: KeyboardEvent) => {
     if (e.key !== "Enter" || !e.shiftKey || e.defaultPrevented) return

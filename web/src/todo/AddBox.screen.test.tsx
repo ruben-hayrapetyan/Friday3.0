@@ -3,7 +3,7 @@
 // field, Escape, the Long term list and the AI fallback for a line the grammar can't read.
 import { configure, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { friday, openFriday, waitForSent } from "@/test/friday"
+import { friday, holdCommand, openFriday, sent, waitForSent } from "@/test/friday"
 
 // A real server, replanning after each change: a moment longer than the default second to answer.
 configure({ asyncUtilTimeout: 5000 })
@@ -42,6 +42,28 @@ describe("the add line", () => {
     const added = await row("essay")
     expect(within(added).getByText("new")).toBeTruthy()
     expect((line as HTMLInputElement).value).toBe("")
+  })
+
+  // 24 Nov, the speed tests: ten lines typed fast, one added. The line stayed in the box until the server answered,
+  // so the next one was typed onto it, its Enter ignored, and both wiped when the answer came.
+  it("is empty the moment a line is sent: the next is typed and sent meanwhile, and what's typed stays", async () => {
+    const { user } = await todo()
+    const line = screen.getByLabelText("Add an assignment…") as HTMLInputElement
+    const held = holdCommand("add")
+    try {
+      await user.type(line, "fast one due fri 5pm{Enter}")
+      await waitFor(() => expect(line.value).toBe(""))
+      await user.type(line, "fast two due fri 5pm{Enter}")
+      await waitFor(() => expect(line.value).toBe(""))
+      await user.type(line, "fast thr")
+      held.release()
+      await row("fast one")
+      await row("fast two")
+      expect(line.value).toBe("fast thr")
+      expect(sent.filter((s) => s.name === "add").map((s) => (s.body as { text: string }).text)).toEqual(["fast one due fri 5pm", "fast two due fri 5pm"])
+    } finally {
+      held.restore()
+    }
   })
 
   it("asks first when there's no due date, and Yes adds it as it is", async () => {
