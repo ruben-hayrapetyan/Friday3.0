@@ -1,7 +1,2 @@
 # What the suite doesn't test yet (tests/test_features.py): it only shrinks. A line is
 # "<command> regular", "<command> headless" or "<feature> web". TESTING.md says how to fill one.
-google_connect headless
-learn_reject regular
-ongoing_set headless
-preview_weights headless
-sync_now regular

@@ -279,13 +279,6 @@ def test_a_twelve_hour_assignment_goes_in_three_hour_sittings_over_several_days(
     assert len({s.start.date() for s in found}) >= 3 and all(s.minutes >= 90 for s in found), found
 
 
-GOAL_SQUEEZED = (
-    "Daniel's MCAT goal gets 3 of its 6 hours: a weekly goal is a preference, and his week has little room left once "
-    "meals are kept"
-)
-
-
-@pytest.mark.xfail(reason=GOAL_SQUEEZED, strict=False)
 def test_a_weekly_goal_gets_its_hours(planned: dict[str, Planned]) -> None:
     mcat = [i for i in planned["daniel"].ask("items") if i["title"] == "MCAT practice"][0]
     found = planned["daniel"].verdict().sittings[mcat["id"]]

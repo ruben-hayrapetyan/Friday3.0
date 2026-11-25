@@ -337,3 +337,43 @@ def test_rule_clashes_leaves_out_a_clash_with_a_rule_you_switched_off(heavy: Fri
     assert [c["other"] for c in heavy.q("rule_clashes")] == ["late_night"]
     heavy.c("rule_remove", name="late_night")  # deleted: gone from the Inbox too
     assert heavy.q("rule_clashes") == []
+
+
+# preview_weights: the plan with rules weighed differently, switched off or replaced, tried and nothing saved (Rules
+# and Insights' "what if"), posted as the page posts it
+
+
+def preview(friday: Friday, **body: object) -> dict:
+    answer = friday.http.post("/api/q/preview_weights", json=body)
+    assert answer.status_code == 200, answer.text
+    return answer.json()
+
+
+def test_a_preview_tries_rules_off_weighed_or_replaced_and_saves_nothing(heavy: Friday) -> None:
+    generation, totals = heavy.q("status")["generation"], heavy.q("rule_totals")
+    keys = {b["key"] for b in heavy.q("plan", start=f"{day(0)}T00:00", end=f"{day(7)}T00:00")["blocks"]}
+    assert totals.get("daily_load", 0) > 0  # sixty hours in five days bends the day's limit
+    off = preview(heavy, off=["daily_load"])
+    assert off["rule_totals_before"] == totals and off["rule_totals_after"].get("daily_load", 0) == 0
+    heavier = preview(heavy, weights={"daily_load": 5.0})
+    assert heavier["rule_totals_before"] == totals
+    # a whole list in place of yours: tomorrow forbidden all day, so nothing of the plan is left tomorrow
+    rules_now = heavy.q("settings")["rules"]
+    weekday = datetime.fromisoformat(day(1)).strftime("%a").lower()
+    never = {"days": [weekday], "start": "00:00", "end": "23:59", "price": "forbid"}
+    tried = preview(heavy, rules=[*rules_now, {"type": "time_preference", "name": "e2e_no_tomorrow", "params": never}])
+    assert tried["moved"] or tried["removed"]
+    after = [start for m in tried["moved"] for start, _ in m["after"]] + [b["start"] for b in tried["added"]]
+    assert not [t for t in after if t.startswith(day(1))], after
+    # nothing of it saved: the plan, its totals and your rules are as they were
+    assert heavy.q("status")["generation"] == generation and heavy.q("rule_totals") == totals
+    assert {b["key"] for b in heavy.q("plan", start=f"{day(0)}T00:00", end=f"{day(7)}T00:00")["blocks"]} == keys
+    assert heavy.q("settings")["rules"] == rules_now
+
+
+def test_a_preview_with_a_rule_that_isnt_one_is_refused(heavy: Friday) -> None:
+    bad = [{"type": "daily_load", "name": "x", "params": {"threshold": "lots"}}]
+    answer = heavy.http.post("/api/q/preview_weights", json={"rules": bad})
+    assert answer.status_code == 422 and answer.json()["field"] == "rules", answer.text
+    answer = heavy.http.post("/api/q/preview_weights", json={"weights": {"daily_load": "lots"}})
+    assert answer.status_code == 422, answer.text

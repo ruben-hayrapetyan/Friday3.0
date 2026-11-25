@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from friday.commands.refit import prepare_questions
+from friday.core.items import FieldError
 from friday.planner.service import replan
 from friday.planner.store import current_plan
 from tests.commands.helpers import App, new_app
@@ -170,3 +171,24 @@ def test_this_weeks_check_in_reaches_the_state(app: App) -> None:
     app.do("checkin", state="tired")
     app.at("2026-10-19T21:00").do("review_submit")
     assert app.do("learning")["state"]["mood"] == "tired"
+
+
+def test_turned_down_the_weights_stay_and_it_cant_be_applied_or_turned_down_again(app: App) -> None:
+    prepare_questions(app.conn, app.now_utc)
+    answer_all(app)
+    app.at("2026-10-19T21:00").do("review_submit")
+    learned = app.do("learning")
+    version = learned["suggested"]["version"]
+    out = app.do("learn_reject", version=version)
+    assert out["message"] == "Kept the weights as they were"
+    after = app.do("learning")
+    assert after["suggested"] is None and after["version"] == learned["version"]  # still planning with the old ones
+    status = app.conn.execute("SELECT status FROM learned_profile WHERE version = ?", [version]).fetchone()["status"]
+    assert status == "rejected"
+    replan(app.conn, app.now_utc)
+    assert json.loads(current_plan(app.conn)["report"])["profile_version"] != version
+    for verb in ("learn_reject", "learn_apply"):
+        with pytest.raises(FieldError, match=f"no suggested profile version {version}"):
+            app.do(verb, version=version)
+    with pytest.raises(FieldError, match="no suggested profile version 99"):
+        app.do("learn_reject", version=99)

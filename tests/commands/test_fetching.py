@@ -114,3 +114,32 @@ def test_a_document_the_ai_cant_read_is_failed_with_why_and_the_next_is_still_tr
     raw = app.table("raw_inputs")
     assert ai.calls >= 2 and {r["status"] for r in raw} == {"failed"}
     assert all("wasn't JSON" in r["error"] for r in raw)
+
+
+def test_sync_now_reads_every_source_at_once_not_at_its_next_poll(app: App) -> None:
+    """Sync now (Inbox, Settings): the next read takes every source, not only those whose minutes are up, and the
+    integrations' loop is woken and marked to read too; once read, the mark is gone and polling goes on as before."""
+    from friday.integrations.sync import READ_NOW
+    from friday.planner.store import kv_get
+
+    google = FakeGoogle({"Classes@group": [event("a1", "Lecture", "2026-10-20T10:00", "2026-10-20T11:15")]})
+    app.do("settings_set", key="gcal", value={"read": ["Classes"], "trusted": ["Classes"]})
+    sync(app.conn, app.now_utc, google=google)
+
+    def read_at() -> str:
+        (calendar,) = [s for s in app.table("sources") if s["kind"] == "gcal"]
+        return calendar["last_sync_utc"]
+
+    first = read_at()
+    sync(app.conn, app.now_utc + 1, google=google)
+    assert read_at() == first  # a minute on: not due yet
+    READ_NOW.clear()
+    assert app.do("sync_now")["message"] == "Syncing within a minute"
+    assert READ_NOW.is_set() and kv_get(app.conn, "integrations_now", False) is True
+    sync(app.conn, app.now_utc + 2, google=google)
+    assert read_at() != first  # read at once
+    assert kv_get(app.conn, "sync_now", None) is None  # the mark is used up
+    again = read_at()
+    sync(app.conn, app.now_utc + 3, google=google)
+    assert read_at() == again  # and polling goes on as before
+    READ_NOW.clear()
