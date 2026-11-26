@@ -114,3 +114,25 @@ def test_what_waits_is_placed_after_what_it_waits_for_even_when_it_matters_more(
     assert order.index("item:1") < order.index("item:2")
     placed = c.plan_from_owner(construct(c))
     assert placed.get("item:2") and min(placed["item:2"]) > max(placed["item:1"])  # both placed, in order
+
+
+def test_work_due_past_the_horizon_starts_in_the_weeks_its_quotas_name() -> None:
+    """25 Nov, Priya's fortnight once the plan reached the Monday after it (planner/build.reach): the prep for an exam
+    that Tuesday had its quota on that Monday, construction put it in the earliest free slots, in the days before,
+    the quota (a deadlines rule) stayed short, and the search made it up by skipping 15 meals."""
+    from friday.engine.compile import compile_problem  # noqa: PLC0415
+
+    p = problem([item("assignment", 1, duration_units=8, due_utc=at(9, "17:00"), min_chunk_units=1),
+                 item("assignment", 2, duration_units=6, due_utc=at(9, "17:00"), min_chunk_units=1)],
+                ["quota"], slots=None, days=8)  # fmt: skip
+    first, second = sorted(p.grid.week_slots)
+    p.items["item:1"].quotas = {second: 8}  # all of it the Monday after
+    p.items["item:2"].quotas = {first: 2, second: 4}
+    c = compile_problem(p)
+    placed = c.plan_from_owner(construct(c))
+
+    def units(key: str, week: int) -> int:
+        return sum(int(p.grid.units[s]) for s in placed[key] if s in set(p.grid.week_slots[week]))
+
+    assert (units("item:1", first), units("item:1", second)) == (0, 8)
+    assert (units("item:2", first), units("item:2", second)) == (2, 4)

@@ -3,9 +3,11 @@
 Construction honors every wall: windows, the daily cap, minimum and maximum chunks (keeping legal remainders),
 one-sitting runs and dependency readiness. Hard-deadline items take on-time slots first and spill into late ones
 only when nothing else is left, so a plan with every hard item on time is a certificate that zero lateness is
-possible. Elastic, target and open items start empty; the sampler places them.
+possible. Work due past the horizon goes into the weeks its quotas name first, as much as each names. Elastic, target
+and open items start empty; the sampler places them.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -65,6 +67,7 @@ def construct(
         keep_base(M, base, owner, day_units, placed)
         drop_invalid_kept(M, owner, day_units, placed)
     order = placement_order(c) if order is None else order
+    weeks = quota_weeks(c)
     # Elastic items too (meals, a 30–45 minute lunch): left for the anneal to grow from nothing, a narrow window
     # between classes was often never found and the meal was dropped. Hard items still come first.
     pending = [
@@ -81,13 +84,13 @@ def construct(
         for i in list(pending):
             if not sources_settled(M, placed, i, done, pending):
                 continue
-            place(M, owner, day_units, placed, i)
+            place(M, owner, day_units, placed, i, weeks.get(i, ()))
             done.add(i)
             pending.remove(i)
             break
         else:
             for i in list(pending):  # cyclic or blocked: place the rest in order anyway
-                place(M, owner, day_units, placed, i)
+                place(M, owner, day_units, placed, i, weeks.get(i, ()))
                 pending.remove(i)
     return owner
 
@@ -208,12 +211,38 @@ def ready_conditions(M: Model, owner: np.ndarray, i: int) -> list[tuple[int, int
     return out
 
 
+def quota_weeks(c: Compiled) -> dict[int, list[tuple[frozenset[int], int]]]:
+    """Per item due past the horizon, each week its quotas name, as (that week's slots, units still to place there).
+    Into the earliest free slots, prep for an exam the evening after the plan's last day went into the days before
+    it, its quota on that last day (a deadlines rule) stayed short, and the search made it up by skipping meals
+    (25 Nov, Priya's fortnight: 15 meals skipped once the plan reached that day, planner/build.reach)."""
+    grid = c.problem.grid
+    # only for work in no chain: a step's share says its own pace, not the steps waiting after it, and placed in its
+    # share's week a step pushed those past the project's due (25 Nov, random world 8: Steps 2 and 3 late 8 and 2 h)
+    waited_on = {dep.key for item in c.problem.items.values() for dep in item.depends_on}
+    out: dict[int, list[tuple[frozenset[int], int]]] = {}
+    for i, key in enumerate(c.keys):
+        item = c.problem.items[key]
+        if not item.quotas or item.due_utc is None or item.due_utc <= grid.horizon_end:
+            continue
+        if item.depends_on or key in waited_on:
+            continue
+        out[i] = [
+            (frozenset(grid.week_slots[week]), units - item.progress_by_week.get(week, 0))
+            for week, units in sorted(item.quotas.items())
+            if week in grid.week_slots and units > item.progress_by_week.get(week, 0)
+        ]
+    return out
+
+
 def candidate_slots(M: Model, i: int, on_time_only: bool) -> list[int]:
     ok = M.on_time[i] if on_time_only else M.allowed[i]
     return [s for s in range(M.first_slot[i], M.last_slot[i] + 1) if ok[s]]
 
 
-def place(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np.ndarray, i: int) -> None:
+def place(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np.ndarray, i: int,
+          weeks: Sequence[tuple[frozenset[int], int]] = ()) -> None:  # fmt: skip
+    """Into the earliest free slots: first, up to each quota, those of the weeks its quotas name (`quota_weeks`)."""
     remaining = int(M.need[i] - placed[i])
     if remaining <= 0:
         return
@@ -228,7 +257,17 @@ def place(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np.ndarray
             s for s in candidate_slots(M, i, on_time_only)
             if owner[s] == -1 and all(M.dep_lag[d, s] >= ready_at for d, ready_at in ready)
         ]  # fmt: skip
-        remaining -= take(M, owner, day_units, placed, i, candidates, remaining)
+        for slots, units in () if M.one_sitting[i] else weeks:  # one sitting can't be split to a share: as before
+            if remaining <= 0:
+                return
+            here = [s for s in candidates if s in slots and owner[s] == -1]
+            left = units - sum(int(M.units[s]) for s in slots if owner[s] == i)
+            want = min(left, remaining)
+            if want > 0:
+                remaining -= take(M, owner, day_units, placed, i, here, want)
+        if remaining <= 0:
+            return
+        remaining -= take(M, owner, day_units, placed, i, [s for s in candidates if owner[s] == -1], remaining)
         if remaining <= 0:
             return
 
