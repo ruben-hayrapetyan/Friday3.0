@@ -2,8 +2,8 @@
 // how ready you are; its prep as a list you change in place (tick it, rename it, how long, by when, delete it) with
 // + Add prep for another; then its tag and exam focus as rows. Every change shows at once.
 
-import { type QueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { type QueryClient, useQueryClient } from "@tanstack/react-query"
+import { useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import type { Item } from "@/api/client"
 import { Check, H, Icon } from "@/components/fr/controls"
@@ -169,17 +169,27 @@ function AddPrep({ exam, area, start }: { exam: Exam; area: string | null; start
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState("")
   const [minutes, setMinutes] = useState<number>(120)
+  const client = useQueryClient()
+  const standIn = useRef(0) // the new prep's id until the server gives it one
   const add = useCommand("add", {
     label: (o) => `${o.result.item?.title ?? "Prep"} added`,
     optimistic: (client, input) =>
       client.setQueryData<Exam[]>(["exams"], (list) =>
-        list?.map((e) => (e.item.id === exam.item.id ? { ...e, prep: [...e.prep, { item: { ...exam.item, id: -Date.now(), title: String(input?.title ?? ""), preset: "Exam prep", when: "window", start: null, end: null, due: start, duration_min: minutes, status: "todo", done_min: 0, remaining_min: minutes } as Item, planned_finish: null }] } : e)),
+        list?.map((e) => (e.item.id === exam.item.id ? { ...e, prep: [...e.prep, { item: { ...exam.item, id: standIn.current, title: String(input?.title ?? ""), preset: "Exam prep", when: "window", start: null, end: null, due: start, duration_min: minutes, status: "todo", done_min: 0, remaining_min: minutes } as Item, planned_finish: null }] } : e)),
       ),
   })
-  const save = () => {
-    if (!title.trim()) return
-    add({ title: title.trim(), preset: "Exam prep", due: start, duration_min: minutes, area, before: [exam.item.id] })
+  const save = async () => {
+    const named = title.trim()
+    if (!named) return
+    const id = (standIn.current = -Date.now())
     setTitle("")
+    const input = { title: named, preset: "Exam prep", due: start, duration_min: minutes, area, before: [exam.item.id] }
+    const made = (await add(input))?.result.item
+    // 25 Nov: the stand-in is the server's prep the moment the add is answered, not when the exams are next read: a
+    // tick on it in between sent `done` for the stand-in's made-up id, refused, and the prep stayed open (the browser
+    // tests, on a busy Mac)
+    const real = (p: Exam["prep"][number]) => (p.item.id === id && made ? { ...p, item: made as Item } : p)
+    if (made) client.setQueryData<Exam[]>(["exams"], (list) => list?.map((e) => ({ ...e, prep: e.prep.map(real) })))
   }
   if (!adding)
     return (

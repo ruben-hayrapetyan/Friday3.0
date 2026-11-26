@@ -210,6 +210,38 @@ describe("the Projects & exams page", () => {
     return { ...f, panel: await screen.findByRole("dialog", { name: title }) }
   }
 
+  // 25 Nov: a prep ticked right after it was added, before the exams were read again, sent `done` with its stand-in's
+  // made-up id; refused, it stayed open (the browser tests, on a busy Mac). The exams aren't read again here at all.
+  it("ticks a prep just added, before the exams are read again: done goes to the server's prep", async () => {
+    const { user, panel } = await examPanel()
+    const real = window.fetch
+    let release!: () => void
+    const gate = new Promise<void>((go) => (release = go))
+    const held = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+      if (url.includes("/api/q/exams")) await gate
+      return real(input, init)
+    }) as typeof fetch
+    window.fetch = globalThis.fetch = held
+    let id: number | undefined
+    try {
+      await user.click(within(panel).getByRole("button", { name: /Add prep/ }))
+      await user.type(within(panel).getByRole("textbox", { name: "New prep" }), "Flash cards{Enter}")
+      await waitForSent("add")
+      expect(await screen.findByText("Flash cards added")).toBeTruthy() // answered
+      const items = await friday.q<Item[]>("items", { status: "all" })
+      id = items.find((i) => i.title === "Flash cards" && i.status === "todo")?.id
+      expect(id).toBeGreaterThan(0)
+      const row = within(panel).getByRole("listitem", { name: "Flash cards" })
+      await user.click(within(row).getByRole("checkbox", { name: "Mark done" }))
+      expect((await waitForSent("done")).body).toEqual({ id })
+    } finally {
+      window.fetch = globalThis.fetch = real
+      release()
+      if (id) await friday.c("drop", { id })
+    }
+  })
+
   it("opens a piece of an exam's prep on the To-do page", async () => {
     const { user, panel } = await examPanel()
     const [prep] = within(within(panel).getByRole("region", { name: "Its prep" })).getAllByRole("listitem")
