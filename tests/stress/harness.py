@@ -252,6 +252,9 @@ def plan_issues(world: World, status: str, coarse_from: int | None = None) -> li
             out.append(f"T{item_id} planned though it isn't open ({item and item['status']})")
             continue
         rest = left.get(item_id)
+        # a lock is kept whole, as you set it, though less is left (26 Nov: an hour's reading locked, a quarter of it
+        # logged; trimming the lock to what's left made other worlds' plans later, so it stays your hour)
+        rest = None if rest is not None and locked_minutes(conn, item_id, cut) >= minutes else rest
         if rest is not None and item["amount"] == "fixed" and minutes > rest + 14 + 15 * coarse.get(item_id, 0):
             out.append(f"T{item_id} planned {minutes}m but only {rest}m left")
     for item_id, start, end, _ in future:
@@ -290,6 +293,14 @@ def plan_issues(world: World, status: str, coarse_from: int | None = None) -> li
             if not kept and not said and items.get(pin["item_id"], {}).get("status") == "todo":
                 out.append(f"locked pin of T{pin['item_id']} at {world.local(parse_utc(pin['start_utc']))} not kept")
     return out
+
+
+def locked_minutes(conn: sqlite3.Connection, item_id: int, after: int) -> int:
+    """Minutes of an item's locks still ahead."""
+    return sum(
+        max(0, parse_utc(r["end_utc"]) - max(after, parse_utc(r["start_utc"])))
+        for r in rows(conn, "SELECT start_utc, end_utc FROM pins WHERE item_id = ? AND kind = 'locked'", [item_id])
+    )
 
 
 def fine_days(conn: sqlite3.Connection) -> int:
