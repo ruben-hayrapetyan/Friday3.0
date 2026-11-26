@@ -504,6 +504,15 @@ def again(ctx: Ctx, shown: list[Meal]) -> str | None:
     return done[-1].kind if done else None  # `shown` is in the order you started them
 
 
+def no_meals_today(ctx: Ctx) -> bool:
+    """A break today that doesn't plan meals: none offered (25 Nov, the user: "the banners for 'eating now?' should
+    also be removed"); a meal started anyway is still shown and ended as any."""
+    from friday.core.vacations import break_today
+
+    vacation = break_today(ctx.conn, ctx.user_id, ctx.settings, ctx.today)
+    return vacation is not None and not vacation.plan_meals
+
+
 def offer(ctx: Ctx, today: set[str]) -> str | None:
     """The meal to offer now: one not yet recorded today whose time it is (and whose routine is still to do)."""
     for kind in PLANNED:
@@ -536,7 +545,7 @@ def meals(ctx: Ctx, inp: Empty) -> MealsOut:
     return MealsOut(
         on=True,
         eating=meal_out(now, place.get(now.id, 1)) if now else None,
-        next=None if now else offer(ctx, {m.kind for m in shown if m.date == ctx.today}),
+        next=None if now or no_meals_today(ctx) else offer(ctx, {m.kind for m in shown if m.date == ctx.today}),
         again=None if now else again(ctx, shown),
         days=[MealDayOut(date=d, meals=ms) for d, ms in sorted(days.items(), reverse=True)],
         learned=[MealLearnedOut(**vars(x)) for x in found],

@@ -205,6 +205,11 @@ def break_dates(conn: sqlite3.Connection, user_id: int) -> frozenset[date]:
     return frozenset(out)
 
 
+def break_today(conn: sqlite3.Connection, user_id: int, settings: Mapping[str, Any], today: date) -> Vacation | None:
+    """The break today is in, if any."""
+    return on(today, load(conn, user_id, settings["breaks"]))
+
+
 def on_a_break(conn: sqlite3.Connection, user_id: int, settings: Mapping[str, Any]) -> Any:
     """Whether a moment (a stored UTC time) fell on a break day: what learning and Insights leave out (18 Nov: "learning
     and insights should be paused during the break")."""

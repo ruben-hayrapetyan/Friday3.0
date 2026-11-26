@@ -420,3 +420,14 @@ def test_a_one_off_night_doesnt_change_your_usual_night(app: App) -> None:
     before = app.do("sleep")["usual_night_min"]
     app.do("day_override", date="2026-10-20", wake="05:30")  # up early once
     assert app.do("sleep")["usual_night_min"] == before
+
+
+def test_a_break_that_keeps_no_sleep_offers_no_sleep_taps(app: App) -> None:
+    """25 Nov, the user: on a break that doesn't plan sleep, no taps for it either (as for meals)."""
+    on(app)
+    assert app.do("sleep")["next"] == "up"
+    app.do("vacation_add", name="Trip", start="2026-10-19", end="2026-10-20", mode="off")
+    assert app.do("sleep")["next"] is None
+    (trip,) = app.do("vacations")["vacations"] if isinstance(app.do("vacations"), dict) else app.do("vacations")
+    app.do("vacation_edit", id=trip["id"], keep_sleep=True)
+    assert app.do("sleep")["next"] == "up"

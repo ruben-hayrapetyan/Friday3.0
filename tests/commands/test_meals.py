@@ -353,3 +353,22 @@ def test_start_on_a_meals_routine_with_tracking_off_times_it(app: App) -> None:
     at(app, "18:30")
     assert app.do("start", id=dinner)["message"] == "Timing Dinner"
     assert [t["item_id"] for t in app.table("timer")] == [dinner]
+
+
+def test_a_break_that_plans_no_meals_offers_none(app: App) -> None:
+    """25 Nov, the user: "is there functionality for not tracking meals and sleep during breaks? if that is the case
+    then the banners for 'eating now?' should also be removed". A break with Meals not planned offers no meal; one
+    that plans meals offers them as any day; a meal started anyway can still be finished."""
+    on(app)
+    lunch_routine(app)
+    at(app, "12:00")
+    assert app.do("meals")["next"] == "lunch"
+    app.do("vacation_add", name="Trip", start="2026-10-19", end="2026-10-20", mode="off")
+    assert app.do("meals")["next"] is None
+    app.do("meal_start", kind="lunch")  # eaten anyway: shown, and Done eating ends it
+    assert app.do("meals")["eating"]["kind"] == "lunch"
+    app.do("meal_end")
+    (trip,) = app.do("vacations")["vacations"] if isinstance(app.do("vacations"), dict) else app.do("vacations")
+    app.do("vacation_edit", id=trip["id"], plan_meals=True)
+    at(app, "18:30")
+    assert app.do("meals")["next"] == "dinner"

@@ -181,6 +181,14 @@ def planned_min(ctx: Ctx, overrides: dict, evening) -> int:
     return wake - bedtime
 
 
+def no_sleep_today(ctx: Ctx) -> bool:
+    """A break today that doesn't keep your sleep: no taps for it (25 Nov, the user, as for meals)."""
+    from friday.core.vacations import break_today
+
+    vacation = break_today(ctx.conn, ctx.user_id, ctx.settings, ctx.today)
+    return vacation is not None and not vacation.keep_sleep
+
+
 @query("sleep")
 def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
     """Your nights, routines and the times Friday has learned, with the tap to offer now.
@@ -224,7 +232,7 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
     nap = taking(ctx)
     return SleepOut(
         on=True,
-        next=None if nap else offer(ctx, now, nights, overrides, tracking_on.morning_hours),
+        next=None if nap or no_sleep_today(ctx) else offer(ctx, now, nights, overrides, tracking_on.morning_hours),
         up=format_local(this_morning.up.at) if this_morning and this_morning.up else None,
         ready=format_local(this_morning.ready_at) if this_morning and this_morning.ready_at else None,
         nights=[night_out(ctx, overrides, n) for n in shown],
