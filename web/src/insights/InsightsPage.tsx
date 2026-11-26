@@ -241,6 +241,11 @@ function Load() {
   const [lighten, setLighten] = useState(false)
   const top = Math.max(1, ...weeks.map((w) => Math.max(w.hours, w.capacity)))
   const over = weeks.find((w) => w.hours > w.capacity + 0.5)
+  // What could move out of it, asked as the banner shows (the dialog's own question, so it opens already answered).
+  // 25 Nov: Friday keeps work that can wait out of a full week when a later one has room, so a week over your usual
+  // nearly always held only work due in it, and the button opened onto "Nothing there can move out".
+  const ways = useQuery({ queryKey: ["lighten", over?.start, 7], queryFn: () => query("lighten", { start: over!.start, days: 7 }), enabled: !!over, staleTime: 0 })
+  const stuck = !late && ways.data !== undefined && !ways.data.options.length
   return (
     <>
       {/* One column a week, however many come back (this week and the eight after): they share the width, and on a
@@ -278,10 +283,15 @@ function Load() {
           <Icon name="warning" size={18} style={{ color: "var(--fr-warn)" }} />
           {/* Over your usual isn't late (15 Nov: this said a week held more than you can do, and its button opened
               what gives when work is late, which said everything fits): it says both, and offers to lighten the week. */}
-          <span style={{ flex: 1, textWrap: "pretty" }}>{overSentence(weekLabel(over.start, weekday), over.hours, over.capacity, late)}</span>
-          <button className="btn btn-secondary" onClick={() => setLighten(true)}>
-            Lighten that week
-          </button>
+          <span style={{ flex: 1, textWrap: "pretty" }}>
+            {overSentence(weekLabel(over.start, weekday), over.hours, over.capacity, late)}
+            {stuck && " All of it is due that week or fixed in place: none of it can wait."}
+          </span>
+          {!stuck && (
+            <button className="btn btn-secondary" onClick={() => setLighten(true)}>
+              Lighten that week
+            </button>
+          )}
         </div>
       )}
       {over && lighten && <LightenDialog start={over.start} days={7} label={weekLabel(over.start, weekday)} planned={over.hours} usual={over.capacity} late={late} onClose={() => setLighten(false)} />}
