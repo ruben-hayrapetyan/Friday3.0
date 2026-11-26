@@ -26,7 +26,7 @@ export function freePort() {
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /** A sample (Alex's lived-in one unless said), served from a folder of its own, terms accepted and Setup answered, as the screen tests do. */
-export async function serveSample({ case: who = "alex", ready = true, prefix = "friday-check-" } = {}) {
+export async function serveSample({ case: who = "alex", ready = true, prefix = "friday-check-", shiftMinutes = 0 } = {}) {
   const folder = mkdtempSync(path.join(tmpdir(), prefix))
   const port = await freePort()
   const keys = { MICROSOFT_CLIENT_ID: "test-microsoft-id", SLACK_CLIENT_ID: "test-slack-id", SLACK_CLIENT_SECRET: "test-slack-secret", TICKTICK_CLIENT_ID: "test-ticktick-id", TICKTICK_CLIENT_SECRET: "test-ticktick-secret", TRELLO_CLIENT_ID: "test-trello-id" }
@@ -34,7 +34,7 @@ export async function serveSample({ case: who = "alex", ready = true, prefix = "
   delete env.VIRTUAL_ENV
   // in a process group of its own, ended whole: uv runs Python, which runs solver workers, and a signal to uv alone
   // can leave them serving
-  const child = spawn("uv", ["run", "--quiet", "fridayd", "--data-dir", folder, "demo", "--case", who, ...(ready ? ["--ready"] : []), "--port", String(port)], { cwd: REPO, env, stdio: ["ignore", "ignore", "pipe"], detached: true })
+  const child = spawn("uv", ["run", "--quiet", "fridayd", "--data-dir", folder, "demo", "--case", who, ...(ready ? ["--ready"] : []), "--port", String(port), ...(shiftMinutes ? ["--shift-minutes", String(shiftMinutes)] : [])], { cwd: REPO, env, stdio: ["ignore", "ignore", "pipe"], detached: true })
   const end = () => ended(child)
   process.on("exit", end) // however this ends, the sample's server ends with it
   let said = ""

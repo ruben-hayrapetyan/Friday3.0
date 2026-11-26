@@ -124,14 +124,42 @@ function tools(page, base, folder, answer = async () => {}) {
            } }
 }
 
+/** Minutes from now to `hour` o'clock of today in this process's zone (TZ). */
+function shiftToHour(hour) {
+  const now = new Date()
+  return Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0).getTime() - now.getTime()) / 60_000)
+}
+
+/** Node's clock, `minutes` on: what the tests read as now is the sample's now. */
+function shiftClock(minutes) {
+  const Real = Date
+  const ms = minutes * 60_000
+  globalThis.Date = class extends Real {
+    constructor(...given) {
+      if (given.length) super(...given)
+      else super(Real.now() + ms)
+    }
+    static now() {
+      return Real.now() + ms
+    }
+  }
+}
+
 async function main() {
   const files = readdirSync(HERE).filter((f) => f.endsWith(".e2e.mjs")).sort()
   const chosen = files.filter((f) => !only || only.includes(f.replace(".e2e.mjs", "")))
   const given = option("--url")
   // Each file on a sample of its own (24 Nov: run all together on one, what one file made, late work say, changed what
   // the next saw, and tests that passed alone failed); --url: all on that one Friday, as before.
+  // 26 Nov: at one hour of the day, 2pm unless FRIDAY_TEST_HOUR says, as the server and screen tests are. Run past
+  // midnight, Friday's day was still yesterday's until 4am and the tests' "yesterday" (day(-1), "3 days back") one day
+  // off: a nap logged yesterday was looked for the day after, meals days back weren't found, a token "last used today"
+  // read yesterday. The sample runs at that hour of today (--shift-minutes), Node's clock with it, and the page follows
+  // Friday's clock (hooks/useClock.ts). Alex lives in New York (sim/sample.py); --url: the Friday given, as it is.
+  const shift = given ? 0 : (process.env.TZ = process.env.TZ ?? "America/New_York", shiftToHour(Number(process.env.FRIDAY_TEST_HOUR ?? 14)))
+  if (shift) shiftClock(shift)
   const sampleFor = async () =>
-    given ? { base: given.replace(/\/$/, ""), folder: option("--folder"), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-" })
+    given ? { base: given.replace(/\/$/, ""), folder: option("--folder"), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-", shiftMinutes: shift })
   const { page, close, answer } = await openChrome()
   const failed = []
   let passed = 0
@@ -143,6 +171,12 @@ async function main() {
       sample?.stop()
       sample = await sampleFor()
       const t = tools(page, sample.base, sample.folder, answer)
+      // 25 Nov: the tests' own clock reads Friday's zone. They write Friday's local times from Node's Date ("20 minutes
+      // ago", day(-1), a Mac event's offset), and on a Mac an hour west of Alex's New York those were an hour off: a
+      // snack ate 80 minutes, a nap 65, a 6pm repeat read 7pm. Chrome keeps the Mac's zone: the page follows Friday's
+      // clock itself (hooks/useClock.ts), and should go on doing so wherever the browser is.
+      const zone = (await t.q("settings")).time?.timezone
+      if (zone) process.env.TZ = zone
       await t.planned()
       const tests = (await import(pathToFileURL(path.join(HERE, file)).href)).default
       for (const test of tests) {

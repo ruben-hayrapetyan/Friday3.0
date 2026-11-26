@@ -4,7 +4,9 @@
 
 import { cleanup, configure } from "@testing-library/react"
 import { afterAll, afterEach, beforeAll, inject, vi } from "vitest"
-import { copyOf, freePort, serve, stop } from "./server"
+import { copyOf, freePort, SCREEN_ZONE, serve, stop } from "./server"
+
+process.env.TZ = SCREEN_ZONE // 25 Nov: the page's clock reads Alex's zone, as the server's does (server.ts)
 
 // A real server answers, and replans after each change: waits get ten seconds, not testing-library's one (a save,
 // then the list read again, often took longer while other files ran too)

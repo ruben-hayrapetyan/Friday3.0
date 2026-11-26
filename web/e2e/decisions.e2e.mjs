@@ -24,14 +24,19 @@ let made = null
 export default [
   {
     name: "an errand locked where hard work has to go: the Inbox asks to keep the lock, and Keep it is kept",
-    async run({ open, click, has, until, q, c, planned, evaluate, expect }) {
-      const now = new Date()
-      now.setSeconds(0, 0)
-      const start = new Date(now.getTime() + (30 - (now.getMinutes() % 15)) * 60_000)
+    async run({ open, click, has, until, q, c, planned, evaluate, expect, day }) {
+      // Two free waking hours tomorrow, nothing fixed in them or half an hour either side: the lock there, and the
+      // work's only time is the lock's, so the lock alone makes it late (26 Nov: locked over the next two hours, at
+      // 2pm a class and after midnight sleep made the work late with or without it, and the lock wasn't asked about)
+      const fixed = (await q("plan", { start: `${day(1)}T00:00`, end: `${day(2)}T00:00` })).fixed
+      const free = (from) => fixed.every((f) => f.end <= local(new Date(from - 30 * 60_000)) || f.start >= local(new Date(from + 150 * 60_000)))
+      const at = [...Array(33).keys()].map((n) => new Date(`${day(1)}T10:00`).getTime() + n * 15 * 60_000).find(free)
+      expect(at !== undefined, `no two free hours tomorrow: ${JSON.stringify(fixed.map((f) => [f.title, f.start, f.end]))}`)
+      const start = new Date(at)
       const end = new Date(start.getTime() + 2 * 3_600_000)
-      const errand = (await c("add", { title: "E2E errand run", duration_min: 120, due: local(new Date(now.getTime() + 4 * 86_400_000)) })).result.item
+      const errand = (await c("add", { title: "E2E errand run", duration_min: 120, due: local(new Date(start.getTime() + 4 * 86_400_000)) })).result.item
       await c("pin", { id: errand.id, start: local(start), end: local(end), kind: "locked" })
-      const work = (await c("add", { title: "E2E problem set", duration_min: 120, firmness: "hard", due: local(end) })).result.item
+      const work = (await c("add", { title: "E2E problem set", duration_min: 120, firmness: "hard", release: local(start), due: local(end) })).result.item
       made = { errand: errand.id, work: work.id }
       await planned()
       await settle(async () => (await decisions(q)).some((d) => d.kind === "lock" && d.item_id === errand.id), "the lock asked about")

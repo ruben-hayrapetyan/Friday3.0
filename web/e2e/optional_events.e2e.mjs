@@ -9,11 +9,20 @@ const settle = async (check, what, ms = 15_000) => {
 }
 
 /** An event coming up on the page (not a class), opened in its drawer: its title. */
-const openEvent = async ({ open, q, evaluate, click, has }) => {
+const openEvent = async ({ open, q, until, evaluate, click, has }) => {
   await open("/")
   const events = (await q("plan")).fixed.filter((f) => f.status === "todo" && new Date(f.start) > new Date() && f.event_kind !== "shove")
   const event = events.find((f) => /rocketry/i.test(f.title)) ?? events.find((f) => f.calendar !== "Cornell Classes") ?? events[0]
   if (!event) throw new Error("no event coming up in the sample")
+  // 25 Nov: on the calendar's week that has it, Next pressed until it shows: the page opens on three days either side
+  // of today, and the sample's rocketry is weekly, so late on a Wednesday its next one was a week on, off the page
+  const shown = `!!document.querySelector('[data-block-key="F${event.id}"]')`
+  await until(`!!document.querySelector('[data-block-key^="F"]')`, 10_000, "events on the calendar")
+  for (let weeks = 0; !(await evaluate(shown)); weeks++) {
+    if (weeks === 2) throw new Error(`${event.title} (${event.start}) isn't on the calendar two weeks on`)
+    await click("Next")
+    await until(shown, 10_000).catch(() => null)
+  }
   await evaluate(`document.querySelector('[data-block-key="F${event.id}"]').click()`)
   await has(event.title, ".fr-block-card")
   await click("Edit")

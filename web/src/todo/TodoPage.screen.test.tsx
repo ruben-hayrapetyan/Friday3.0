@@ -274,7 +274,12 @@ describe("the To-do page", () => {
     expect(lengths).toEqual([...lengths].sort((a, b) => b - a))
     expect(new Set(lengths).size).toBeGreaterThan(1)
     await user.click(screen.getByRole("radio", { name: /Due date/ }))
-    expect(titlesIn("Assignments")[0]).not.toBe(byLength[0])
+    // 25 Nov: soonest due first, read against the server's dues; it said only "not the longest first", and at Alex's
+    // 2pm the assignment with the most left was also the one due soonest
+    const dueOf = new Map((await items()).filter((i) => i.status === "todo").map((i) => [i.title, i.due ?? "~"]))
+    const dues = titlesIn("Assignments").map((t) => dueOf.get(t) ?? "~")
+    expect(dues).toEqual([...dues].sort())
+    expect(new Set(dues).size).toBeGreaterThan(1)
   })
 
   it("draws two-line rows with progress when asked, which also tick off and open", async () => {

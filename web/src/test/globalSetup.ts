@@ -5,14 +5,18 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import type { TestProject } from "vitest/node"
-import { freePort, serve, shiftToThursday, stop } from "./server"
+import { freePort, SCREEN_ZONE, serve, shiftToThursday, stop } from "./server"
 
 export default async function setup(project: TestProject) {
+  process.env.TZ = SCREEN_ZONE // 25 Nov: Thursday's 2pm is Alex's, and every file's page runs in his zone (server.ts)
   const folder = mkdtempSync(path.join(tmpdir(), "friday-sample-"))
   const port = await freePort()
   const shiftMinutes = shiftToThursday() // one shift for the whole run: the server and every file's page agree
   const server = await serve(folder, port, 240, shiftMinutes)
   const base = `http://127.0.0.1:${port}`
+  type Settings = { time?: { timezone?: string } }
+  const zone = ((await (await fetch(`${base}/api/q/settings`)).json()) as Settings).time?.timezone
+  if (zone !== SCREEN_ZONE) throw new Error(`the sample's zone is ${zone}, the screen tests' ${SCREEN_ZONE}`)
   const terms = (await (await fetch(`${base}/api/q/terms`)).json()) as { version: string; needed: boolean }
   if (terms.needed) {
     const accepted = await fetch(`${base}/api/c/terms_accept`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ version: terms.version }) })

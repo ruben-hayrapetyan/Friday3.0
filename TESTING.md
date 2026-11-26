@@ -54,6 +54,17 @@ backfilled). `FRIDAY_TEST_HOUR=H` runs the server tests in a zone where it's H o
 `tests/system` at 23, 3, 4 (the day's start), 7 and 19 (on debian, it's heavy). A test that needs a time of day says so
 itself (`TZ = zone_for_hour(12)`), not by when it happens to run.
 
+The web tests write Friday's local times from their own clock, so that clock reads Friday's zone, not the machine's
+(25 Nov: on a Mac in Chicago a snack begun "20 minutes ago" ate 80): the screen tests run in Alex's zone
+(`SCREEN_ZONE`, web/src/test/server.ts), and the browser tests' Node in the sample's (web/e2e/run.mjs). Chrome keeps
+the machine's zone: the page follows Friday's clock itself.
+
+They run at one hour of Friday's day too: the screen tests at Alex's Thursday 2pm (`SCREEN_HOUR`), the browser tests at
+2pm of today, the sample's server shifted there and Node's clock with it (`FRIDAY_TEST_HOUR=H` for another hour; not
+with `--url`, which tests the Friday given as it is). Run past midnight, Friday's day is still yesterday's until 4am,
+and every "yesterday" and "3 days back" in the browser tests was a day off (26 Nov). A test that needs free time sets it
+up where the calendar has it (decisions.e2e.mjs finds two free hours tomorrow), not in the next hours, whatever they hold.
+
 ## What "in depth" means
 
 Line coverage only says a line ran. A mutation run changes the code on purpose, one small change at a time (a `<`

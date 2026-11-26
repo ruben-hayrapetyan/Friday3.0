@@ -250,18 +250,22 @@ describe("timing something", () => {
     const { client } = await openDock()
     await waitFor(() => expect(client.getQueryData(["meals"])).toBeTruthy())
     await waitFor(() => expect(client.isFetching()).toBe(0))
-    const d = new Date()
-    const two = (n: number) => String(n).padStart(2, "0")
-    const local = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`
+    // 25 Nov: the meal's start is now on Friday's clock, as the timers' are; it was this machine's clock, and on a Mac
+    // an hour west of Alex's zone the meal began an hour before the timers and came first
+    const local = (await calendar()).now
     client.setQueryData<Schemas["MealsOut"]>(["meals"], (m) => m && { ...m, on: true, next: null, eating: { id: 9, kind: "lunch", date: local.slice(0, 10), start: local, end: null, minutes: null, skipped: false, item_id: null, nth: 1 } })
-    const open = await inDock().findByRole("button", { name: `Open the Now bar: ${a.title}, ${b.title}, Lunch` }, { timeout: 20_000 })
-    expect([...open.querySelectorAll("[data-going]")].map((g) => g.getAttribute("data-going"))).toEqual(["timer", "timer", "meal"])
-    expect(within(open).getByText("Lunch")).toBeTruthy()
-    expect(within(open).queryByText(/^\+\d/)).toBeNull() // not "+1"
-    // Done and Pause act on the one started last
-    expect(inDock().getByRole("button", { name: `Pause the timer on ${b.title} (Space)` })).toBeTruthy()
-    await friday.c("stop", { id: a.item_id })
-    await friday.c("stop", { id: b.item_id })
+    try {
+      const open = await inDock().findByRole("button", { name: `Open the Now bar: ${a.title}, ${b.title}, Lunch` }, { timeout: 20_000 })
+      expect([...open.querySelectorAll("[data-going]")].map((g) => g.getAttribute("data-going"))).toEqual(["timer", "timer", "meal"])
+      expect(within(open).getByText("Lunch")).toBeTruthy()
+      expect(within(open).queryByText(/^\+\d/)).toBeNull() // not "+1"
+      // Done and Pause act on the one started last
+      expect(inDock().getByRole("button", { name: `Pause the timer on ${b.title} (Space)` })).toBeTruthy()
+    } finally {
+      // 25 Nov: stopped whatever happened above, so a failure here doesn't leave the next test timing these two
+      await friday.c("stop", { id: a.item_id })
+      await friday.c("stop", { id: b.item_id })
+    }
   })
 
   it("free in the minimal style: Start now's chips wait in the opened bar, the first a round Start on the pill", async () => {
