@@ -17,6 +17,7 @@ Exit 1 if any check failed. tests/test_random_worlds.py runs a few seeds in the 
 
 import argparse
 import json
+import os
 import random
 import sys
 import traceback
@@ -456,6 +457,9 @@ def compare(old: Path, new: Path) -> int:
 
 
 def main() -> int:
+    # 3 search chains unless said: the planner runs one a performance core, so the same seed planned differently on
+    # debian's 8 cores than on a Mac, and two runs compared on different machines differed for that alone (25 Nov)
+    os.environ.setdefault("FRIDAY_CHAINS", "3")
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", default="0-49")
     parser.add_argument("--changes", type=int, default=30)
