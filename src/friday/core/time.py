@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from functools import cache
 from typing import Literal
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import numpy as np
 
@@ -296,3 +296,22 @@ def _make_slot(index: int, start: int, end: int, day: int, day_date: date, spec:
         day_minute=local_minute + MINUTES_PER_DAY * (local.date() - day_date).days,
         week=week_of(day_date, spec.week_start),
     )
+
+
+def device_zone(localtime: str = "/etc/localtime") -> str | None:
+    """This machine's time zone, as macOS and Linux keep it: /etc/localtime, a link into the zoneinfo files
+    (".../zoneinfo/America/Chicago"); None when it isn't one."""
+    import os
+
+    try:
+        target = os.path.realpath(localtime)
+    except OSError:
+        return None
+    _, found, name = target.partition("zoneinfo/")
+    if not found or not name:
+        return None
+    try:
+        ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        return None
+    return name

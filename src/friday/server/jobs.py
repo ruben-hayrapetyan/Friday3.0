@@ -17,6 +17,7 @@ after downtime. `job_runs` remembers when each job last ran.
 """
 
 import logging
+import os
 import sqlite3
 import threading
 from collections.abc import Callable
@@ -38,7 +39,7 @@ from friday.commands.rules import find_clashes
 from friday.core.db import connect, one
 from friday.core.paths import config_path
 from friday.core.settings import minutes_of
-from friday.core.time import format_utc, local_midnight, parse_utc, to_local, to_utc
+from friday.core.time import device_zone, format_utc, local_midnight, parse_utc, to_local, to_utc
 from friday.integrations import sync as integrations
 from friday.planner.store import current_plan, kv_get, kv_set, load_settings
 from friday.server.config import apply_config
@@ -95,6 +96,7 @@ def run_due(
         return []
     ran = []
     jobs = (
+        ("zone", every_minute, follow_zone),  # first: everything after it reads the day in Friday's zone
         ("nightly", nightly_due, nightly),
         ("tick", tick_due, tick),
         ("questions", questions_due, questions),
@@ -158,6 +160,38 @@ def nightly_due(last: int | None, now_utc: int, settings: dict[str, Any]) -> boo
 def tick_due(last: int | None, now_utc: int, settings: dict[str, Any]) -> bool:
     # at most once a minute: 0 or less replanned at every pass of the loop
     return last is None or now_utc - last >= max(1, settings["jobs"].tick_replan_min)
+
+
+def follow_zone(
+    conn: sqlite3.Connection,
+    now_utc: int,
+    settings: dict[str, Any],
+    hub: Hub,
+    supervisor: Supervisor | None,
+    backups: Path,
+    user_id: int,
+) -> None:
+    """Friday's time zone follows this Mac's (25 Nov, the user: "friday doesn't change timezones automatically": the Mac
+    was on Chicago time and Friday still on New York's). When the Mac's zone changes, or first differs from Friday's,
+    Friday's changes to it, as a change of yours would (whole-day events keep their dates, a class its real moment) and
+    in the change list; a zone you set by hand stands until the Mac's changes again. In the Mac app only: tests and
+    demos keep the zone they were given."""
+    if not os.environ.get("FRIDAY_APP_VERSION"):
+        return
+    zone = device_zone()
+    if zone is None:
+        return
+    seen = kv_get(conn, "device_zone", None, user_id)
+    if zone != seen:
+        kv_set(conn, "device_zone", zone, user_id)
+    if zone == seen or zone == settings["time"].timezone:
+        return
+    value = settings["time"].model_dump() | {"timezone": zone}
+    run(conn, "settings_set", {"key": "time", "value": value}, now_utc=now_utc, actor="job", user_id=user_id,
+        provisional=False)  # fmt: skip
+    hub.publish("items.changed")
+    if supervisor is not None:
+        supervisor.request(0, reason="time zone")
 
 
 def nightly(

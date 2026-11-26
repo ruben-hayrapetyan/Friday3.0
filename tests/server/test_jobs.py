@@ -49,6 +49,7 @@ def test_nightly_closes_yesterday_backs_up_and_asks_for_a_cold_replan(app: App, 
     app.at("2026-10-20T04:00")
     worker = Worker()
     assert run_jobs(app, worker, tmp_path) == [
+        "zone",
         "nightly",
         "tick",
         "questions",
@@ -95,6 +96,7 @@ def test_tick_replans_when_a_block_boundary_passed_and_not_for_a_timer(app: App,
     assert (
         run_jobs(app, worker, tmp_path)
         == [
+            "zone",
             "tick",
             "questions",
             "clashes",
@@ -218,3 +220,68 @@ def test_the_loop_wakes_when_a_read_is_asked_for_and_still_stops_at_once(tmp_pat
     began = time.monotonic()
     loop.rest()
     assert time.monotonic() - began < 0.2, "waited to let a command commit while stopping"
+
+
+# 25 Nov, the user: "currently friday doesn't change timezones automatically": the Mac was on Chicago time
+# (/etc/localtime changed that afternoon) and Friday still on New York's, so every time it showed was an hour off.
+def in_the_app(monkeypatch: pytest.MonkeyPatch, zone: str | None) -> None:
+    monkeypatch.setenv("FRIDAY_APP_VERSION", "0.6.8")
+    monkeypatch.setattr(jobs, "device_zone", lambda: zone)
+
+
+def zone(app: App) -> str:
+    return load_settings(app.conn)["time"].timezone
+
+
+def test_friday_follows_the_macs_time_zone_when_it_changes(
+    app: App, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    worker = Worker()
+    in_the_app(monkeypatch, "America/New_York")
+    run_jobs(app, worker, tmp_path)
+    assert zone(app) == "America/New_York"
+    in_the_app(monkeypatch, "America/Chicago")  # landed in Chicago
+    app.now_utc += 2
+    run_jobs(app, worker, tmp_path)
+    assert zone(app) == "America/Chicago"
+    assert {"warm": True, "reason": "time zone"} in worker.requests
+    said = app.conn.execute("SELECT actor, command FROM command_log ORDER BY id DESC LIMIT 1").fetchone()
+    assert (said["actor"], said["command"]) == ("job", "settings_set")  # in the change list, Friday's doing
+
+
+def test_a_zone_you_set_by_hand_stands_until_the_mac_moves_again(
+    app: App, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    worker = Worker()
+    in_the_app(monkeypatch, "America/Chicago")
+    run_jobs(app, worker, tmp_path)
+    assert zone(app) == "America/Chicago"  # differed at the first look: followed
+    app.do("settings_set", key="time", value=load_settings(app.conn)["time"].model_dump() | {"timezone": "Asia/Tokyo"})
+    app.now_utc += 2
+    run_jobs(app, worker, tmp_path)
+    assert zone(app) == "Asia/Tokyo"  # yours, while the Mac stays where it is
+    in_the_app(monkeypatch, "Europe/London")
+    app.now_utc += 2
+    run_jobs(app, worker, tmp_path)
+    assert zone(app) == "Europe/London"
+
+
+def test_outside_the_mac_app_the_zone_is_left_alone(app: App, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("FRIDAY_APP_VERSION", raising=False)
+    monkeypatch.setattr(jobs, "device_zone", lambda: "Asia/Tokyo")
+    run_jobs(app, Worker(), tmp_path)
+    assert zone(app) == "America/New_York"
+
+
+def test_the_device_zone_is_read_from_its_zoneinfo_link(tmp_path: Path) -> None:
+    from friday.core.time import device_zone
+
+    zones = tmp_path / "var" / "db" / "timezone" / "zoneinfo" / "America"
+    zones.mkdir(parents=True)
+    (zones / "Chicago").write_text("")
+    link = tmp_path / "localtime"
+    link.symlink_to(zones / "Chicago")
+    assert device_zone(str(link)) == "America/Chicago"
+    plain = tmp_path / "plain"
+    plain.write_text("")
+    assert device_zone(str(plain)) is None
