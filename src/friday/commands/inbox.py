@@ -7,6 +7,7 @@ import hashlib
 import json
 from datetime import datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from friday.api.commands import (
     AddInput,
@@ -34,7 +35,7 @@ from friday.core.html_text import html_text, looks_like_html
 from friday.core.items import FieldError
 from friday.core.recurrence import describe
 from friday.core.textnorm import course_tag
-from friday.core.time import format_utc
+from friday.core.time import clock_time, format_utc
 from friday.ingest import extract, llm
 from friday.integrations.links import LINKS
 from friday.planner.store import area_names, kv_get
@@ -453,10 +454,58 @@ def record_spend(conn: Any, user_id: int, day: str, tokens: int) -> None:
     )
 
 
-def source_text(s: dict[str, Any]) -> str | None:
-    if s["content"] is None or s["kind"] in ("ics", "gcal") or not str(s["media_type"]).startswith("text/"):
-        return None  # a calendar event's text is its raw lines; the quotes say enough
+CALENDARS = ("ics", "gcal", "mac")
+
+
+def source_text(s: dict[str, Any], tz: str | None = None) -> str | None:
+    """What a suggestion was read from, as you'd read it: a calendar event in words (25 Nov, the user: "the evidence is
+    just a raw json": an event from the Mac's calendars showed its data as stored), else the text itself."""
+    if s["content"] is None:
+        return None
+    if s["kind"] in CALENDARS:
+        return event_words(s["content"], tz)  # an .ics event's raw lines: none, as before; the quotes say enough
+    if not str(s["media_type"]).startswith("text/"):
+        return None
     return s["content"][:20_000]
+
+
+def event_words(content: str, tz: str | None) -> str | None:
+    """A calendar event as stored (Google's shape: summary, start and end, location, description) in words: its title
+    as written (so what Friday quoted from it is highlighted), its day and time on your clock, and where."""
+    try:
+        event = json.loads(content)
+    except ValueError:
+        return None
+    if not isinstance(event, dict):
+        return None
+    lines = [str(event.get("summary") or event.get("title") or "").strip()]
+    start, end = event.get("start") or {}, event.get("end") or {}
+    if start.get("dateTime"):
+        a, b = (
+            datetime.fromisoformat(start["dateTime"]),
+            datetime.fromisoformat(end.get("dateTime") or start["dateTime"]),
+        )
+        if tz:
+            a, b = a.astimezone(ZoneInfo(tz)), b.astimezone(ZoneInfo(tz))
+        day = f"{a:%a} {a.day} {a:%b}"
+        lines.append(f"{day}, {clock_time(a)}–{clock_time(b)}" if a.date() == b.date() else
+                     f"{day}, {clock_time(a)} – {b:%a} {b.day} {b:%b}, {clock_time(b)}")  # fmt: skip
+    elif start.get("date"):
+        a = datetime.fromisoformat(start["date"])
+        last = (
+            datetime.fromisoformat(end["date"]) - timedelta(days=1) if end.get("date") else a
+        )  # Google's end: the day after
+        lines.append(
+            f"{a:%a} {a.day} {a:%b}, all day"
+            if last <= a
+            else f"{a:%a} {a.day} {a:%b} – {last:%a} {last.day} {last:%b}"
+        )
+    if event.get("location"):
+        lines.append(str(event["location"]))
+    if event.get("description"):
+        lines.append(str(event["description"])[:2_000])
+    text = "\n".join(line for line in lines if line)
+    return text or None
 
 
 def repeat_words(every: str | None) -> str | None:
@@ -535,7 +584,7 @@ def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
             created=ctx.local(s["created_utc"]) or "",
             repeat=repeat_words(json.loads(s["input"]).get("every")),
             source_kind=s["kind"] or "",
-            source_text=source_text(s),
+            source_text=source_text(s, ctx.tz),
             guess_min=guessed_minutes(ctx, json.loads(s["input"])) if s["command"] == "add" else None,
         )
         for s in found
