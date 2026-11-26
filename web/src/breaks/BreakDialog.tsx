@@ -6,7 +6,7 @@
 import { type QueryClient, useQuery } from "@tanstack/react-query"
 import { type ReactNode, useState } from "react"
 import { query, type Schemas } from "@/api/client"
-import { Icon, Switch } from "@/components/fr/controls"
+import { Icon, Menu, Switch } from "@/components/fr/controls"
 import { Modal } from "@/dialogs/Dialogs"
 import { useItems, useSettings } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
@@ -14,7 +14,7 @@ import type { BreakEdit } from "@/shell/ShellContext"
 import { useShell } from "@/shell/ShellContext"
 import { LengthField } from "@/todo/Pickers"
 import { PauseChooser, useBreakChoices } from "./PauseChooser"
-import { BREAK_ICON, daysIn, EVERYTHING, full, modeWords, nextDay, type Pause, pauseWords, rangeWords, things, type Vacation, WORK_AMOUNTS } from "./words"
+import { BREAK_ICON, daysIn, EVERYTHING, full, nextDay, type Pause, pauseWords, rangeWords, things, type Vacation, WORK_AMOUNTS } from "./words"
 
 /** Your defaults for a break (Settings → Breaks; core/settings.py `BreakSettings`). */
 export type Defaults = { work_min: number; pause: Pause; plan_meals: boolean; plan_repeating?: boolean; keep_sleep: boolean }
@@ -111,21 +111,19 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
           </Panel>
         )}
         <span className="fr-kicker">Work</span>
-        <Value onClick={() => toggle("mode")} icon="sun-horizon">
-          {modeWords(v.mode, v.work_min)}
-        </Value>
-        {open === "mode" && (
-          <Panel>
-            <Choices
-              options={[
-                { value: "light", label: "Light", note: "A few things to get done each day, whenever suits: a list, no set times." },
-                { value: "off", label: "Off", note: "Nothing to do. Work due during the break is planned before it starts." },
-              ]}
-              value={v.mode}
-              onPick={(mode) => (set({ mode: mode as Vacation["mode"] }), setOpen(null))}
-            />
-          </Panel>
-        )}
+        {/* Friday's own menu, as every dropdown (25 Nov, the user: "the dropdown for take a break ... is huge": two
+            choices opened a panel the width of the dialog) */}
+        <div style={{ justifySelf: "start" }}>
+          <Menu
+            label="Work during the break"
+            value={v.mode}
+            onPick={(mode) => set({ mode: mode as Vacation["mode"] })}
+            options={[
+              { value: "light", label: "Light", hint: "A few things to get done each day, whenever suits: a list, no set times." },
+              { value: "off", label: "Off", hint: "Nothing to do. Work due during the break is planned before it starts." },
+            ]}
+          />
+        </div>
         {v.mode === "light" && (
           <>
             <span className="fr-kicker">A day</span>
@@ -199,9 +197,12 @@ export function Value({ onClick, icon, children }: { onClick: () => void; icon: 
   )
 }
 
+/** What a value opens: under it, as wide as what's in it, and never taller than a third of the window (25 Nov, the
+ * user: "the dropdown for take a break when i select it is huge": it spanned the dialog for two dates or two choices,
+ * and Pauses' list pushed Add break off the screen); a long one scrolls inside. */
 export function Panel({ children }: { children: ReactNode }) {
   return (
-    <div className="fr-well" style={{ gridColumn: "1 / -1", padding: 12 }}>
+    <div className="fr-well" data-panel="break-value" style={{ gridColumn: "2 / -1", justifySelf: "start", width: "fit-content", maxWidth: "min(100%, 440px)", maxHeight: "max(220px, 34vh)", overflowY: "auto", padding: 12 }}>
       {children}
     </div>
   )
@@ -213,22 +214,6 @@ export function PauseValue({ pause, onClick }: { pause: Pause; onClick: () => vo
     <Value onClick={onClick} icon="pause-circle">
       {pauseWords(pause, choices)}
     </Value>
-  )
-}
-
-function Choices<T extends string>({ options, value, onPick }: { options: { value: T; label: string; note: string }[]; value: T; onPick: (v: T) => void }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      {options.map((o) => (
-        <button key={o.value} className="fr-plain fr-hover" aria-pressed={o.value === value} onClick={() => onPick(o.value)} style={{ display: "grid", gridTemplateColumns: "16px minmax(0,1fr)", gap: 8, padding: "6px 6px", borderRadius: "var(--radius-sm)", textAlign: "left", cursor: "pointer" }}>
-          <Icon name={o.value === value ? "radio-button" : "circle"} fill={o.value === value} size={14} style={{ color: o.value === value ? "var(--color-accent)" : "var(--color-neutral-500)", marginTop: 1 }} />
-          <span style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontWeight: 500 }}>{o.label}</span>
-            <span style={{ fontSize: 12, color: "var(--color-neutral-400)", textWrap: "pretty" }}>{o.note}</span>
-          </span>
-        </button>
-      ))}
-    </div>
   )
 }
 

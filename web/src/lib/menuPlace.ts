@@ -1,8 +1,8 @@
 // A dropdown's list is drawn over the page, measured from its button, so no column or card that clips its content can
 // cut it off (15 Nov, the user: "under the projects page, the dropdown to select a tag gets cut off": an exam card
 // clips its corners and the list fell past its foot; a project's column clips sideways and the list ran past its left
-// edge). Below the button, or above it when there's no room below; its right edge at the button's, slid to stay on the
-// screen. The list stays where it is in the page, so a click on it is still a click inside its menu, its dialog or its
+// edge). Below the button, or above it when there's no room below; toward the side of the window with more room, slid to
+// stay on the screen. The list stays where it is in the page, so a click on it is still a click inside its menu, its dialog or its
 // panel. Kept in place as the page scrolls or the window resizes.
 
 import { type RefObject, useLayoutEffect } from "react"
@@ -23,7 +23,10 @@ export function placeList(button: { top: number; bottom: number; left: number; r
   // above the button, it sits as tall as it's drawn: its full height had put a long list's foot far above the button
   const tall = Math.min(height, room)
   const top = down ? button.bottom + GAP : button.top - GAP - tall
-  const left = button.right - width
+  // toward the side with more room: a button in the window's right half has the list's right edge at its own, one in
+  // the left half its left edge (25 Nov, the user: the break dialog's Work menu, near the dialog's left, opened
+  // leftward out of the dialog and over the sidebar)
+  const left = (button.left + button.right) / 2 > w / 2 ? button.right - width : button.left
   return { top, left: left + slideInto(left, left + width, w, MARGIN), maxHeight: room }
 }
 

@@ -68,13 +68,22 @@ export function Rows({ children }: { children: ReactNode }) {
 }
 
 /** One setting: its name, its value in words on a button, and, opened, its choices under it across the row. */
+/** A setting's row: its value as a button whose choices float beside it, as Friday's menus do: at most 440px wide,
+ * scrolling past 280px, over the page, closed by Escape or a click elsewhere (25 Nov, the user: "the dropdown ... is
+ * huge": the choices opened a panel the width of the popup, an exam's Before this exam ran off its foot). */
 export function SettingRow(props: { label: string; value: ReactNode; open: boolean; onToggle: () => void; note?: ReactNode; children: ReactNode }) {
   const { label, value, open, onToggle, note, children } = props
+  const box = useRef<HTMLSpanElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
+  const list = useRef<HTMLDivElement>(null)
+  useMenuPlace(open, button, list)
+  const escape = useMenuClose(open, (next) => next !== open && onToggle(), box, button)
   return (
     <>
       <span className="fr-kicker">{label}</span>
-      <span style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+      <span ref={box} onKeyDown={escape} style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
         <button
+          ref={button}
           className="fr-plain fr-well tnum"
           onClick={onToggle}
           aria-expanded={open}
@@ -85,12 +94,12 @@ export function SettingRow(props: { label: string; value: ReactNode; open: boole
           <Icon name="caret-down" size={10} style={{ opacity: 0.6, flex: "none" }} />
         </button>
         {note && <span className="fr-kicker" style={{ textWrap: "pretty" }}>{note}</span>}
+        {open && (
+          <div ref={list} className="fr-float fr-well" role="group" aria-label={label} style={{ padding: 10, width: "max-content", maxWidth: 440, zIndex: 50 }}>
+            {children}
+          </div>
+        )}
       </span>
-      {open && (
-        <div className="fr-well" role="group" aria-label={label} style={{ gridColumn: "1 / -1", padding: 10 }}>
-          {children}
-        </div>
-      )}
     </>
   )
 }

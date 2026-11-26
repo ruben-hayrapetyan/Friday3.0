@@ -229,3 +229,60 @@ export async function until(page, expression) {
     await wait(250)
   }
 }
+
+/** Before a click, what's on the page: LAYOUT then knows what the click opened, whatever it's made of. */
+export const SEEN = `(window.__seen = new WeakSet(document.querySelectorAll("body *")), window.__chooser = false,
+  document.addEventListener("click", (e) => {
+    // read as it's pressed, before the page changes: a value's caret points down; a "show more" toggle's points right
+    // until it's open, and what it shows is a section, not a dropdown
+    const button = e.target.closest?.("button, [role=button]")
+    window.__chooser = !!button && (button.matches("[aria-haspopup]") || !!button.querySelector(".ph-caret-down"))
+  }, { capture: true, once: true }), true)`
+
+/** What's wrong with how the page's open parts sit, as words (none: []). Run after every click in web/e2e (25 Nov,
+ * the user: "the dropdown for take a break when i select it is huge ... see why the web test that clicks every button
+ * and tries every feature on a real ui didn't catch this": the tests checked what happened, never how it looked).
+ * A dropdown: every menu's list, and what a button offering choices (a caret, or aria-haspopup)
+ * opened inside a dialog already open, whatever it's made of (new since SEEN). 1. At most 440px wide; never off the
+ * window unless it scrolls. 2. Within its dialog's sides. 3. A dialog fits the window, or scrolls, so its buttons can
+ * be reached. */
+export const LAYOUT = `(() => {
+  const out = [], vh = innerHeight, seen = window.__seen
+  const name = (el) => (el.getAttribute("aria-label") || el.innerText || el.className || "").trim().split("\\n")[0].slice(0, 40)
+  // a box: its own background or a border all round (a row's divider line under it isn't one)
+  const boxed = (el) => {
+    const c = getComputedStyle(el)
+    const all = ["Top", "Right", "Bottom", "Left"].every((side) => parseFloat(c["border" + side + "Width"]) > 0)
+    return c.backgroundColor !== "rgba(0, 0, 0, 0)" || all
+  }
+  // what offers choices: a button with a caret (a value you change), or one that says it opens a menu; a section
+  // shown, a row added or a question asked isn't a dropdown
+  const chooser = window.__chooser
+  const opened = [...document.querySelectorAll("[role=listbox], [role=menu]")]
+  if (seen && chooser) for (const el of document.querySelectorAll("[role=dialog] *")) {
+    // new since the click, a box, in a dialog that was open before it (a dialog the click opened is a dialog)
+    if (seen.has(el) || !el.children.length || !boxed(el) || !seen.has(el.closest("[role=dialog]"))) continue
+    if (el.matches("button, input, textarea, [role=option], [role=dialog]")) continue
+    opened.push(el)
+  }
+  for (const el of opened) {
+    const r = el.getBoundingClientRect()
+    if (!r.width || !r.height) continue
+    const scrolls = el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY)
+    if (r.width > 440) out.push("a dropdown " + Math.round(r.width) + "px wide (at most 440): " + name(el))
+    if ((r.bottom > vh + 1 || r.top < -1) && !scrolls) out.push("a dropdown running off the window that doesn't scroll: " + name(el))
+    const dialog = el.closest("[role=dialog]")
+    if (dialog) {
+      const d = dialog.getBoundingClientRect()
+      if (r.left < d.left - 1 || r.right > d.right + 1) out.push("a dropdown out of its dialog's sides: " + name(el))
+    }
+  }
+  for (const dialog of document.querySelectorAll("[role=dialog]")) {
+    const d = dialog.getBoundingClientRect()
+    if (!d.height) continue
+    let scroller = dialog
+    while (scroller && !(scroller.scrollHeight > scroller.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(scroller).overflowY))) scroller = scroller.parentElement
+    if (d.bottom > vh + 1 && !scroller) out.push("a dialog runs " + Math.round(d.bottom - vh) + "px past the window's foot with no scroll: " + name(dialog))
+  }
+  return [...new Set(out)]
+})()`

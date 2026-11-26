@@ -6,8 +6,12 @@ import { placeList } from "./menuPlace"
 const button = (top: number, left: number) => ({ top, bottom: top + 28, left, right: left + 120 })
 
 describe("where a dropdown's list goes", () => {
-  it("opens below its button, its right edge at the button's", () => {
-    expect(placeList(button(100, 400), 200, 150, 1440, 900)).toEqual({ top: 132, left: 320, maxHeight: 280 })
+  it("opens below its button, its right edge at the button's in the window's right half", () => {
+    expect(placeList(button(100, 1000), 200, 150, 1440, 900)).toEqual({ top: 132, left: 920, maxHeight: 280 })
+  })
+  // 25 Nov, the user: the break dialog's Work menu, near the dialog's left, opened leftward over the sidebar
+  it("in the window's left half its left edge is the button's", () => {
+    expect(placeList(button(100, 400), 200, 150, 1440, 900)).toEqual({ top: 132, left: 400, maxHeight: 280 })
   })
   it("opens above when there's no room below", () => {
     const spot = placeList(button(820, 400), 200, 150, 1440, 900)
@@ -15,7 +19,8 @@ describe("where a dropdown's list goes", () => {
     expect(spot.top + 150).toBeLessThanOrEqual(820)
   })
   it("slides right rather than run off the left edge (a tag at the far left of a project's page)", () => {
-    expect(placeList(button(100, 20), 200, 150, 390, 844).left).toBe(12)
+    expect(placeList(button(100, 20), 200, 150, 390, 844).left).toBe(20) // at its button, on the screen
+    expect(placeList(button(100, 300), 200, 150, 390, 844).left).toBe(390 - 12 - 200) // right half, past the edge: slid back on
   })
   it("a long list scrolls in the room there is, rather than running off the bottom", () => {
     const spot = placeList(button(400, 400), 200, 2000, 1440, 900)

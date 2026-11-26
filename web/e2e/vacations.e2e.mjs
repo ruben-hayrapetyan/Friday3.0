@@ -36,7 +36,7 @@ export default [
       expect(await setDate(evaluate, "First day", first), "no First day field")
       expect(await setDate(evaluate, "Last day", last), "no Last day field")
       await has("2 days")
-      await evaluate(`[...document.querySelectorAll("[role=dialog] button.fr-well")][1]?.click()`) // the Work row
+      await click("Work during the break") // Friday's own menu (25 Nov: it opened a panel the dialog's width)
       await click("Off")
       await click("Add break")
       await settle(async () => !!(await named(q, "E2E trip")), "the break on the server")

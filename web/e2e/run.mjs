@@ -18,7 +18,7 @@
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { CLICK, SETTLE, evaluate, go, openChrome, press, serveSample, wait } from "../scripts/browser.mjs"
+import { CLICK, LAYOUT, SEEN, SETTLE, evaluate, go, openChrome, press, serveSample, wait } from "../scripts/browser.mjs"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const args = process.argv.slice(2)
@@ -76,8 +76,17 @@ function tools(page, base, folder, answer = async () => {}) {
   /** Presses the button named `name` (its words or aria-label), the first showing, inside `within` if given: a row's
    * circle and the detail panel's button can share a name ("Mark done"). */
   const click = async (name, { within = null } = {}) => {
+    await evaluate(page, SEEN).catch(() => {})
     await until(CLICK(name, within), 10_000, `a button "${name}"${within ? ` in ${within}` : ""}`)
     await evaluate(page, SETTLE).catch(() => {}) // a button that reloads the page leaves nothing to settle
+    await laidOut(`after pressing "${name}"`)
+  }
+  /** What opened sits right: sized, inside its dialog, reachable (browser.mjs LAYOUT; 25 Nov, the user: the tests
+   * pressed every button and never saw a dropdown the width of its dialog). After every click, and `evaluate`. */
+  const laidOut = async (when) => {
+    // a page that's gone (a button that reloads) has nothing to check; the check itself failing is a failure
+    const wrong = await evaluate(page, LAYOUT).catch((e) => (/SyntaxError|ReferenceError|TypeError/.test(String(e)) ? [`the layout check broke: ${e}`] : []))
+    if (wrong?.length) throw new Failed(`${when}: ${wrong.join("; ")}`)
   }
   /** Types into the field labeled `label` (its aria-label, placeholder or label text), as keys, then Enter if asked. */
   const type = async (label, words, { enter = false } = {}) => {
@@ -106,7 +115,13 @@ function tools(page, base, folder, answer = async () => {}) {
   }
   const done = async () => answering && (await answered(null))
   return { page, base, folder, open, click, type, text, has, gone, until, q, c, request, planned, day, expect, wait,
-           answer: answered, stub: answered, done, press: (k) => press(page, k), evaluate: (expression) => evaluate(page, expression) }
+           answer: answered, stub: answered, done, press: (k) => press(page, k), laidOut,
+           evaluate: async (expression) => {
+             if (/\.click\(\)/.test(expression)) await evaluate(page, SEEN).catch(() => {})
+             const out = await evaluate(page, expression)
+             if (/\.click\(\)/.test(expression)) await evaluate(page, SETTLE).then(() => laidOut("after a click")).catch((e) => { if (e instanceof Failed) throw e })
+             return out
+           } }
 }
 
 async function main() {
