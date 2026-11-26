@@ -425,8 +425,21 @@ def window(item: Item, inp: BuildInput, by_id: Mapping[int, Item], fixed: Mappin
         if dep.depends_on_id == item.id and dep.item_id in fixed:  # `before:` an event
             event_start = parse_utc(fixed[dep.item_id].start_utc)  # type: ignore[arg-type]
             due = min(due, event_start - dep.lag_min) if due is not None else event_start - dep.lag_min
+        # A to-do locked in place is fixed in time as an event is (26 Nov, the random worlds: a to-do locked at 7pm
+        # was made to wait for a 4-hour one, which Friday planned a week later, after it, saying nothing): what it
+        # waits on is due by its lock, and when there's no room for that the plan says so (assemble.py lock_waits).
+        # What waits on a locked one, the engine already starts after it, as after any work it waits on.
+        if dep.depends_on_id == item.id and (spans := locked_spans(inp, dep.item_id, now)):
+            by = spans[0][0] - dep.lag_min
+            due = min(due, by) if due is not None else by
     due = exam_due(item, due, fixed, now)
     return focused_release(item, release, due, exams, inp.settings, now), due
+
+
+def locked_spans(inp: BuildInput, item_id: int, now: int) -> list[tuple[int, int]]:
+    """An item's locks still ahead, in order of start: its times fixed by you."""
+    mine = (p for p in inp.pins if p.item_id == item_id and p.kind == "locked" and p.end_utc > now)
+    return sorted((p.start_utc, p.end_utc) for p in mine)
 
 
 def firmness_of(item: Item, by_id: Mapping[int, Item]) -> Firmness:

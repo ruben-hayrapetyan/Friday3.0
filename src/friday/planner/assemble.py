@@ -132,6 +132,7 @@ def assembled(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
         + given_way(problem, blocks, snapshot.settings["time"].timezone, snapshot.now_utc)
         + missing_rule_types(snapshot)
         + loop_notices(problem, held.loops)
+        + lock_waits(problem, result.plan)
         + closer_notices(snapshot, blocks, kept_closer),
         "spacing_closer": {c.item_id: asdict(c) for c in kept_closer},
         "changes": changes(snapshot, problem, blocks),
@@ -208,6 +209,31 @@ def notices(problem: Problem, demoted: list[str]) -> list[str]:
         if k in problem.items
     ]
     return over + [f"A lock on {problem.items[k].title} couldn't be kept and became a preferred pin" for k in demoted]
+
+
+def lock_waits(problem: Problem, plan: Plan) -> list[str]:
+    """A to-do you locked in place before what it waits on can be done (26 Nov, the random worlds: one locked at 7pm
+    was made to wait for a 4-hour one, the day had two hours free before 7pm, and Friday planned the 4 hours a week
+    later and said nothing). Friday keeps your lock, and plans what it waits on to be done by then when there's room
+    (planner/build.py window); when there isn't, it says so."""
+    grid, tz, out = problem.grid, problem.grid.spec.timezone, []
+    for item in problem.items.values():
+        if not item.locked or not item.depends_on:
+            continue
+        first = min(int(grid.start[s]) for s in item.locked)
+        for dep in item.depends_on:
+            other = problem.items.get(dep.key)
+            need = dep.required
+            if other is None or need <= 0:
+                continue
+            slots = sorted(plan.get(dep.key, ()), key=lambda s: int(grid.start[s]))
+            done_at = int(grid.end[slots[need - 1]]) if len(slots) >= need else None
+            if done_at is not None and done_at + dep.lag_min <= first:
+                continue
+            at = to_local(first, tz)
+            out.append(f"Your lock on {item.title} ({at:%a} {clock_time(at)}) comes before {other.title} is done, "
+                       f"and it waits on {other.title}: move the lock, or let it stop waiting")  # fmt: skip
+    return out
 
 
 def clashes(problem: Problem, tz: str) -> list[str]:

@@ -201,7 +201,7 @@ def plan_issues(world: World, status: str, coarse_from: int | None = None) -> li
     their time, blocks over each other or before now, more planned than is left, a due passed without saying so,
     work before its release or before what it waits on, a locked pin not kept."""
     conn, now = world.conn, world.now
-    plan = rows(conn, "SELECT id FROM plans WHERE user_id = 1 ORDER BY id DESC LIMIT 1")
+    plan = rows(conn, "SELECT id, report FROM plans WHERE user_id = 1 ORDER BY id DESC LIMIT 1")
     if not plan:
         return []
     cut = -(-now // 15) * 15
@@ -276,6 +276,10 @@ def plan_issues(world: World, status: str, coarse_from: int | None = None) -> li
     for dep in rows(conn, "SELECT item_id, depends_on_id, lag_min FROM dependencies"):
         mine, theirs = by_item.get(dep["item_id"]), by_item.get(dep["depends_on_id"])
         if mine and theirs and min(s for s, _ in mine) < max(e for _, e in theirs) + (dep["lag_min"] or 0):
+            # your lock stands, and Friday says it comes first (planner/assemble.py lock_waits)
+            said = f"Your lock on {items[dep['item_id']]['title']} ("
+            if any(n.startswith(said) for n in json.loads(plan[0]["report"] or "{}").get("notices", [])):
+                continue
             out.append(f"T{dep['item_id']} starts before T{dep['depends_on_id']} it waits on is done")
     # Locked pins kept (plans before 27 Oct could wait on a lock they couldn't keep).
     if status != "waiting":
