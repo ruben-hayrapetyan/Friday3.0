@@ -21,7 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from friday.core.db import rows
+from friday.core.db import one, rows
 from friday.core.sameness import Reading, numbered, read_title, same_reading
 from friday.core.time import format_utc, parse_local, parse_utc, to_utc
 from friday.planner.store import kv_get
@@ -152,6 +152,34 @@ def duplicate_of(
     return best
 
 
+TIMES = {"due": "due_utc", "release": "release_utc", "start": "start_utc", "end": "end_utc"}
+
+
+def real_changes(conn: sqlite3.Connection, item_id: int, fields: dict[str, Any], settings: dict) -> dict[str, Any]:
+    """What a source's new reading changes in the item it made: its fields less those that say what the item has
+    already (25 Nov, the user's Inbox: "Psych 1130 Final Portfolio", due Dec 16 at midnight, offered as a change to
+    "PSYCH 1130 Final Portfolio" due Dec 15 at 11:59pm: the same title in other capitals and the same deadline a minute
+    later; it looked like a duplicate). A title the same but for capitals, a time within a minute, an equal kind or
+    length are no change."""
+    item = one(conn, "SELECT * FROM items WHERE id = ?", [item_id])
+    if item is None:
+        return fields
+    tz = settings["time"].timezone
+    out = {}
+    for key, value in fields.items():
+        if key == "title" and str(value).strip().casefold() == str(item["title"] or "").strip().casefold():
+            continue
+        stored = item[TIMES[key]] if key in TIMES else None
+        if stored and value and tz and abs(to_utc(parse_local(str(value)), tz) - parse_utc(stored)) <= 1:
+            continue
+        if key in item and value == item[key]:
+            continue
+        if key == "duration_min" and item["duration_units"] and value == item["duration_units"] * 15:
+            continue
+        out[key] = value
+    return out
+
+
 Write = Callable[[int, dict[str, Any]], None]
 
 
@@ -202,6 +230,12 @@ def set_aside_waiting(conn: sqlite3.Connection, settings: dict, user_id: int, no
             gone += 1
             continue
         seen.append((s["id"], mine))
+    edits = "SELECT id, input FROM suggestions WHERE user_id = ? AND status = 'pending' AND command = 'edit'"
+    for s in rows(conn, edits, [user_id]):
+        fields = json.loads(s["input"] or "{}")
+        if s["id"] not in kept and fields.get("id") and not real_changes(conn, int(fields["id"]), fields, settings):
+            write(s["id"], {"status": "superseded", "duplicate_of": int(fields["id"])})  # says what you have
+            gone += 1
     if twins != (kv_get(conn, "set_aside_twins", {}, user_id) or {}):
         conn.execute(
             "INSERT INTO kv (user_id, key, value) VALUES (?, 'set_aside_twins', ?) "

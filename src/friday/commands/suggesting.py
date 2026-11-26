@@ -275,6 +275,8 @@ def suggest(
         if command == "add":
             fields = addable(fields, settings["presets"])
         if earlier and command == "add":
+            if not duplicates.real_changes(conn, earlier["id"], fields, settings):
+                continue  # the calendar's copy says what you have, in other capitals or a minute apart: nothing to ask
             command, fields = "edit", {"id": earlier["id"]} | fields
         group = batch or (f"repeat:{p.series}" if p.series and command == "add" else None)
         said = said_of_series(conn, group) if group and p.series else None

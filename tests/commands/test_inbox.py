@@ -301,3 +301,37 @@ def test_an_event_suggested_with_a_start_friday_cant_read_isnt_given_an_end(app:
     with pytest.raises(FieldError, match="needs a start and an end"):
         app.do("suggestion_accept", id=social["id"])
     assert app.table("items") == [] and app.table("suggestions")[0]["status"] == "pending"
+
+
+def test_a_calendar_copy_that_says_what_you_have_asks_nothing(app: App) -> None:
+    """25 Nov, the user's Inbox: "Psych 1130 Final Portfolio", due Dec 16 at midnight, was offered as a change to their
+    "PSYCH 1130 Final Portfolio" due Dec 15 at 11:59pm, and looked like a duplicate: the same title in other capitals
+    and the same deadline a minute later are no change."""
+    feed(app, PRELIM)
+    app.do("suggestion_accept", id=pending(app)["CHEM Prelim 2"]["id"])
+    again = PRELIM.replace("SUMMARY:CHEM Prelim 2", "SUMMARY:Chem prelim 2").replace("T233000Z", "T233100Z")
+    sync(app.conn, app.now_utc + 60, fetch=lambda url: again)
+    assert [s["input"] for s in app.do("inbox")["suggestions"] if s["command"] == "edit"] == []
+    moved = again.replace("T233100Z", "T230000Z")  # a real move is still asked
+    sync(app.conn, app.now_utc + 120, fetch=lambda url: moved)
+    edits = [s["input"] for s in app.do("inbox")["suggestions"] if s["command"] == "edit"]
+    assert len(edits) == 1 and edits[0]["start"].endswith("T19:00"), edits
+
+
+def test_a_waiting_change_that_says_what_you_have_is_set_aside_at_the_next_sync(app: App) -> None:
+    """The one in the user's Inbox came before the fix: at the next sync it goes, set aside as what you have."""
+    feed(app, PRELIM)
+    accepted = pending(app)["CHEM Prelim 2"]
+    app.do("suggestion_accept", id=accepted["id"])
+    made = app.conn.execute("SELECT raw_input_id, item_id FROM suggestions WHERE id = ?", [accepted["id"]]).fetchone()
+    raw, item = made[0], app.do("item", id=made[1])["item"]
+    same = {"id": item["id"], "title": "Chem prelim 2", "preset": item["preset"], "start": "2026-10-29T19:31"}
+    app.conn.execute(
+        "INSERT INTO suggestions (user_id, raw_input_id, command, input, created_utc, status) "
+        "VALUES (1, ?, 'edit', ?, '2026-10-19T12:00Z', 'pending')",
+        [raw, json.dumps(same)],
+    )
+    assert any(s["command"] == "edit" for s in app.do("inbox")["suggestions"])
+    sync(app.conn, app.now_utc + 60, fetch=lambda url: PRELIM)
+    assert not any(s["command"] == "edit" for s in app.do("inbox")["suggestions"])
+    assert "You have CHEM Prelim 2" in [s["why"] for s in app.do("inbox")["set_aside"]]

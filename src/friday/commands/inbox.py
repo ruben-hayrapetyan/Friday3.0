@@ -525,7 +525,7 @@ def set_aside_of(ctx: Ctx) -> list[SetAsideOut]:
         ctx.conn,
         "SELECT s.id, s.input, s.created_utc, s.duplicate_of, i.title AS of_title, i.status AS of_status "
         "FROM suggestions s LEFT JOIN items i ON i.id = s.duplicate_of WHERE s.user_id = ? AND s.status = 'superseded' "
-        "AND s.created_utc >= ? AND s.command = 'add' ORDER BY s.id DESC LIMIT 60",
+        "AND s.created_utc >= ? AND s.command IN ('add', 'edit') ORDER BY s.id DESC LIMIT 60",
         [ctx.user_id, since],
     )
     out = []
