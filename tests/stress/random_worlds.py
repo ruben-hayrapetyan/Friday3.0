@@ -460,6 +460,10 @@ def main() -> int:
     # 3 search chains unless said: the planner runs one a performance core, so the same seed planned differently on
     # debian's 8 cores than on a Mac, and two runs compared on different machines differed for that alone (25 Nov)
     os.environ.setdefault("FRIDAY_CHAINS", "3")
+    # and a fixed effort, as the screen and browser tests: the deadline solver runs to a budget of work, not seconds
+    # (engine/cpsat_deadlines.py), so a busy machine plans the same week the same way. Without it two runs of the same
+    # code differed by hundreds of late hours in the overloaded worlds, as much as the changes being compared (26 Nov)
+    os.environ.setdefault("FRIDAY_FIXED_EFFORT", "1")
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", default="0-49")
     parser.add_argument("--changes", type=int, default=30)
