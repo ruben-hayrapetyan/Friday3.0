@@ -314,15 +314,17 @@ function ShowMenu() {
           {filter && (
             <label className="fr-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: "var(--radius-md)" }}>
               <Switch on={look.showFiltered} onToggle={() => setLook({ showFiltered: !look.showFiltered })} label={`Show ${filter.label}`} />
-              {filter.label}
+              <span title={filter.label} style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{filter.label}</span>
             </label>
           )}
           {toolbar.map((name, i) => (
             <label key={name} className="fr-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: "var(--radius-md)" }}>
               <Switch on={look.showing.includes(name)} onToggle={() => flip(name)} label={`Show ${name}`} />
               <span className="fr-swatch" style={{ borderRadius: "50%", background: pigment(colors[name], light) ?? "var(--color-neutral-500)" }} />
-              <span style={{ flex: 1 }}>{name}</span>
-              <span className="fr-kicker">⌥⌘{i + 1}</span>
+              {/* a long name ends in "…" on its line, whole on hover (27 Nov, a user's notes: "anonymous.dragon.888@gmail.com"
+                  ran out of the menu over its shortcut) */}
+              <span title={name} style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+              <span className="fr-kicker" style={{ flex: "none" }}>⌥⌘{i + 1}</span>
             </label>
           ))}
         </>

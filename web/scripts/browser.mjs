@@ -259,7 +259,7 @@ export const LAYOUT = `(() => {
   // what offers choices: a button with a caret (a value you change), or one that says it opens a menu; a section
   // shown, a row added or a question asked isn't a dropdown
   const chooser = window.__chooser
-  const opened = [...document.querySelectorAll("[role=listbox], [role=menu]")]
+  const opened = [...document.querySelectorAll("[role=listbox], [role=menu], [data-menu]")]
   if (seen && chooser) for (const el of document.querySelectorAll("[role=dialog] *")) {
     // new since the click, a box, in a dialog that was open before it (a dialog the click opened is a dialog)
     if (seen.has(el) || !el.children.length || !boxed(el) || !seen.has(el.closest("[role=dialog]"))) continue
@@ -272,6 +272,14 @@ export const LAYOUT = `(() => {
     const scrolls = el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY)
     if (r.width > 440) out.push("a dropdown " + Math.round(r.width) + "px wide (at most 440): " + name(el))
     if ((r.bottom > vh + 1 || r.top < -1) && !scrolls) out.push("a dropdown running off the window that doesn't scroll: " + name(el))
+    // no words run out of it (27 Nov, a user's notes: a calendar's long name ran out of the Show menu, over the
+    // shortcut beside it): every bit of text inside it ends within its sides, unless it scrolls sideways
+    const sideways = el.scrollWidth > el.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowX)
+    if (!sideways) for (const leaf of el.querySelectorAll("*")) {
+      if (leaf.children.length || !leaf.textContent.trim()) continue
+      const t = leaf.getBoundingClientRect()
+      if (t.width && (t.right > r.right + 1 || t.left < r.left - 1)) out.push("words run out of a menu: " + leaf.textContent.trim().slice(0, 40))
+    }
     const dialog = el.closest("[role=dialog]")
     if (dialog) {
       const d = dialog.getBoundingClientRect()
