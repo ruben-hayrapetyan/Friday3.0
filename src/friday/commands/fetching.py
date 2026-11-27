@@ -15,6 +15,7 @@ from typing import Any
 from friday.commands.duplicates import set_aside_waiting
 from friday.commands.inbox import record_spend, spend
 from friday.commands.mail import read_mail
+from friday.commands.series import keep_calendar_rules
 from friday.commands.suggesting import suggest, take, write_raw
 from friday.core.db import one, rows
 from friday.core.integrations import GcalSettings
@@ -169,6 +170,7 @@ def read_calendars(
             events = gcal.events(google, calendar_id, gcal.rfc3339(since), gcal.rfc3339(until))
             series = {e.get("recurringEventId", "") for e in events} - {""}
             rules = gcal.repeat_rules(google, calendar_id, series)
+            keep_calendar_rules(conn, user_id, {k: str(v) for k, v in rules.items() if v}, format_utc(now_utc))
             found = (ics.google_event(e, tz, way, rules.get(e.get("recurringEventId", ""))) for e in events)
             return [f for f in found if f is not None]
 
@@ -192,7 +194,14 @@ def read_mac(conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: in
         def read(calendar_id: str | None = config.get("calendar"), way: ics.Reading = way) -> list[Found]:
             if calendar_id not in listed:
                 raise LookupError("no longer on your Mac")
-            found = (ics.google_event(e, tz, way, e.get("recurrence")) for e in events.get(calendar_id, []))
+            mine = events.get(calendar_id, [])
+            rules = {
+                e["recurringEventId"]: e["recurrence"]
+                for e in mine
+                if e.get("recurringEventId") and e.get("recurrence")
+            }
+            keep_calendar_rules(conn, user_id, rules, format_utc(now_utc))
+            found = (ics.google_event(e, tz, way, e.get("recurrence")) for e in mine)
             return [f for f in found if f is not None]
 
         made += take(conn, source, read, settings, now_utc, user_id, window["until"], client)

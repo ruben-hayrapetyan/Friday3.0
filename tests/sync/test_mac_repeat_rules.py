@@ -83,3 +83,52 @@ def test_a_rule_without_a_series_is_left_out(app: App) -> None:
 )
 def test_a_repeat_without_its_rule_is_read_from_the_times_seen(starts: list[str], rule: str) -> None:
     assert weekdays_rule(starts) == rule
+
+
+# 27 Nov, the user: "the birthdays issue from the user shouldn't only apply to birthdays tho - it should apply for all
+# repeated events". Every kind of repeat, imported before its calendar's rule came (kept "every Tuesday", as an older
+# Friday kept a birthday), says its calendar's rule from the next read that brings it.
+KINDS = [
+    ("Sam's Birthday", True, "FREQ=YEARLY", "Yearly"),
+    ("Rent", False, "FREQ=MONTHLY", "Monthly"),
+    ("Stand-up", False, "FREQ=DAILY", "Every day"),
+    ("Book club", False, "FREQ=WEEKLY;INTERVAL=2;BYDAY=TU", "Every other Tuesday"),
+    ("Chem lecture", False, "FREQ=WEEKLY;BYDAY=TU,TH", "Tue"),
+    ("Practice", False, "FREQ=WEEKLY;BYDAY=TU;UNTIL=20261215T000000Z", "until Dec 15"),
+]
+
+
+def occurrence(title: str, whole: bool, rule: str | None, n: int = 0) -> dict:
+    day = f"2026-10-{20 + 7 * n}"
+    extra = {"rule": rule} if rule else {}
+    if whole:
+        nxt = f"2026-10-{21 + 7 * n}"
+        return {"id": f"{title}@{n}", "calendar": "home", "title": title, "start": day, "end": nxt, "all_day": True,
+                "series": title, **extra}  # fmt: skip
+    return mac_event(f"{title}@{n}", "home", title, f"{day}T10:00", f"{day}T11:00", series=title, **extra)
+
+
+@pytest.mark.parametrize(("title", "whole", "rule", "said"), KINDS)
+def test_any_repeat_kept_with_a_wrong_rule_says_its_calendars_rule_once_sent(
+    app: App, title: str, whole: bool, rule: str, said: str
+) -> None:
+    post(app, [HOME], [occurrence(title, whole, None)])  # an older Mac app: no rule
+    app.conn.execute("UPDATE series SET rrule = 'FREQ=WEEKLY;BYDAY=TU' WHERE external_id = ?", [f"gcal:{title}"])
+    assert "Tue" in pattern(app, title)  # what an older Friday kept
+    post(app, [HOME], [occurrence(title, whole, rule)], minutes_later=1)  # the new Mac app sends its rule
+    assert said in pattern(app, title), pattern(app, title)
+    assert next(r["rrule"] for r in app.table("series") if r["external_id"] == f"gcal:{title}") == rule
+
+
+def test_a_repeat_whose_rule_changes_in_the_calendar_follows_it(app: App) -> None:
+    post(app, [HOME], [occurrence("Book club", False, "FREQ=WEEKLY;BYDAY=TU")])
+    assert pattern(app, "Book club").startswith("Every Tuesday")
+    post(app, [HOME], [occurrence("Book club", False, "FREQ=WEEKLY;INTERVAL=2;BYDAY=TU")], minutes_later=1)
+    assert pattern(app, "Book club").startswith("Every other Tuesday"), pattern(app, "Book club")
+
+
+def test_a_rule_for_one_repeat_leaves_the_others_as_they_are(app: App) -> None:
+    post(app, [HOME], [occurrence("Rent", False, "FREQ=MONTHLY"), occurrence("Gym", False, "FREQ=WEEKLY;BYDAY=TU")])
+    post(app, [HOME], [occurrence("Rent", False, "FREQ=YEARLY"), occurrence("Gym", False, "FREQ=WEEKLY;BYDAY=TU")],
+         minutes_later=1)  # fmt: skip
+    assert pattern(app, "Rent").startswith("Yearly") and pattern(app, "Gym").startswith("Every Tuesday")

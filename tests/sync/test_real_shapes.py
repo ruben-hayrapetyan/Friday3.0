@@ -132,3 +132,16 @@ def test_course_work_lands_under_its_course_tag_once_the_course_is_imported(app:
     app.do("repeats_import", repeats=[{"batch": found["CHEM 2090, Lecture"]["batch"], "area": "CHEM 2090"}])
     app.do("suggestion_accept", id=pending(app)["CHEM 2090 Problem Set 4"]["id"])
     assert next(i["area"] for i in app.do("items") if i["title"] == "CHEM 2090 Problem Set 4") == "CHEM 2090"
+
+
+def test_a_google_repeat_kept_with_a_wrong_rule_says_its_rule_from_the_next_read(app: App) -> None:
+    """27 Nov, the user: "it should apply for all repeated events": a repeat imported with a rule that's wrong (an
+    older Friday's weekly guess) takes Google's own from the next read, as the Mac's do (series.keep_calendar_rules)."""
+    read_calendars(app, {"Personal": [BIRTHDAY]})
+    found = {r["title"]: r for r in app.do("calendar_repeats")}
+    app.do("repeats_import", repeats=[{"batch": found["Mom's Birthday"]["batch"]}])
+    app.conn.execute("UPDATE series SET rrule = 'FREQ=WEEKLY;BYDAY=WE' WHERE external_id = 'gcal:bday'")
+    assert next(s for s in app.do("series_list") if s["title"] == "Mom's Birthday")["pattern"].startswith("Every Wed")
+    app.now_utc += 60  # the next read: a calendar isn't read again within the minute
+    read_calendars(app, {"Personal": [BIRTHDAY]})
+    assert next(s for s in app.do("series_list") if s["title"] == "Mom's Birthday")["pattern"] == "Yearly, all day"

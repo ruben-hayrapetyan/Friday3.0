@@ -3,6 +3,7 @@
 import contextlib
 import json
 import re
+import sqlite3
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 from typing import Any
@@ -704,6 +705,19 @@ def calendar_rule(ctx: Ctx, batch: str) -> str | None:
             if rule := json.loads(r[0]).get("recurrence"):
                 return str(rule)
     return None
+
+
+def keep_calendar_rules(conn: sqlite3.Connection, user_id: int, rules: dict[str, str], now_text: str) -> None:
+    """A calendar's own rule for each of its repeats, by its id, is that repeat's rule, whenever it's sent: one imported
+    before it came (a birthday kept as weekly from an older Mac app), or whose rule changed in the calendar (weekly to
+    every other week), says it rightly from the next read (27 Nov, the user: "it should apply for all repeated
+    events")."""
+    for series, rule in rules.items():
+        if series and rule:
+            conn.execute(
+                "UPDATE series SET rrule = ?, updated_utc = ? WHERE user_id = ? AND external_id = ? AND rrule != ?",
+                [rule, now_text, user_id, f"gcal:{series}", rule],
+            )
 
 
 def weekdays_rule(starts: list[str]) -> str:
