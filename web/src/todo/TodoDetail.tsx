@@ -176,7 +176,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
             {item.due ? when(item.due, today) : projectDue ? `${when(projectDue.due as string, today)}, with its project` : "No due date"}
           </>
         ))}
-        {pick === "due" && panel(<DuePicker value={item.due} today={today} onPick={(v) => edit({ id, due: v })} stacked />)}
+        {pick === "due" && panel(<DuePicker value={item.due} inherited={projectDue?.due ?? null} today={today} onPick={(v) => edit({ id, due: v })} stacked />)}
         <span className="fr-kicker">Deadline</span>
         {projectDue ? (
           // a step with no due of its own is planned to its project's due and deadline, until it has one

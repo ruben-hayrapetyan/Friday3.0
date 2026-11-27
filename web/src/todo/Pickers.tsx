@@ -95,8 +95,9 @@ export function DuePicker(props: {
   onEnterEmpty?: () => void // Enter with nothing typed
   onSend?: (due: string | null | undefined) => void // Shift-Enter: the due typed, if it reads, and send what it's for
   placeholder?: string
+  inherited?: string | null // a step's project's due, which it has while it has none of its own
 }) {
-  const { value, today, onPick, onDone, autoFocus = true, onEnterEmpty, onSend, placeholder } = props
+  const { value, today, onPick, onDone, autoFocus = true, onEnterEmpty, onSend, placeholder, inherited } = props
   const now = fromMin(useClock())
   const [text, setText] = useState("")
   const { due, reading } = useDueReading(text, now, today)
@@ -114,7 +115,7 @@ export function DuePicker(props: {
     ["Tomorrow", `${addDays(today, 1)}T23:59`],
     [`${weekday(friday)} ${Number(friday.slice(8, 10))}`, `${friday}T23:59`],
     ["In a week", `${addDays(today, 7)}T23:59`],
-    ["No due date", null],
+    [inherited ? "With its project" : "No due date", null],
   ]
   const set = (v: string | null) => {
     onPick(v)
@@ -150,7 +151,9 @@ export function DuePicker(props: {
       {/* what's set, in words (17 Nov: "Now: Due …" in mono under an empty box was "VERY confusing": it read as the
           time now, not the due chosen) */}
       <span data-due-reading style={{ fontSize: 12, color: text.trim() && !readable && !reading ? "var(--fr-due)" : "var(--color-neutral-400)" }}>
-        {!text.trim() ? (value ? dueSummary(value, today) : "No due date yet.") : reading ? "Reading…" : readable ? `→ ${dueSummary(due ?? null, today)} · Enter to set` : "Can’t read that. Try “fri 5pm” or “oct 30”."}
+        {/* a step with none of its own is due with its project (27 Nov, a user's notes: "Mon 14 Dec 23:59, with its
+            project" above "No due date yet.", the same due read two ways, reported in 0.6.4 too) */}
+        {!text.trim() ? (value ? dueSummary(value, today) : inherited ? `${dueSummary(inherited, today)}, with its project. A date here gives it its own.` : "No due date yet.") : reading ? "Reading…" : readable ? `→ ${dueSummary(due ?? null, today)} · Enter to set` : "Can’t read that. Try “fri 5pm” or “oct 30”."}
       </span>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {quick.map(([label, v]) => (

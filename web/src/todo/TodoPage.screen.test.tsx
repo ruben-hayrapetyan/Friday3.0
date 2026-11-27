@@ -436,3 +436,23 @@ describe("the To-do page", () => {
     await waitFor(() => expect(window.location.hash).toContain("/inbox"))
   })
 })
+
+// 27 Nov, a user's notes ("Friday Notes-3"): in To-do, LING Final Essay's steps each read "due Mon 23:59", "due Fri 4
+// Dec 23:59"... and its Final Draft, due with the project, read nothing at all.
+describe("a step with no due of its own, in the list", () => {
+  it("reads its project's due, said to be its project's; its own when it has one; + due outside a project", async () => {
+    const add = async (body: Record<string, unknown>) => (await friday.c<{ result: { item: Item } }>("add", body)).result.item
+    const day = (n: number) => addDays(new Date().toISOString().slice(0, 10), n)
+    const project = await add({ title: "Notes essay", preset: "Project", due: `${day(17)}T23:59`, duration_min: 60 })
+    const inherits = await add({ title: "Notes final draft", parent_id: project.id, duration_min: 120 })
+    const own = await add({ title: "Notes rubric", parent_id: project.id, duration_min: 60, due: `${day(9)}T17:00` })
+    const loose = await add({ title: "Notes loose", duration_min: 30 })
+    await openFriday("/todo")
+    const draft = await row(inherits.title)
+    const said = await within(draft).findByTitle("With its project", {}, { timeout: 10_000 })
+    expect(said.textContent).toMatch(/^due /)
+    expect(within(await row(own.title)).queryByTitle("With its project")).toBeNull()
+    expect(within(await row(own.title)).getByText(/^due /)).toBeTruthy()
+    expect(within(await row(loose.title)).queryByTitle("With its project")).toBeNull()
+  })
+})

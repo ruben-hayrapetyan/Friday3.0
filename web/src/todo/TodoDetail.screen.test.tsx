@@ -343,3 +343,41 @@ describe("a task's detail", () => {
     expect((await waitForSent("series_spacing")).body).toMatchObject({ days: expect.any(Number) })
   })
 })
+
+// 27 Nov, a user's notes ("Friday Notes-3", reported in 0.6.4 too): a step with no due of its own read "Mon 14 Dec
+// 23:59, with its project" on its Due button and "No due date yet." in the picker under it, "No due date" picked.
+describe("a step's due when it has none of its own", () => {
+  async function project(stepDue: string | null) {
+    const due = `${ymd(17)}T23:59`
+    const made = (await friday.c<{ result: { item: Item } }>("add", { title: `Essay ${++spares}`, preset: "Project", due, duration_min: 60 })).result.item
+    const step = (await friday.c<{ result: { item: Item } }>("add", { title: `Final Draft ${spares}`, parent_id: made.id, duration_min: 120, ...(stepDue ? { due: stepDue } : {}) })).result.item
+    return { due, step }
+  }
+
+  it("is its project's in the picker too, and the empty choice keeps it so", async () => {
+    const { step } = await project(null)
+    const { user, aside } = await detailOf(step.title)
+    await user.click(await within(aside).findByRole("button", { name: /with its project/ })) // once its project is read
+    expect(within(aside).queryByText("No due date yet.")).toBeNull()
+    expect(within(aside).getByText(/, with its project\. A date here gives it its own\.$/)).toBeTruthy()
+    const keep = within(aside).getByRole("button", { name: "With its project" })
+    expect(keep.getAttribute("aria-pressed") ?? keep.className).toMatch(/true|on/)
+    expect(within(aside).queryByRole("button", { name: "No due date" })).toBeNull()
+  })
+
+  it("is its own once it has one, with No due date to take it off", async () => {
+    const { step } = await project(`${ymd(5)}T17:00`)
+    const { user, aside } = await detailOf(step.title)
+    await user.click(within(aside).getByRole("button", { name: /5pm/ }))
+    expect(within(aside).queryByText(/with its project\. A date/)).toBeNull()
+    expect(within(aside).getByRole("button", { name: "No due date" })).toBeTruthy()
+  })
+
+  it("says No due date yet for a to-do outside any project", async () => {
+    const own = (await friday.c<{ result: { item: Item } }>("add", { title: `Loose ${++spares}`, duration_min: 30 })).result.item
+    const { user, aside } = await detailOf(own.title)
+    await user.click(within(aside).getByRole("button", { name: /No due date/ }))
+    expect(within(aside).getByText("No due date yet.")).toBeTruthy()
+    expect(within(aside).queryByRole("button", { name: "With its project" })).toBeNull()
+  })
+})

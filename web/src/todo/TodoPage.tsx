@@ -19,7 +19,7 @@ import { DueLabel } from "@/components/DueLabel"
 import { useClock } from "@/hooks/useClock"
 import { dur, lateBy, when } from "@/lib/format"
 import { nextBlocks, withoutStepProjects } from "@/lib/todo"
-import { ProjectName, StepsHeading } from "@/projects/StepOf"
+import { ProjectName, StepsHeading, useProjectOf } from "@/projects/StepOf"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { pigment } from "@/lib/pigments"
@@ -311,6 +311,7 @@ function SectionRule({ name, items }: { name: string; items: Item[] }) {
 
 /** One line, as personal's notebook drew a task, with what Friday made of it on the right. */
 function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging, headed }: RowProps) {
+  const inherited = useProjectOf(item)?.project.due ?? null
   const { today } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
@@ -416,7 +417,16 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging, hea
           {isNow ? <span className="fr-tag accent">Now</span> : next ? plannedWhen(next.start, today) : isDone ? "done" : "—"}
         </span>
         <span className="fr-hover" onClick={inline("due")} style={{ ...cell, minWidth: 104 }} title={item.due ? "Due. Click to change" : "Click to set a due date"}>
-          {item.due ? <DueLabel due={item.due} prefix="due " routine={item.preset === "Routine"} /> : <span className="fr-todo-more">+ due</span>}
+          {item.due ? (
+            <DueLabel due={item.due} prefix="due " routine={item.preset === "Routine"} />
+          ) : inherited ? (
+            // a step with none of its own is due with its project, not blank (27 Nov, a user's notes: Final Draft)
+            <span title="With its project" style={{ opacity: 0.7 }}>
+              <DueLabel due={inherited} prefix="due " />
+            </span>
+          ) : (
+            <span className="fr-todo-more">+ due</span>
+          )}
         </span>
         <span className="fr-todo-more" style={{ display: "inline-flex" }}>
           <Icon name="caret-right" size={10} />
@@ -425,7 +435,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging, hea
     </div>
     {editing === "due" && (
       <InlineEditor onClose={() => setEditing(null)}>
-        <DuePicker value={item.due ?? null} today={today} onPick={(due) => edit({ id: item.id, due })} onDone={() => setEditing(null)} />
+        <DuePicker value={item.due ?? null} inherited={inherited} today={today} onPick={(due) => edit({ id: item.id, due })} onDone={() => setEditing(null)} />
       </InlineEditor>
     )}
     {editing === "length" && (
@@ -493,6 +503,7 @@ function Pie({ share }: { share: number }) {
 /** The two-line row (v22), for those who like progress bars: View options → Rows → Detailed. */
 function Row({ item, fresh, selected, picked, onSelect, dragging, headed }: RowProps) {
   const { today } = useShell()
+  const inherited = useProjectOf(item)?.project.due ?? null
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
   const now = useNow().data
@@ -569,7 +580,7 @@ function Row({ item, fresh, selected, picked, onSelect, dragging, headed }: RowP
         ) : (
           <span style={{ color: "var(--color-neutral-300)" }}>{next ? plannedWhen(next.start, today) : isDone ? "Done" : "not planned"}</span>
         )}
-        <span style={{ color: soon ? "var(--fr-due)" : "var(--color-neutral-500)" }}>{item.due ? <DueLabel due={item.due} routine={item.preset === "Routine"} /> : "No due date"}</span>
+        <span style={{ color: soon ? "var(--fr-due)" : "var(--color-neutral-500)" }}>{item.due ? <DueLabel due={item.due} routine={item.preset === "Routine"} /> : inherited ? <><DueLabel due={inherited} />, with its project</> : "No due date"}</span>
         {late && !isDone && <LateTag hours={late.hours} />}
         {slip && !late && !isDone && <SlipTag slip={slip} />}
       </div>
