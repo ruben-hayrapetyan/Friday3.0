@@ -8,15 +8,28 @@ import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
 
+from friday.sim.history import ZONE as SAMPLE_ZONE
 from tests.system.test_beat_plan_system import REPO, free_port
 
 WAIT = 240
+
+
+def to_tuesday_2pm() -> int:
+    """Minutes from now to this week's Tuesday at 2pm in Alex's zone: the sample's mail is due that Thursday and Friday
+    (sim/sample.py mailbox), so run from Friday on, A5 was already past and rightly not suggested, and this file failed
+    every weekend whatever the code (27 Nov). The term is Alex's week; the test runs in the middle of it."""
+    zone = ZoneInfo(SAMPLE_ZONE.key)
+    now = datetime.now(zone)
+    tuesday = (now - timedelta(days=now.weekday() - 1)).replace(hour=14, minute=0, second=0, microsecond=0)
+    return round((tuesday - now).total_seconds() / 60)
 
 
 class Demo:
@@ -27,7 +40,7 @@ class Demo:
                 "OLLAMA_HOST": "127.0.0.1:9"}  # fmt: skip
         self.log = (folder / "server.out").open("w")
         command = [sys.executable, "-m", "friday.server.main", "--data-dir", str(folder / "data"), "demo", "--port",
-                   str(self.port)]  # fmt: skip
+                   str(self.port), "--shift-minutes", str(to_tuesday_2pm())]  # fmt: skip
         self.process = subprocess.Popen(command, cwd=REPO, env=env, stdout=self.log, stderr=subprocess.STDOUT)
         self.http = httpx.Client(base_url=f"http://127.0.0.1:{self.port}", timeout=300)
         self.until(self.up, 120)
