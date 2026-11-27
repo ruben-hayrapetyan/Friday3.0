@@ -40,7 +40,8 @@ export async function serveSample({ case: who = "alex", ready = true, prefix = "
   let said = ""
   child.stderr.on("data", (d) => (said = (said + d).slice(-4000)))
   const base = `http://127.0.0.1:${port}`
-  for (let until = Date.now() + 300_000; ; await wait(500)) {
+  // 15 minutes: living Alex's three weeks takes 16 s, and now and then many minutes (27 Nov), on any code
+  for (let until = Date.now() + 900_000; ; await wait(500)) {
     if (child.exitCode !== null) throw new Error(`fridayd demo stopped:\n${said}`)
     if (Date.now() > until) throw new Error(`fridayd demo didn't answer:\n${said}`)
     if (await fetch(`${base}/api/q/status`).then((r) => r.ok, () => false)) break
