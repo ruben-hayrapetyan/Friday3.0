@@ -339,15 +339,17 @@ class Rock(Model):
     planned_min: int  # planned today
     due: str | None
     hard: bool
+    ticked: bool = False  # on a break day: ticked off the day's list
 
 
 class BriefOut(Model):
     """The morning brief (DESIGN §20.4), as data and as plain text."""
 
-    rocks: list[Rock]  # today's big things, 3–5
-    fixed: list[ItemOut]  # today's fixed items
+    rocks: list[Rock]  # today's big things, 3–5; on a break day, the day's list, all of it
+    fixed: list[ItemOut]  # today's fixed items: an all-day event on its own dates only
     alerts: list[Alert]
-    pace: str | None  # "Easy pace until Fri", "Back to Normal today"; None on an ordinary day
+    pace: str | None  # "Easy pace until Fri", "Back to Normal today"; None on an ordinary day and on a break day
+    vacation: VacationDay | None = None  # the break today is on: a list, no times and no pace
     sleep: str | None = None  # tracked sleep: a short night, with an Easy day offered beside it
     summary: str
     text: str

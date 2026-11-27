@@ -84,6 +84,56 @@ describe("the morning brief", () => {
   })
 })
 
+// Friday Notes-3 (26 Nov, on the Thanksgiving break, Light): "remove the scheduled times to complete tasks
+// ("14:15-14:45" and other instances) bc friday doesn't plan when u do them on break", "Push pace doesn't exist on
+// break, neither do any of the other paces", and four things in the brief where the day's list had three.
+describe("the morning brief on a break day", () => {
+  type Brief = { summary: string; pace: string | null; rocks: { title: string }[]; vacation: { name: string } | null }
+  const times = /\d{1,2}(:\d{2})?\s*(am|pm)?\s*–\s*\d{1,2}(:\d{2})?/i // "5pm–6pm", "17:00–18:00"
+
+  it("lists the day's things by name, with no times and no pace", async () => {
+    const { today } = await friday.q<{ today: string }>("calendar", { start: "2026-01-01", days: "1" })
+    await friday.c("pace", { name: "Push", for_days: 3 })
+    const made = await friday.c<{ result: { vacation: { id: number } } }>("vacation_add", { name: "Long weekend", start: today, end: dayOn(2), mode: "light", work_min: 240 })
+    try {
+      const reading = await friday.c<{ result: { item: { id: number } } }>("add", { title: "Break reading", duration_min: 60, due: `${dayOn(2)}T23:00` })
+      // a time the plan holds for it later today (the screens' clock is 2pm), as the tester's "14:15–14:45"
+      await friday.c("pin", { id: reading.result.item.id, start: `${today}T17:00`, kind: "locked" })
+      await friday.planned()
+      const brief = await friday.q<Brief>("brief")
+      const day = await friday.q<{ items: { title: string }[] }>("vacation_day", { date: today })
+      // one list: the brief's things are the day's, in its order
+      expect(brief.rocks.map((r) => r.title)).toEqual(day.items.map((t) => t.title))
+      expect(brief.vacation?.name).toBe("Long weekend")
+      const { user } = await openFriday("/")
+      await fromPlanMenu(user, /^Morning brief/)
+      const dialog = await screen.findByRole("dialog", { name: "Morning brief" })
+      await within(dialog).findByText(brief.summary)
+      for (const r of brief.rocks) expect((await within(dialog).findAllByText(r.title)).length).toBeGreaterThan(0)
+      await waitFor(() => expect(within(dialog).queryAllByText(times).map((e) => e.textContent)).toEqual([]))
+      expect(within(dialog).queryByText("Pace today")).toBeNull()
+      expect(within(dialog).queryByText(/pace/i)).toBeNull()
+      for (const p of ["Normal", "Easy", "Push"]) expect(within(dialog).queryByRole("button", { name: p })).toBeNull()
+      // where the pace was, why there are no times
+      expect(within(dialog).getByText("Long weekend · day 1 of 3 · whenever suits, no set times")).toBeTruthy()
+    } finally {
+      await friday.c("vacation_delete", { id: made.result.vacation.id })
+      await friday.c("pace", { name: "Normal", for_days: 1 })
+    }
+  })
+
+  it("is an ordinary brief again off the break: times and the pace", async () => {
+    await friday.planned()
+    const brief = await friday.q<Brief>("brief")
+    expect(brief.vacation).toBeNull()
+    const { user } = await openFriday("/")
+    await fromPlanMenu(user, /^Morning brief/)
+    const dialog = await screen.findByRole("dialog", { name: "Morning brief" })
+    expect(await within(dialog).findByText("Pace today")).toBeTruthy()
+    for (const p of ["Normal", "Easy", "Push"]) expect(await within(dialog).findByRole("button", { name: p })).toBeTruthy()
+  })
+})
+
 describe("what changed", () => {
   it("says what led to the last replan and what it moved, and closes", async () => {
     const { user } = await openFriday("/")

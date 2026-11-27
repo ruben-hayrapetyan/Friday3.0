@@ -4907,6 +4907,7 @@ export interface components {
             alerts: components["schemas"]["Alert"][];
             /** Pace */
             pace: string | null;
+            vacation?: components["schemas"]["VacationDay"] | null;
             /** Sleep */
             sleep?: string | null;
             /** Summary */
@@ -9886,6 +9887,11 @@ export interface components {
             due: string | null;
             /** Hard */
             hard: boolean;
+            /**
+             * Ticked
+             * @default false
+             */
+            ticked?: boolean;
         };
         /** RuleAddInput */
         RuleAddInput: {

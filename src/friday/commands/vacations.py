@@ -193,9 +193,11 @@ def vacation_day(ctx: Ctx, inp: VacationDayInput) -> VacationDayOut:
 
 
 def vacation_things(ctx: Ctx, day: date) -> list[VacationThing]:
-    """A break day's list, in the order planned, ticked ones kept. A meal is never on it unless the break plans meals:
-    one planned before the break was added (a break added mid-day) stays in the plan as begun, not as a thing to do."""
-    v = breaks.on(day, all_of(ctx))
+    """A break day's list: the plan's work that day, in the order planned, ticked ones kept. What the break leaves
+    out of the plan (core/vacations.py `left_out`) isn't on it, though the plan holds it as begun before the break
+    was added (a break added mid-day, with that morning's meals planned); the rest of the plan's work is, a
+    repeating task's overdue time from before the break too (26 Nov: missing here while the brief named it)."""
+    found_breaks = all_of(ctx)
     inp = VacationDayInput(date=day)
     planned = planned_minutes(ctx, inp.date)
     ticks = {r["item_id"]: r for r in rows(ctx.conn, "SELECT * FROM vacation_ticks WHERE user_id = ? AND date = ?",
@@ -210,9 +212,7 @@ def vacation_things(ctx: Ctx, day: date) -> list[VacationThing]:
         if row is None or row["status"] == "dropped" or (item_id not in ticks and row["status"] != "todo"):
             continue
         item = item_from_row(row)
-        if breaks.is_meal(item) and not (v and v.plan_meals) and item_id not in ticks:
-            continue
-        if breaks.is_repeating_task(item) and not (v and v.plan_repeating) and item_id not in ticks:
+        if item_id not in ticks and breaks.left_out(item, found_breaks, ctx.tz, ctx.day_start):
             continue
         things.append(
             VacationThing(item_id=item_id, title=item.title, area=areas.get(item.area_id or 0), preset=item.preset,

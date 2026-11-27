@@ -10,13 +10,14 @@ import { runTogether, undoAll, useCommand } from "@/hooks/useCommand"
 import { useHorizon, usePaces, useSettings, useStatus } from "@/hooks/queries"
 import { ChangeList } from "@/components/ChangeList"
 import { because } from "@/lib/changes"
-import { clock, dur, when } from "@/lib/format"
+import { dur, when } from "@/lib/format"
 import { hoursSaid, overSentence } from "@/lib/load"
 import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { dayName } from "@/inbox/messages"
 import { fixedToday } from "./fixedToday"
+import { rockWhen } from "./rockWhen"
 import { inAnotherDialog, keepTabInside } from "@/lib/focusTrap"
 import { otherTimed, startWords } from "@/now/startWords"
 
@@ -112,7 +113,10 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
   const start = useCommand("start", { label: () => "Started" })
   const [auto, setAuto] = useBriefSwitch()
   const next = nextBlocks(blocks.filter((b) => b.start.startsWith(today)))
-  const first = brief?.rocks.map((r) => next.get(r.item_id)).find(Boolean)
+  // A break day is a list, not times, and has no pace (core/vacations.py; 26 Nov, a tester's notes: times and "Push
+  // pace" in the brief of a Light day): its things by name, the first not ticked off to start.
+  const away = brief?.vacation
+  const first = away ? brief?.rocks.find((r) => !r.ticked) : brief?.rocks.map((r) => next.get(r.item_id)).find(Boolean)
   // one start everywhere (now/startWords, 24 Nov): while something else is timed, Switch says it stops that
   const status = useStatus().data
   const starting = first ? startWords(otherTimed(status, first.item_id), false) : null
@@ -142,7 +146,7 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
                 <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>{r.due ? `${r.hard ? "Hard deadline" : "Due"} ${when(r.due, today)}` : "No due date"}</span>
               </span>
               <span className="tnum" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
-                <span style={{ fontWeight: 500 }}>{b ? `${clock(b.start)}–${clock(b.end)}` : "not today"}</span>
+                <span style={{ fontWeight: 500 }}>{rockWhen(!!away, r, b)}</span>
                 <span className="fr-kicker">{r.planned_min ? dur(r.planned_min) : ""}</span>
               </span>
             </div>
@@ -182,17 +186,28 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
         <div className="fr-well" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginTop: 12 }}>
           <Icon name="moon" size={16} style={{ color: "var(--color-accent-300)", flex: "none" }} />
           <span style={{ flex: 1, textWrap: "pretty" }}>{brief.sleep}</span>
-          <button className="btn btn-secondary" onClick={() => pace({ name: "Easy", for_days: 1 })} style={{ fontSize: 12 }}>
-            Easy today
-          </button>
+          {!away && (
+            <button className="btn btn-secondary" onClick={() => pace({ name: "Easy", for_days: 1 })} style={{ fontSize: 12 }}>
+              Easy today
+            </button>
+          )}
         </div>
       )}
       <div className="fr-row" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", paddingTop: 16 }}>
-        <span className="fr-kicker">Pace today</span>
-        {paces && <Seg options={Object.keys(paces.paces)} value={paces.now_label} onPick={(p) => pace({ name: p, for_days: 1 })} />}
-        <span className="fr-kicker" style={{ flex: 1, minWidth: 160 }}>
-          {brief?.pace ?? "Deadlines hold whatever you pick."}
-        </span>
+        {away ? (
+          <span className="fr-kicker" style={{ flex: 1, minWidth: 160 }}>
+            {/* the break's own words, as its day's list has them (breaks/BreakDay.tsx) */}
+            {`${away.name} · day ${away.day_n} of ${away.days} · ${away.mode === "off" ? "Off: nothing to do" : "whenever suits, no set times"}`}
+          </span>
+        ) : (
+          <>
+            <span className="fr-kicker">Pace today</span>
+            {paces && <Seg options={Object.keys(paces.paces)} value={paces.now_label} onPick={(p) => pace({ name: p, for_days: 1 })} />}
+            <span className="fr-kicker" style={{ flex: 1, minWidth: 160 }}>
+              {brief?.pace ?? "Deadlines hold whatever you pick."}
+            </span>
+          </>
+        )}
         <button className="btn btn-ghost" onClick={onClose}>
           See the plan
         </button>

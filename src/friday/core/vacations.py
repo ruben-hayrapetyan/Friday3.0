@@ -19,7 +19,7 @@ from friday.core.db import rows
 from friday.core.items import Item
 from friday.core.quickadd import MEAL
 from friday.core.settings import BreakSettings, Pause, minutes_of
-from friday.core.time import format_utc, parse_utc, planning_date, planning_day_start_utc, to_local
+from friday.core.time import event_day, format_utc, parse_utc, planning_date, planning_day_start_utc, to_local
 
 FRIDAY_CALENDAR = "Friday"  # what the pause chooser calls events made here, on no calendar of yours
 OWN = (
@@ -117,9 +117,12 @@ def day_cap_hours(vacation: Vacation, usual: float) -> float:
 
 
 def item_day(item: Item, tz: str, day_start: int) -> date | None:
-    """The planning day an event or a time of a routine is on."""
+    """The planning day an event or a time of a routine is on: an all-day event's is its date, not the day before
+    whose hours run to 4am of it (core/time.py `event_day`)."""
     if item.occurrence_date and item.when != "fixed":
         return date.fromisoformat(item.occurrence_date[:10])
+    if item.when == "fixed" and item.start_utc:
+        return event_day(parse_utc(item.start_utc), parse_utc(item.end_utc) if item.end_utc else None, tz, day_start)
     moment = item.start_utc or item.release_utc
     return planning_date(parse_utc(moment), tz, day_start) if moment else None
 
@@ -133,6 +136,22 @@ def is_repeating_task(item: Item) -> bool:
     return item.series_id is not None and item.when != "fixed" and not is_meal(item)
 
 
+def left_out(item: Item, vacations: Iterable[Vacation], tz: str, day_start: int) -> bool:
+    """Whether a break leaves a to-do out of the plan, and so off its day's list: a meal of a break day unless the
+    break plans meals, a time of a repeating task on one unless it plans those (21 Nov: on an Off break a daily
+    errand was late all through it, on a Light one on every day's list). One rule for both: the plan and the list
+    are one (26 Nov, a tester's notes: a weekly reading due before the break, overdue, was planned on a break day,
+    and so in the brief, but not on the day's list). A time of a day before the break, still to do, isn't the
+    break's: it is planned and listed like any other work you owe."""
+    if item.when == "fixed" or item.series_id is None:
+        return False
+    day = item_day(item, tz, day_start)
+    vacation = on(day, vacations) if day is not None else None
+    if vacation is None:
+        return False
+    return (is_meal(item) and not vacation.plan_meals) or (is_repeating_task(item) and not vacation.plan_repeating)
+
+
 def on_break(
     items: tuple[Item, ...],
     vacations: tuple[Vacation, ...],
@@ -140,26 +159,23 @@ def on_break(
     calendars: Mapping[int, str],
 ) -> tuple[tuple[Item, ...], frozenset[int]]:
     """The items as a break leaves them: each repeat it pauses blocks no time (and is returned, to be drawn paused);
-    a meal on a break day isn't planned unless the break plans meals, nor a repeating task's time unless it plans
-    those (21 Nov: on an Off break a daily errand was late all through it, on a Light one on every day's list)."""
+    the to-dos it leaves out (`left_out`) aren't planned."""
     if not vacations:
         return items, frozenset()
     tz, day_start = settings["time"].timezone, minutes_of(settings["time"].day_start)
     out, paused = [], set()
     for item in items:
-        day = item_day(item, tz, day_start) if item.when == "fixed" or item.series_id is not None else None
-        vacation = on(day, vacations) if day is not None else None
-        if vacation is None:
-            out.append(item)
-        elif item.when == "fixed":
-            calendar = calendars.get(item.id) if item.id is not None else None
-            if item.id is not None and pauses(vacation.pause, series_id=item.series_id, calendar=calendar):
-                paused.add(item.id)
-                out.append(replace(item, blocks_time=False))
-            else:
+        if item.when != "fixed":
+            if not left_out(item, vacations, tz, day_start):
                 out.append(item)
-        elif (is_meal(item) and not vacation.plan_meals) or (is_repeating_task(item) and not vacation.plan_repeating):
             continue
+        day = item_day(item, tz, day_start)
+        vacation = on(day, vacations) if day is not None else None
+        calendar = calendars.get(item.id) if item.id is not None else None
+        if vacation is not None and item.id is not None and pauses(vacation.pause, series_id=item.series_id,
+                                                                   calendar=calendar):  # fmt: skip
+            paused.add(item.id)
+            out.append(replace(item, blocks_time=False))
         else:
             out.append(item)
     return tuple(out), frozenset(paused)

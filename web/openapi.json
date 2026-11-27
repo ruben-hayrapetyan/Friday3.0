@@ -16758,6 +16758,16 @@
       ],
       "title": "Pace"
      },
+     "vacation": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/VacationDay"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "sleep": {
       "anyOf": [
        {
@@ -31475,6 +31485,11 @@
      "hard": {
       "type": "boolean",
       "title": "Hard"
+     },
+     "ticked": {
+      "type": "boolean",
+      "title": "Ticked",
+      "default": false
      }
     },
     "additionalProperties": false,

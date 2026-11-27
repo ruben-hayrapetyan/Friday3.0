@@ -11,10 +11,12 @@ from friday.api.views import (
     AreaWeek,
     BriefOut,
     DeadlineWeek,
+    ItemOut,
     ReviewOut,
     Rock,
     TimeGroup,
     TimeItem,
+    VacationDay,
     WeekItem,
     WeekOut,
 )
@@ -23,10 +25,12 @@ from friday.commands.progress import day_blocks, day_bounds, day_gaps, reviewed_
 from friday.commands.queries import block_out, now, paces, plan
 from friday.commands.registry import Ctx, command, query
 from friday.commands.sleeping import missing, planned_min, recorded
+from friday.commands.vacations import all_of, planned_minutes, vacation_day_of, vacation_things
+from friday.core import vacations as breaks
 from friday.core.db import one, rows
 from friday.core.guess import subject_of, subjects
 from friday.core.rows import item_from_row
-from friday.core.time import UNIT_MIN, format_utc, parse_utc
+from friday.core.time import UNIT_MIN, event_on_day, format_utc, parse_utc
 from friday.planner.progress import minutes_by_item, remaining_minutes
 from friday.planner.snapshot import day_overrides, pace_periods, with_steps
 from friday.planner.store import area_names, current_plan, kv_get
@@ -83,9 +87,15 @@ def review(ctx: Ctx, inp: DateInput) -> ReviewOut:
 
 @query("brief")
 def brief(ctx: Ctx, inp: Empty) -> BriefOut:
-    """Today's big rocks, fixed items, alerts and pace, with a one-line summary, as data and plain text."""
+    """Today's big rocks, fixed items, alerts and pace, with a one-line summary, as data and plain text.
+
+    On a break day the rocks are the day's list and there's no pace: a break plans no times and has no pace."""
     lo, hi = day_bounds(ctx, ctx.today)
     today = plan(ctx, RangeInput(start=ctx.local(format_utc(lo)), end=ctx.local(format_utc(hi))))
+    fixed = [f for f in today.fixed if fixed_today(ctx, f)]
+    vacation = breaks.on(ctx.today, all_of(ctx))
+    if vacation is not None:
+        return break_brief(ctx, vacation, fixed)
     planned: dict[int, int] = defaultdict(int)
     for b in today.blocks:  # a task that runs by itself asks only its first quarter hour of you
         planned[b.item_id] += (
@@ -117,11 +127,22 @@ def brief(ctx: Ctx, inp: Empty) -> BriefOut:
             -r.planned_min,
         ),
     )[:5]
+    return told(ctx, rocks, fixed, sum(planned.values()), pace_line(ctx), short_night(ctx))
+
+
+def told(
+    ctx: Ctx,
+    rocks: list[Rock],
+    fixed: list[ItemOut],
+    planned: int,
+    pace: str | None,
+    slept: str | None,
+    vacation: VacationDay | None = None,
+) -> BriefOut:
+    """The brief from its parts, with its summary line and its plain text."""
     alerts = now(ctx, Empty()).alerts
-    pace = pace_line(ctx)
-    hours = sum(planned.values()) / 60
     summary = " · ".join(
-        [f"{round(hours, 1):g} h planned", f"{len(today.fixed)} fixed"]
+        [f"{round(planned / 60, 1):g} h planned", f"{len(fixed)} fixed"]
         + ([pace] if pace else [])
         + [f"{len(alerts)} alerts"] * bool(alerts)
     )
@@ -129,14 +150,46 @@ def brief(ctx: Ctx, inp: Empty) -> BriefOut:
         f"• {r.title} ({spoken(r.planned_min)} today{', due ' + r.due[5:16].replace('T', ' ') if r.due else ''})"
         for r in rocks
     ]
-    slept = short_night(ctx)
     return BriefOut(
-        rocks=rocks, fixed=today.fixed, alerts=alerts, pace=pace, sleep=slept, summary=summary, text="\n".join(lines)
+        rocks=rocks,
+        fixed=fixed,
+        alerts=alerts,
+        pace=pace,
+        sleep=slept,
+        summary=summary,
+        text="\n".join(lines),
+        vacation=vacation,
     )
 
 
-def short_night(ctx: Ctx) -> str | None:
-    """Last night, when you tracked it and it fell an hour or more short of the sleep you plan for."""
+def break_brief(ctx: Ctx, vacation: breaks.Vacation, fixed: list[ItemOut]) -> BriefOut:
+    """A break day's brief: its rocks are the day's list, the same things in the same order (26 Nov, a tester's
+    notes: four in the brief, three on the list), with no times and no pace; the hours are the list's."""
+    things = vacation_things(ctx, ctx.today)
+    planned = planned_minutes(ctx, ctx.today)
+    soon = format_utc(ctx.now_utc + 48 * 60)
+    rocks = [
+        due_rock(ctx, t.item_id, planned.get(t.item_id, (0, 0))[0], soon).model_copy(update={"ticked": t.ticked})
+        for t in things
+    ]
+    day = vacation_day_of(vacation, ctx.today).model_copy(
+        update={"things": len(things), "ticked": sum(t.ticked for t in things)}
+    )
+    return told(ctx, rocks, fixed, sum(r.planned_min for r in rocks), None, short_night(ctx, easy=False), day)
+
+
+def fixed_today(ctx: Ctx, f: ItemOut) -> bool:
+    """Whether one of the plan's fixed items in today's hours is today's: an all-day event only on its own dates
+    (core/time.py `event_on_day`)."""
+    if not f.start:
+        return True
+    start = parse_utc(ctx.utc(f.start))
+    return event_on_day(start, parse_utc(ctx.utc(f.end)) if f.end else None, ctx.today, ctx.tz, ctx.day_start)
+
+
+def short_night(ctx: Ctx, easy: bool = True) -> str | None:
+    """Last night, when you tracked it and it fell an hour or more short of the sleep you plan for; with `easy`, the
+    Easy day to answer it with (not on a break: a break has no pace)."""
     if not ctx.settings["sleep_tracking"].on or ctx.settings["sleep"] is None:
         return None
     evening = ctx.today - timedelta(days=1)
@@ -146,7 +199,8 @@ def short_night(ctx: Ctx) -> str | None:
     short = planned_min(ctx, day_overrides(ctx.conn, ctx.user_id), evening) - night.slept_min
     if short < 60:
         return None
-    return f"You slept {spoken(night.slept_min)} last night, {spoken(short)} less than you plan for. An Easy day?"
+    said = f"You slept {spoken(night.slept_min)} last night, {spoken(short)} less than you plan for."
+    return f"{said} An Easy day?" if easy else said
 
 
 def spoken(minutes: int) -> str:
@@ -160,21 +214,26 @@ def parse_utc_local(ctx: Ctx, local: str) -> int:
 
 
 def rock(ctx: Ctx, item_id: int, planned_min: int, soon: str) -> Rock | None:
-    found = one(ctx.conn, "SELECT * FROM items WHERE id = ?", [item_id])
+    found = one(ctx.conn, "SELECT when_kind FROM items WHERE id = ?", [item_id])
     if found is None or found["when_kind"] == "fixed":
         return None
-    due, firmness = found["due_utc"], found["firmness"]
-    if due is None and found["parent_id"] is not None and (project := one(ctx.conn, "SELECT * FROM items WHERE id = ?",
-                                                                          [found["parent_id"]])):  # fmt: skip
-        due, firmness = project["due_utc"], project["firmness"]  # a step is due when its project is
+    out = due_rock(ctx, item_id, planned_min, soon)
+    return out if planned_min or out.hard else None
+
+
+def due_rock(ctx: Ctx, item_id: int, planned_min: int, soon: str) -> Rock:
+    """An item as a rock, with its due: a step with none of its own is due when its project is."""
+    found = one(ctx.conn, "SELECT * FROM items WHERE id = ?", [item_id]) or {}
+    due, firmness = found.get("due_utc"), found.get("firmness")
+    parent = found.get("parent_id")
+    if due is None and parent is not None and (project := one(ctx.conn, "SELECT * FROM items WHERE id = ?", [parent])):
+        due, firmness = project["due_utc"], project["firmness"]
     hard = firmness == "hard" and due is not None and due <= soon
-    if not planned_min and not hard:
-        return None
-    return Rock(item_id=item_id, title=found["title"], planned_min=planned_min, due=ctx.local(due), hard=hard)
+    return Rock(item_id=item_id, title=found.get("title", ""), planned_min=planned_min, due=ctx.local(due), hard=hard)
 
 
 def pace_line(ctx: Ctx) -> str | None:
-    """The pace when it isn't the default, or that a period ended yesterday."""
+    """The pace when it isn't the default, or that a period ended yesterday. Never on a break day: see `brief`."""
     now_pace = paces(ctx, Empty())
     if now_pace.now_label != now_pace.default:
         back = f" until {back_on(date.fromisoformat(now_pace.period_end), ctx.today)}" if now_pace.period_end else ""

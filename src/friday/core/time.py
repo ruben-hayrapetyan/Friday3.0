@@ -177,6 +177,36 @@ def planning_day_start_utc(day: date, tz: str, day_start: int) -> int:
     return to_utc(local_midnight(day) + timedelta(minutes=day_start), tz)
 
 
+def all_day_dates(start_utc: int, end_utc: int | None, tz: str) -> tuple[date, date] | None:
+    """An all-day event's first and last dates (it runs from a local midnight to a later one), else None. It is on
+    those dates, as your calendar shows it, whatever hour your day starts: a day that starts at 4am runs to 4am the
+    next morning, and an all-day event of tomorrow begins inside it (26 Nov, a tester's notes: Black Friday, the
+    27th, in Thursday's brief under "Fixed today")."""
+    if end_utc is None:
+        return None
+    start, end = to_local(start_utc, tz), to_local(end_utc, tz)
+    if start.hour or start.minute or end.hour or end.minute or end <= start:
+        return None
+    return start.date(), end.date() - timedelta(days=1)
+
+
+def event_on_day(start_utc: int, end_utc: int | None, day: date, tz: str, day_start: int) -> bool:
+    """Whether an event is on a planning day: an all-day one on each of its dates, any other when its time runs into
+    the day's hours."""
+    if (dates := all_day_dates(start_utc, end_utc, tz)) is not None:
+        return dates[0] <= day <= dates[1]
+    lo, hi = planning_day_start_utc(day, tz, day_start), planning_day_start_utc(day + timedelta(days=1), tz, day_start)
+    return start_utc < hi and (end_utc if end_utc is not None else start_utc + 1) > lo
+
+
+def event_day(start_utc: int, end_utc: int | None, tz: str, day_start: int) -> date:
+    """The planning day an event is on, by its start: an all-day one's first date, any other the day its time starts
+    in (1am is the day before's, when days start at 4am)."""
+    if (dates := all_day_dates(start_utc, end_utc, tz)) is not None:
+        return dates[0]
+    return planning_date(start_utc, tz, day_start)
+
+
 def night_utc(day: date, bedtime: int, tz: str) -> int:
     """Bedtime of the night that begins on planning date `day`; `bedtime` may pass 1440 (after midnight)."""
     return to_utc(local_midnight(day) + timedelta(minutes=bedtime), tz)
