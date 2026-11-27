@@ -228,12 +228,27 @@ def held_task(ctx: Ctx, event_id: int | None, event: Item | None = None) -> dict
     return out | {"elsewhere": ctx.local(times[0]["start_utc"]) if times else None}
 
 
+def shown_calendar(ctx: Ctx, item_id: int, calendar: str | None) -> str | None:
+    """The calendar an event is shown as: its own, or, that one hidden, another it's on that shows (27 Nov, a user's
+    notes: Thanksgiving, shown through one holiday calendar, wore the hidden one's name and green)."""
+    from friday.core.calendars import hidden_calendars
+    from friday.planner.hidden import also_on
+
+    hidden = hidden_calendars(ctx.settings["calendar_look"])
+    if not calendar or calendar not in hidden:
+        return calendar
+    if "also_on" not in ctx.memo:
+        ctx.memo["also_on"] = also_on(ctx.conn, ctx.user_id)
+    shown = sorted(ctx.memo["also_on"].get(item_id, set()) - set(hidden))
+    return shown[0] if shown else calendar
+
+
 def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
     """An event's calendar, category and whether it counts as busy."""
     if item.when != "fixed":
         return {}
     link = links(ctx).get(item.id or 0)
-    calendar = link.calendar if link else going_to(ctx, item.id)
+    calendar = shown_calendar(ctx, item.id or 0, link.calendar if link else going_to(ctx, item.id))
     placed = place(ctx, item.id, item.title, calendar, item.location)
     category = placed.category
     reason = left_out(item.title, calendar, item.free, ctx.settings["categories"], ctx.settings["busy"])

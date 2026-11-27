@@ -74,6 +74,22 @@ def event_calendars(conn: sqlite3.Connection, user_id: int) -> dict[int, str]:
     return {k: v for k, v in written_to(conn, user_id).items() if v} | linked
 
 
+def also_on(conn: sqlite3.Connection, user_id: int) -> dict[int, set[str]]:
+    """The other calendars an event is on, by item id: those that sent the same event, set aside as what you had (two
+    holiday calendars both with Thanksgiving: one event, on both)."""
+    found = rows(
+        conn,
+        "SELECT s.duplicate_of, src.name FROM suggestions s JOIN raw_inputs r ON r.id = s.raw_input_id "
+        f"JOIN sources src ON src.id = r.source_id WHERE s.user_id = ? AND s.duplicate_of IS NOT NULL "
+        f"AND s.status = 'superseded' AND src.kind IN ({', '.join('?' * len(CALENDAR_KINDS))})",
+        [user_id, *CALENDAR_KINDS],
+    )
+    out: dict[int, set[str]] = {}
+    for r in found:
+        out.setdefault(r["duplicate_of"], set()).add(r["name"])
+    return out
+
+
 def hidden_of(conn: sqlite3.Connection, settings: dict[str, Any], user_id: int) -> Hidden:
     """What the calendars you hid keep out of sight now; NOTHING when you hid none (nothing more is read)."""
     names = hidden_calendars(settings["calendar_look"])
@@ -87,7 +103,12 @@ def hidden_of(conn: sqlite3.Connection, settings: dict[str, Any], user_id: int) 
         )  # fmt: skip
         if r["name"] in names
     )
-    events = {k: name for k, name in event_calendars(conn, user_id).items() if name in names}
+    # hidden only when every calendar it's on is (27 Nov, a user's notes: Thanksgiving, on two holiday calendars, kept
+    # by the first, and gone when that one was hidden though the other was shown)
+    others = also_on(conn, user_id)
+    events = {
+        k: name for k, name in event_calendars(conn, user_id).items() if name in names and others.get(k, set()) <= names
+    }
     return Hidden(names, sources, with_their_repeats(conn, events), hidden_suggestions(conn, user_id, sources, events))
 
 
