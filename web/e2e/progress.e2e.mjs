@@ -5,7 +5,8 @@
 // anything about is answered (review_task). Checked on the page and on the server.
 
 const MEALS = /^(Breakfast|Lunch|Dinner)$/
-const settle = async (check, what, ms = 20_000) => {
+// 60 s: a start answered after a replan, late in a full run on a busy Mac, took more than 20 (27 Nov)
+const settle = async (check, what, ms = 60_000) => {
   for (let end = Date.now() + ms; Date.now() < end; await new Promise((r) => setTimeout(r, 300))) if (await check()) return
   throw new Error(`waited ${ms / 1000}s for ${what}`)
 }

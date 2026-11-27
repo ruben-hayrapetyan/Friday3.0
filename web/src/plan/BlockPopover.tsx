@@ -319,9 +319,10 @@ export function BlockPopover() {
             <Icon name="repeat" size={13} />
             {/* how it repeats, and what a change here does: one from a calendar changes this time only, as its editor
                 says (27 Nov, a user's notes: "Skipping leaves the others as they are" under a birthday, with nothing to
-                skip; a yearly birthday read "every Tuesday", fixed in the rule the server keeps: commands/series.py) */}
+                skip; a yearly birthday read "every Tuesday", fixed in the rule the server keeps: commands/series.py). Skipping is
+                said where Skip this one is offered: a repeating task's block */}
             {pattern ? `Repeats ${pattern.replace(/^Every/, "every").replace(/^Yearly/, "yearly").replace(/^Monthly/, "monthly")}` : "Repeats"}
-            {item.calendar ? ` in ${item.calendar}: changes here are to this time only.` : "."}
+            {item.calendar ? ` in ${item.calendar}: changes here are to this time only.` : event ? "." : ". Skipping leaves the others as they are."}
           </div>
         ) : (
           // One click to make it repeat, the choices named with its own day, as a calendar app's event card has
