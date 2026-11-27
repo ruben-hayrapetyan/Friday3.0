@@ -431,3 +431,27 @@ def test_a_break_that_keeps_no_sleep_offers_no_sleep_taps(app: App) -> None:
     (trip,) = app.do("vacations")["vacations"] if isinstance(app.do("vacations"), dict) else app.do("vacations")
     app.do("vacation_edit", id=trip["id"], keep_sleep=True)
     assert app.do("sleep")["next"] == "up"
+
+
+def test_a_break_that_keeps_no_sleep_asks_for_no_missed_taps(app: App) -> None:
+    """26 Nov, the user's Inbox on Thanksgiving break: "When did you go to bed?", "When did you get up?"... each "A
+    sleep tap you missed": "this should not occur if i chose not to record meals and sleep"."""
+    on(app)
+    app.at("2026-10-21T20:00")
+    assert app.do("review", date="2026-10-20")["sleep"]  # a weekday's taps, missed
+    app.do("vacation_add", name="Trip", start="2026-10-19", end="2026-10-21", mode="off")
+    assert app.do("review", date="2026-10-20")["sleep"] == []
+    assert app.do("review", date="2026-10-21")["sleep"] == []
+
+
+def test_nights_on_a_break_that_keeps_no_sleep_teach_nothing(app: App) -> None:
+    """The same day's "Your real times differ from your schedule", learned from the break's nights."""
+    on(app)
+    first = date(2026, 10, 19) - timedelta(days=8)
+    app.do("vacation_add", name="Trip", start=f"{first}", end="2026-10-18", mode="off")
+    for n in range(8):  # late nights on the trip
+        morning = first + timedelta(days=n + 1)
+        app.do("sleep_mark", kind="bed", at=f"{morning}T00:50")
+        app.do("sleep_mark", kind="up", at=f"{morning}T08:30")
+    out = app.do("sleep")
+    assert (out["suggested"], out["changes"]) == (None, [])

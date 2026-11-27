@@ -13,7 +13,7 @@ no longer planned when you mostly skip it. A rule can say yes ahead for some mea
 """
 
 import sqlite3
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import date, timedelta
 from typing import Any
@@ -325,7 +325,8 @@ def recorded(ctx: Ctx, days: int) -> list[Meal]:
 
 
 def learned(ctx: Ctx) -> list[Learned]:
-    return learn(recorded(ctx, LEARN_DAYS), ctx.settings["meal_tracking"].min_days)
+    outside = unplanned(ctx)
+    return learn([m for m in recorded(ctx, LEARN_DAYS) if not outside(m.date)], ctx.settings["meal_tracking"].min_days)
 
 
 @command("meal_use_length", affects_plan=True)
@@ -504,13 +505,23 @@ def again(ctx: Ctx, shown: list[Meal]) -> str | None:
     return done[-1].kind if done else None  # `shown` is in the order you started them
 
 
-def no_meals_today(ctx: Ctx) -> bool:
-    """A break today that doesn't plan meals: none offered (25 Nov, the user: "the banners for 'eating now?' should
-    also be removed"); a meal started anyway is still shown and ended as any."""
-    from friday.core.vacations import break_today
+def unplanned(ctx: Ctx) -> Callable[[date], bool]:
+    """Whether a day is on a break that doesn't plan meals: no meal offered (25 Nov, the user: "the banners for 'eating
+    now?' should also be removed"), and its meals not learned from (26 Nov: "this should not occur if i chose not to
+    record meals and sleep"); a meal started anyway is still shown and ended as any."""
+    from friday.core.vacations import load, on
 
-    vacation = break_today(ctx.conn, ctx.user_id, ctx.settings, ctx.today)
-    return vacation is not None and not vacation.plan_meals
+    breaks = load(ctx.conn, ctx.user_id, ctx.settings["breaks"])
+
+    def outside(day: date) -> bool:
+        vacation = on(day, breaks)
+        return vacation is not None and not vacation.plan_meals
+
+    return outside
+
+
+def no_meals_today(ctx: Ctx) -> bool:
+    return unplanned(ctx)(ctx.today)
 
 
 def offer(ctx: Ctx, today: set[str]) -> str | None:
@@ -539,7 +550,8 @@ def meals(ctx: Ctx, inp: Empty) -> MealsOut:
     for m in shown:
         days.setdefault(m.date.isoformat(), []).append(meal_out(m, place.get(m.id, 1)))
     now = next((m for m in reversed(shown) if not m.skipped and m.start and m.end is None), None)
-    found = learn(every, settings.min_days)
+    outside = unplanned(ctx)
+    found = learn([m for m in every if not outside(m.date)], settings.min_days)
     planned = planned_routines(ctx)
     changes = length_changes(found, {kind: minutes for kind, (_, minutes) in planned.items()})
     return MealsOut(

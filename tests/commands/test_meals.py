@@ -372,3 +372,16 @@ def test_a_break_that_plans_no_meals_offers_none(app: App) -> None:
     app.do("vacation_edit", id=trip["id"], plan_meals=True)
     at(app, "18:30")
     assert app.do("meals")["next"] == "dinner"
+
+
+def test_meals_on_a_break_that_plans_none_teach_nothing(app: App) -> None:
+    """26 Nov, the user: "this should not occur if i chose not to record meals and sleep": a break's meals, logged
+    anyway, aren't your usual ones (as a break's lengths and its days in Insights, core/vacations.py)."""
+    on(app)
+    lunch_routine(app)
+    app.do("vacation_add", name="Trip", start="2026-10-12", end="2026-10-18", mode="off")
+    for back in range(1, 8):  # the week of the trip, long lunches
+        day = date(2026, 10, 19) - timedelta(days=back)
+        app.do("meal_log", kind="lunch", start=f"{day}T12:00", end=f"{day}T12:45")
+    out = app.do("meals")
+    assert [x for x in out["learned"] if x["kind"] == "lunch"] == [] and out["changes"] == []

@@ -5,7 +5,8 @@ wake times offered as a change to your schedule. Naps are `commands/napping.py`;
 """
 
 import json
-from datetime import datetime, timedelta
+from collections.abc import Callable
+from datetime import date, datetime, timedelta
 
 from friday.api.commands import Changed, SleepMarkEditInput, SleepMarkInput, SleepMarkRef, SleepSkipInput
 from friday.api.types import Empty
@@ -100,6 +101,9 @@ def missing(ctx: Ctx, day) -> list[SleepAsk]:
     when you got up, after your usual routine). Each starts from your usual time."""
     if not ctx.settings["sleep_tracking"].on or ctx.settings["sleep"] is None or day > ctx.today:
         return []
+    outside = unkept(ctx)
+    if outside(day):
+        return []
     overrides = day_overrides(ctx.conn, ctx.user_id)
     # as many nights as the sleep page learns from (19 Nov: three days never learned your routine, so ready was always
     # asked for an hour after you got up, whatever your routine was)
@@ -109,7 +113,7 @@ def missing(ctx: Ctx, day) -> list[SleepAsk]:
     _, wake, _ = night_times(ctx.settings, overrides, day - timedelta(days=1), ctx.tz, ctx.day_start)
     bedtime, _, _ = night_times(ctx.settings, overrides, day, ctx.tz, ctx.day_start)
     up = last_night.up.at if last_night and last_night.up else to_local(wake, ctx.tz)
-    learned = learn(nights.values(), ctx.settings["sleep_tracking"].min_nights)
+    learned = learn([n for n in nights.values() if not outside(n.date)], ctx.settings["sleep_tracking"].min_nights)
     bed = tonight.bed.at if tonight and tonight.bed else to_local(bedtime, ctx.tz)
     usual = {
         "up": to_local(wake, ctx.tz),
@@ -181,12 +185,23 @@ def planned_min(ctx: Ctx, overrides: dict, evening) -> int:
     return wake - bedtime
 
 
-def no_sleep_today(ctx: Ctx) -> bool:
-    """A break today that doesn't keep your sleep: no taps for it (25 Nov, the user, as for meals)."""
-    from friday.core.vacations import break_today
+def unkept(ctx: Ctx) -> Callable[[date], bool]:
+    """Whether a day is on a break that doesn't keep your sleep: outside sleep tracking, no tap offered or asked for
+    and its night not learned from (25 Nov, the user, as for meals; 26 Nov: "this should not occur if i chose not to
+    record meals and sleep", the Inbox asking for the break's missed taps and new sleep times)."""
+    from friday.core.vacations import load, on
 
-    vacation = break_today(ctx.conn, ctx.user_id, ctx.settings, ctx.today)
-    return vacation is not None and not vacation.keep_sleep
+    breaks = load(ctx.conn, ctx.user_id, ctx.settings["breaks"])
+
+    def outside(day: date) -> bool:
+        vacation = on(day, breaks)
+        return vacation is not None and not vacation.keep_sleep
+
+    return outside
+
+
+def no_sleep_today(ctx: Ctx) -> bool:
+    return unkept(ctx)(ctx.today)
 
 
 @query("sleep")
@@ -200,7 +215,8 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
         return SleepOut(on=False, min_nights=tracking_on.min_nights)
     overrides = day_overrides(ctx.conn, ctx.user_id)
     nights = recorded(ctx, LEARN_DAYS)
-    learned = learn(nights.values(), tracking_on.min_nights)
+    outside = unkept(ctx)
+    learned = learn([n for n in nights.values() if not outside(n.date)], tracking_on.min_nights)
     found = changes(learned, ctx.settings["sleep"])
     suggested = None
     against: list[str] = []
