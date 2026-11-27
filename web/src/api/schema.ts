@@ -7392,6 +7392,8 @@ export interface components {
             all_day?: boolean;
             /** Series */
             series?: string | null;
+            /** Rule */
+            rule?: string | null;
             /**
              * Free
              * @default false

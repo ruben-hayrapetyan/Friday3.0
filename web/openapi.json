@@ -24080,6 +24080,17 @@
       ],
       "title": "Series"
      },
+     "rule": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rule"
+     },
      "free": {
       "type": "boolean",
       "title": "Free",
