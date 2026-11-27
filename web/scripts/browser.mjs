@@ -4,7 +4,7 @@
 // layout) and agreement-check.mjs (what the pages say against the plan).
 
 import { spawn } from "node:child_process"
-import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { createServer } from "node:net"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -26,9 +26,8 @@ export function freePort() {
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /** A sample (Alex's lived-in one unless said), served from a folder of its own, terms accepted and Setup answered, as the screen tests do. */
-export async function serveSample({ case: who = "alex", ready = true, prefix = "friday-check-", shiftMinutes = 0, from = null } = {}) {
+export async function serveSample({ case: who = "alex", ready = true, prefix = "friday-check-", shiftMinutes = 0 } = {}) {
   const folder = mkdtempSync(path.join(tmpdir(), prefix))
-  if (from) cpSync(from, folder, { recursive: true }) // a sample built already: served as it is, not lived again
   const port = await freePort()
   const keys = { MICROSOFT_CLIENT_ID: "test-microsoft-id", SLACK_CLIENT_ID: "test-slack-id", SLACK_CLIENT_SECRET: "test-slack-secret", TICKTICK_CLIENT_ID: "test-ticktick-id", TICKTICK_CLIENT_SECRET: "test-ticktick-secret", TRELLO_CLIENT_ID: "test-trello-id" }
   const env = { ...process.env, FRIDAY_CHAINS: "3", FRIDAY_FIXED_EFFORT: "1", FRIDAY_WEB_DIST: process.env.FRIDAY_WEB_DIST ?? path.join(REPO, "web/dist"), ...Object.fromEntries(Object.entries(keys).map(([k, v]) => [`FRIDAY_${k}`, v])) }
@@ -52,7 +51,7 @@ export async function serveSample({ case: who = "alex", ready = true, prefix = "
   const setup = await (await fetch(`${base}/api/q/setup`)).json()
   if (!setup.done) await post("setup_save", { ...setup.answers, brief: false })
   await post("tour_offered", {})
-  return { base, folder, halt: end, stop: () => (end(), rmSync(folder, { recursive: true, force: true, maxRetries: 5 })) }
+  return { base, folder, stop: () => (end(), rmSync(folder, { recursive: true, force: true, maxRetries: 5 })) }
 }
 
 /** Ends a process started `detached` and everything it started. */

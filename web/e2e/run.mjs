@@ -15,7 +15,7 @@
 // itself (a state the sample hasn't got, an AI's answer), until the test ends.
 // Exit 0: all passed; 1: some failed (listed); 2: it couldn't run. Build web/dist first.
 
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { CLICK, LAYOUT, SEEN, SETTLE, evaluate, go, openChrome, press, serveSample, wait } from "../scripts/browser.mjs"
@@ -158,19 +158,8 @@ async function main() {
   // Friday's clock (hooks/useClock.ts). Alex lives in New York (sim/sample.py); --url: the Friday given, as it is.
   const shift = given ? 0 : (process.env.TZ = process.env.TZ ?? "America/New_York", shiftToHour(Number(process.env.FRIDAY_TEST_HOUR ?? 14)))
   if (shift) shiftClock(shift)
-  // Lived once, served from a copy for each file, as the screen tests do (27 Nov: living Alex's three weeks took 16 s
-  // or, now and then, many minutes; done for every file, one slow time in fifty stopped the run)
-  let built = null
-  const sampleFor = async () => {
-    if (given) return { base: given.replace(/\/$/, ""), folder: option("--folder"), stop: () => {} }
-    if (!built) {
-      const first = await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-built-", shiftMinutes: shift })
-      first.halt()
-      built = first.folder
-      process.on("exit", () => rmSync(built, { recursive: true, force: true }))
-    }
-    return await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-", shiftMinutes: shift, from: built })
-  }
+  const sampleFor = async () =>
+    given ? { base: given.replace(/\/$/, ""), folder: option("--folder"), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-", shiftMinutes: shift })
   const { page, close, answer } = await openChrome()
   const failed = []
   let passed = 0
