@@ -1,7 +1,7 @@
 // Glass box: the new Projects & exams page's rows and words (model.ts).
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
-import { againstPlan, aimFor, at, behindRhythm, deadlineRows, gridDays, milestones, nextOf, reached, rhythmWords, share, sinceTouched, touchedWords, weekStarts, type Exam, type Project } from "./model"
+import { againstPlan, aimFor, at, behindRhythm, deadlineRows, diamonds, gridDays, milestones, nextOf, reached, rhythmWords, share, sinceTouched, touchedWords, weekStarts, type Exam, type Project } from "./model"
 
 const NOW = "2026-11-16T09:00"
 const TODAY = "2026-11-16"
@@ -138,9 +138,43 @@ describe("a project's milestones and aim", () => {
       { id: 1, title: "Draft", done: false, minutes: 60, due: "2026-11-24T17:00" },
       { id: 2, title: "Outline", done: true, minutes: 60, due: "2026-11-20T17:00" },
       { id: 3, title: "Revise", done: false, minutes: 60, due: null },
-      { id: 4, title: "Hand in", done: false, minutes: 10, due: "2026-11-27T17:00" }, // the project's own due: no milestone
+      { id: 4, title: "Hand in", done: false, minutes: 10, due: "2026-11-27T17:00" }, // the project's own due: one too
+      { id: 5, title: "Late extra", done: false, minutes: 10, due: "2026-11-28T17:00" }, // after the project's: none
     ]
-    expect(milestones({ steps, due: "2026-11-27T17:00" }).map((m) => m.title)).toEqual(["Outline", "Draft"])
+    expect(milestones({ steps, due: "2026-11-27T17:00" }).map((m) => m.title)).toEqual(["Outline", "Draft", "Hand in"])
+  })
+
+  // 27 Nov, a user's notes ("Friday Notes-3"): LING Final Essay's bar had three diamonds for seven steps, though all but
+  // the Final Draft had a due of their own: the Rubric was due with the project, and two steps due the same Monday
+  // stood on one spot.
+  describe("its diamonds, as the notes' essay has them", () => {
+    const essaySteps = [
+      { id: 1, title: "Share the representation", done: true, minutes: 30, due: "2026-11-16T23:59" },
+      { id: 2, title: "Preliminary Thesis", done: true, minutes: 60, due: "2026-11-23T23:59" },
+      { id: 3, title: "research", done: false, minutes: 79, due: "2026-11-30T23:59" },
+      { id: 4, title: "Partial first draft of Essay 4 and peer review", done: false, minutes: 240, due: "2026-12-04T23:59" },
+      { id: 5, title: "Rubric", done: false, minutes: 60, due: "2026-12-14T23:59" },
+      { id: 6, title: "Final Presentations", done: false, minutes: 60, due: "2026-11-30T23:59" },
+      { id: 7, title: "Final Draft", done: false, minutes: 120, due: null },
+    ]
+    const row = { steps: essaySteps, due: "2026-12-14T23:59" }
+    it("has one for each day a step is due, the project's own day too, and none for a step with no due", () => {
+      expect(diamonds(row).map((d) => d.due.slice(0, 10))).toEqual(["2026-11-16", "2026-11-23", "2026-11-30", "2026-12-04", "2026-12-14"])
+      expect(diamonds(row).flatMap((d) => d.titles)).not.toContain("Final Draft")
+    })
+    it("names every step due that day on its one diamond, and is done only when all of them are", () => {
+      const monday = diamonds(row).find((d) => d.due.startsWith("2026-11-30"))
+      expect(monday?.titles).toEqual(["research", "Final Presentations"])
+      expect(monday?.done).toBe(false)
+      const one = diamonds({ ...row, steps: essaySteps.map((x) => (x.id === 3 ? { ...x, done: true } : x)) }).find((d) => d.due.startsWith("2026-11-30"))
+      expect(one?.done).toBe(false) // research done, Final Presentations not
+      const both = diamonds({ ...row, steps: essaySteps.map((x) => (x.id === 3 || x.id === 6 ? { ...x, done: true } : x)) }).find((d) => d.due.startsWith("2026-11-30"))
+      expect(both?.done).toBe(true)
+    })
+    it("has none for a project with no steps due, and each step its own when no day is shared", () => {
+      expect(diamonds({ steps: [{ id: 1, title: "A", done: false, minutes: 60, due: null }], due: "2026-12-14T23:59" })).toEqual([])
+      expect(diamonds({ steps: essaySteps.slice(0, 2), due: "2026-12-14T23:59" }).map((d) => d.titles)).toEqual([["Share the representation"], ["Preliminary Thesis"]])
+    })
   })
 
   // 20 Nov, a user's notes: "if you complete one of the due dates, the progress bar should fill until the diamond
@@ -156,8 +190,51 @@ describe("a project's milestones and aim", () => {
     const diamond = at("2026-11-20T17:00", TODAY) / at("2026-12-14T17:00", TODAY)
     expect(share(row)).toBeLessThan(diamond) // 10 minutes of 550 alone falls short of it
     expect(reached(row, TODAY)).toBeCloseTo(diamond)
-    expect(reached({ ...row, doneMin: 500 }, TODAY)).toBeCloseTo(500 / 550) // past it, by what's done
+    const draft = at("2026-11-26T17:00", TODAY) / at("2026-12-14T17:00", TODAY)
+    expect(reached({ ...row, doneMin: 500 }, TODAY)).toBeCloseTo(draft) // never past the draft's diamond, not done yet
     expect(reached({ ...row, steps: steps.map((x) => ({ ...x, done: false })) }, TODAY)).toBeCloseTo(10 / 550) // none done
+  })
+
+  // 27 Nov, a user's notes ("Friday Notes-3"): the bar had passed the diamond of Final Presentations, due Mon 30, before
+  // the 30th: how far along is the work's share, the diamonds are on the weeks, and the share ran past an open one.
+  describe("never past a diamond whose step isn't done", () => {
+    const steps = [
+      { id: 1, title: "Preliminary Thesis", done: true, minutes: 60, due: "2026-11-20T17:00" },
+      { id: 2, title: "Final Presentations", done: false, minutes: 60, due: "2026-11-23T17:00" },
+      { id: 3, title: "Partial first draft", done: false, minutes: 240, due: "2026-11-26T17:00" },
+      { id: 4, title: "Final Draft", done: false, minutes: 120, due: null },
+    ]
+    const row = { steps, due: "2026-12-14T17:00", doneMin: 400, totalMin: 480 } // most of the work done
+    const on = (due: string) => at(due, TODAY) / at("2026-12-14T17:00", TODAY)
+    it("stops at the first open one, however much work is done", () => {
+      expect(share(row)).toBeGreaterThan(on("2026-11-23T17:00"))
+      expect(reached(row, TODAY)).toBeCloseTo(on("2026-11-23T17:00"))
+    })
+    it("goes by the work between the done diamond and the open one", () => {
+      const between = { ...row, doneMin: 96 } // a fifth of it: past the thesis's diamond, short of the presentations'
+      expect(on("2026-11-20T17:00")).toBeLessThan(0.2)
+      expect(on("2026-11-23T17:00")).toBeGreaterThan(0.2)
+      expect(reached(between, TODAY)).toBeCloseTo(0.2)
+    })
+    it("moves on to the next open one once that step is done", () => {
+      const next = { ...row, steps: steps.map((x) => (x.id === 2 ? { ...x, done: true } : x)) }
+      expect(reached(next, TODAY)).toBeCloseTo(on("2026-11-26T17:00"))
+    })
+    it("goes by the work alone once every step due is done", () => {
+      const all = { ...row, steps: steps.map((x) => (x.due ? { ...x, done: true } : x)) }
+      expect(reached(all, TODAY)).toBeCloseTo(400 / 480)
+    })
+    it("still reaches a done step's diamond past an open one (done out of order)", () => {
+      const ahead = { ...row, doneMin: 10, steps: steps.map((x) => (x.id === 3 ? { ...x, done: true } : x)) }
+      expect(reached(ahead, TODAY)).toBeCloseTo(on("2026-11-26T17:00"))
+    })
+    it("isn't held at the start by a step that's overdue and not done", () => {
+      const overdue = { ...row, steps: [{ id: 9, title: "Late one", done: false, minutes: 60, due: "2026-11-10T17:00" }] }
+      expect(reached(overdue, TODAY)).toBeCloseTo(400 / 480)
+    })
+    it("goes by the work alone for a project with no due", () => {
+      expect(reached({ ...row, due: null }, TODAY)).toBeCloseTo(400 / 480)
+    })
   })
 
   it("aims for its due less the days early, at the same time of day", () => {

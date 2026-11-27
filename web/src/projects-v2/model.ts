@@ -98,11 +98,17 @@ export const share = (r: Pick<Row, "doneMin" | "totalMin">) => (r.totalMin ? Mat
 
 /** How much of the bar to fill: how far along, and at least to the diamond of every step done, the diamonds standing at
  * their dues on the weeks (20 Nov, a user's notes: "if you complete one of the due dates, the progress bar should fill
- * until the diamond regardless of how long it took"). The bar runs from today to the due; 0 to 1 of it. */
+ * until the diamond regardless of how long it took"); never past the diamond of a step not done yet (27 Nov, a user's
+ * notes: the bar had passed the diamond of Final Presentations, due Mon 30, before the 30th: how far along is the
+ * work's share, the diamonds are on the weeks, and the share ran past one). The bar runs from today to the due; 0 to 1
+ * of it. */
 export function reached(r: Pick<Row, "doneMin" | "totalMin" | "steps" | "due">, today: string): number {
   const end = r.due ? at(r.due, today) : 0
-  const diamonds = end > 0 ? milestones(r).filter((m) => m.done).map((m) => at(m.due ?? "", today) / end) : []
-  return Math.min(1, Math.max(share(r), ...diamonds))
+  const on = (m: Step) => at(m.due ?? "", today) / end
+  const all = end > 0 ? milestones(r) : []
+  const open = all.filter((m) => !m.done).map(on).filter((x) => x > 0) // one overdue sits at the bar's start: no cap
+  const work = Math.min(share(r), ...open)
+  return Math.min(1, Math.max(work, ...all.filter((m) => m.done).map(on)))
 }
 export const left = (r: Pick<Row, "doneMin" | "totalMin">) => dur(Math.max(0, r.totalMin - r.doneMin)) || "0m"
 
@@ -173,8 +179,24 @@ export function rhythmWords(hours: number, days: number): string {
   return `${days} ${days === 1 ? "day" : "days"} a week, about ${dur(Math.round((hours * 60) / days))} each`
 }
 
-/** A project's milestones: its steps with a due of their own, before the project's, soonest first. */
-export const milestones = (r: Pick<Row, "steps" | "due">) => r.steps.filter((s) => s.due && (!r.due || s.due < r.due)).sort((a, b) => (a.due ?? "").localeCompare(b.due ?? ""))
+/** A project's milestones: its steps with a due of their own, by the project's, soonest first (27 Nov, a user's notes:
+ * three diamonds for seven steps, a step due with the project, the Rubric, had none). */
+export const milestones = (r: Pick<Row, "steps" | "due">) => r.steps.filter((s) => s.due && (!r.due || s.due <= r.due)).sort((a, b) => (a.due ?? "").localeCompare(b.due ?? ""))
+
+/** The bar's diamonds: one a day, for the steps due that day ("Final Presentations and research"), done when all are,
+ * as two diamonds on one spot read as one step (27 Nov). */
+export function diamonds(r: Pick<Row, "steps" | "due">): { key: string; due: string; titles: string[]; done: boolean }[] {
+  const out: { key: string; due: string; titles: string[]; done: boolean }[] = []
+  for (const m of milestones(r)) {
+    const day = (m.due ?? "").slice(0, 10)
+    const same = out.find((d) => d.due.slice(0, 10) === day)
+    if (same) {
+      same.titles.push(m.title)
+      same.done &&= m.done
+    } else out.push({ key: String(m.id), due: m.due ?? "", titles: [m.title], done: m.done })
+  }
+  return out
+}
 
 
 /** Where a project aims to be done: its due less the days early it aims for (a local time, as dues are). */

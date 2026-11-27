@@ -6,7 +6,7 @@ import { Check, H, Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { weekday } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
-import { aimFor, at, left, milestones, reached, type Row, STATUS, weekStarts, WEEKS } from "./model"
+import { aimFor, at, diamonds, left, reached, type Row, STATUS, weekStarts, WEEKS } from "./model"
 
 const TONE: Record<Row["status"], string> = {
   on_track: "var(--color-accent-300)",
@@ -102,8 +102,8 @@ function DeadlineRow({ r, today, early, lit, onOpen }: { r: Row; today: string; 
         {r.due && early > 0 && (
           <span data-aim title={`Aims to finish ${early} ${early === 1 ? "day" : "days"} early`} style={{ position: "absolute", left: `${at(aimFor(r.due, early), today)}%`, top: 3, height: 20, borderLeft: `2px dotted ${tint}` }} />
         )}
-        {milestones(r).map((m) => (
-          <span key={m.id} data-milestone title={`${m.title}, due ${weekday((m.due ?? "").slice(0, 10))} ${Number((m.due ?? "").slice(8, 10))}${m.done ? ", done" : ""}`} style={{ position: "absolute", left: `calc(${at(m.due ?? "", today)}% - 5px)`, top: 8, width: 10, height: 10, transform: "rotate(45deg)", background: m.done ? tint : "var(--color-surface)", boxShadow: `0 0 0 2px ${tint}` }} />
+        {diamonds(r).map((m) => (
+          <span key={m.key} data-milestone title={`${named(m.titles)}, due ${weekday(m.due.slice(0, 10))} ${Number(m.due.slice(8, 10))}${m.done ? ", done" : ""}`} style={{ position: "absolute", left: `calc(${at(m.due, today)}% - 5px)`, top: 8, width: 10, height: 10, transform: "rotate(45deg)", background: m.done ? tint : "var(--color-surface)", boxShadow: `0 0 0 2px ${tint}` }} />
         ))}
         {flag && (
           <span className="tnum" style={{ position: "absolute", ...(at(r.due ?? "", today) > 82 ? { right: 0 } : { left: `calc(${at(r.due ?? "", today)}% + 6px)` }), top: 5, fontSize: 11, color: r.hard ? "var(--fr-due)" : "var(--color-neutral-400)", whiteSpace: "nowrap" }}>
@@ -115,3 +115,5 @@ function DeadlineRow({ r, today, early, lit, onOpen }: { r: Row; today: string; 
   )
 }
 
+/** "A", "A and B", "A, B and C". */
+const named = (titles: string[]) => (titles.length < 2 ? titles.join("") : `${titles.slice(0, -1).join(", ")} and ${titles[titles.length - 1]}`)
