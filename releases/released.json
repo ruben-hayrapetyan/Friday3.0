@@ -1,6 +1,40 @@
 {
-  "current": "0.6.8",
+  "current": "0.6.10",
   "versions": [
+    {
+      "version": "0.6.10",
+      "released": "2026-11-27",
+      "sha256": "346c667f96281aa4d0aaaacfd87c203e45d46fce41572227f5d88aa27c1f6c2e",
+      "bytes": 237559596,
+      "commit": "b33335d04a1cb304f62a943e6130a5f8bb743528",
+      "notes": {
+        "summary": "Breaks, birthdays and holidays behave as you'd expect, projects show their steps' deadlines truly, and Friday follows your time zone when you travel.",
+        "new": [
+          "Friday's time zone follows your Mac's: land somewhere new and your plan moves to local time on its own. A time zone you set by hand stays until the Mac's changes again.",
+          "When you lock a to-do in place and it waits on another, Friday plans that other one before the lock, and tells you plainly when there isn't room."
+        ],
+        "changed": [
+          "On a break day, the morning brief is that day's list: no planned times, no pace, and the break's name and day where the pace was.",
+          "On a break that doesn't plan meals or sleep, Friday doesn't offer \"Eating now?\", doesn't ask about sleep taps you missed, and doesn't learn from those days.",
+          "A project's progress bar never runs past a step that isn't done, and shows a diamond for every day a step is due, naming each step due that day.",
+          "A step with no due of its own says it's due with its project, in its details and in To-do.",
+          "A week past your usual hours with nothing that can wait says so, instead of offering Lighten with nothing to lighten.",
+          "Starting Dinner (or any meal's routine) records that meal, as Eating now does.",
+          "An all-day event no longer asks which task its time is for, and says plainly that it doesn't keep work off its day.",
+          "A calendar with no color chosen shows the color its events actually wear: \"Its own: Permanent Green\".",
+          "An Inbox suggestion from a calendar shows the event in words, not raw data.",
+          "Friday plans each project's weekly share in its own week first."
+        ],
+        "fixed": [
+          "Repeating events from your Mac's calendars said \"every Tuesday\" when they repeat yearly, monthly or every other week: every repeat now says its calendar's own rule, those imported before too.",
+          "An event on two calendars (two holiday calendars, say) disappeared when one of them was hidden; it now shows while any calendar it's on does.",
+          "The morning brief listed tomorrow's all-day event (Black Friday) under today.",
+          "Friday asked about a calendar event that had only changed its capitals or moved by a minute.",
+          "Long calendar names ran out of the Show menu, and the Take a break menus were far bigger than their choices.",
+          "Ticking a new exam prep right after adding it sometimes didn't count."
+        ]
+      }
+    },
     {
       "version": "0.6.8",
       "released": "2026-11-25",
