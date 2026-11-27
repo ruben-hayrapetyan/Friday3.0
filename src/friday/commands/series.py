@@ -719,14 +719,23 @@ def weekdays_rule(starts: list[str]) -> str:
         if all_day or not dates:
             return "FREQ=YEARLY"
         return f"FREQ=WEEKLY;BYDAY={DAYS[dates[0].weekday()]}"
-    gap = min((b - a).days for a, b in zip(dates, dates[1:], strict=False))
+    gaps = [(b - a).days for a, b in zip(dates, dates[1:], strict=False)]
     days = sorted({d.weekday() for d in dates})
     if len(days) == 7:
         return "FREQ=DAILY"  # every day of the week seen (weekdays only stay weekly, on those days)
-    if gap >= 28:
-        return "FREQ=MONTHLY" if gap <= 31 else "FREQ=YEARLY"
-    every = f";INTERVAL={gap // 7}" if len(days) == 1 and gap % 7 == 0 and gap > 7 else ""  # every other week
-    return "FREQ=WEEKLY" + every + ";BYDAY=" + ",".join(DAYS[d] for d in days)
+    # by the calendar, not the gap's size: the same date a year apart is yearly, the same day of the month a month
+    # apart monthly, and whole weeks apart weekly (27 Nov, the random tests: every 4 weeks, 28 days apart, was read
+    # monthly)
+    if len({(d.month, d.day) for d in dates}) == 1:
+        return "FREQ=YEARLY"
+    if len({d.day for d in dates}) == 1 and all(28 <= g <= 31 for g in gaps):
+        return "FREQ=MONTHLY"
+    if len(days) == 1 and all(g % 7 == 0 for g in gaps):
+        every = min(gaps) // 7
+        return f"FREQ=WEEKLY{f';INTERVAL={every}' if every > 1 else ''};BYDAY={DAYS[days[0]]}"
+    if min(gaps) >= 28:
+        return "FREQ=MONTHLY" if min(gaps) <= 31 else "FREQ=YEARLY"
+    return "FREQ=WEEKLY;BYDAY=" + ",".join(DAYS[d] for d in days)
 
 
 def mirror(ctx: Ctx, item: dict[str, Any], batch: str, external: str, rule: str | None = None) -> int:
