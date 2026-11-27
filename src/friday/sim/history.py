@@ -126,8 +126,11 @@ def live_day(life: Life, day: date) -> None:
         review(life, day, outcomes)
         if day < life.first + timedelta(days=7):  # the first week: enough to learn from, not enough to stop asking
             answer_questions(life)
-    if day == life.today - timedelta(days=1):
-        prepare_questions(life.conn, life.now)  # last night's questions about today, not answered yet
+    # last night's questions about today, not answered yet: one at least, so Alex's Inbox always has the day to
+    # compare (27 Nov: on some dates Alex's answers looked too noisy to ask more, and the sample, the demo and the
+    # browser tests that open it had none)
+    if day == life.today - timedelta(days=1) and not prepare_questions(life.conn, life.now):
+        prepare_questions(life.conn, life.now, anyway=True)
     if day.weekday() == 6:
         life.do("week_note", week=(day - timedelta(days=6)).isoformat(), feel=life.rng.choice(FEELS))
     hand_in_or_drop(life)

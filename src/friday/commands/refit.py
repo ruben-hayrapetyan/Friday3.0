@@ -58,9 +58,10 @@ def ctx_today(settings: dict[str, Any], now_utc: int) -> date:
     return planning_date(now_utc, settings["time"].timezone, minutes_of(settings["time"].day_start))
 
 
-def prepare_questions(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> int:
+def prepare_questions(conn: sqlite3.Connection, now_utc: int, user_id: int = 1, anyway: bool = False) -> int:
     """Draw today's comparison questions about tomorrow, within the budget (§21.4); returns how many were added.
-    The server's job runs this once a day, before the evening review."""
+    The server's job runs this once a day, before the evening review. `anyway`: asked though the answers so far are
+    noisy or the versions agree, as the sample term does for its last night (sim/history.py), never your Friday."""
     settings = load_settings(conn, user_id)
     learn = settings["learn"]
     if learn.weights == "off" or settings["time"].timezone is None or settings["sleep"] is None:
@@ -73,7 +74,7 @@ def prepare_questions(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) 
     room = min(learn.questions_per_day - today_count, learn.questions_per_week - this_week)
     found, _ = answered(conn, user_id, learn.drag_weight)
     rules = learnable(settings)
-    if room <= 0 or noise(found, rules) > NOISY:
+    if room <= 0 or (noise(found, rules) > NOISY and not anyway):
         return 0
     snapshot = read_snapshot(conn, now_utc, user_id)
     theta = snapshot.multipliers or None
@@ -86,7 +87,7 @@ def prepare_questions(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) 
             found,
             rules,
             theta,
-            learn.query_stop_disagreement,
+            0.0 if anyway else learn.query_stop_disagreement,
             seed=now_utc % 10_000 + made,
         )
         if pick is None:
