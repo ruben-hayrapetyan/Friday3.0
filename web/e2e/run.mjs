@@ -164,6 +164,15 @@ async function main() {
   const sampleFor = async () =>
     given ? { base: given.replace(/\/$/, ""), folder: option("--folder"), stop: () => {} } : await serveSample({ case: option("--case") ?? "alex", prefix: "friday-e2e-", shiftMinutes: shift })
   const { page, close, answer } = await openChrome()
+  // Chrome's clock on the same hour too (27 Nov: the page follows Friday's clock once the server has said it, and
+  // before that its own; three days apart, the Day view showed the 27th while Friday said the 24th)
+  if (shift) await page("Page.addScriptToEvaluateOnNewDocument", { source: `(() => {
+    const Real = Date, ms = ${shift} * 60000
+    window.Date = class extends Real {
+      constructor(...given) { if (given.length) super(...given); else super(Real.now() + ms) }
+      static now() { return Real.now() + ms }
+    }
+  })()` })
   const failed = []
   let passed = 0
   const started = Date.now()
