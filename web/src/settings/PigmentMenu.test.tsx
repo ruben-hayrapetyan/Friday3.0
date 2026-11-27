@@ -5,17 +5,18 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { PIGMENTS } from "@/lib/pigments"
 import { PigmentMenu } from "./CalendarsSection"
 
 vi.mock("@/theme/LookProvider", () => ({ useLook: () => ({ light: true }) }))
 
 afterEach(cleanup)
 
-function open(value: string | null = null, onPick = vi.fn(), outer = vi.fn()) {
+function open(value: string | null = null, onPick = vi.fn(), outer = vi.fn(), own: string | null = null) {
   const user = userEvent.setup()
   render(
     <div onKeyDown={outer}>
-      <PigmentMenu value={value} onPick={onPick} />
+      <PigmentMenu value={value} onPick={onPick} own={own} />
       <button>Elsewhere</button>
     </div>,
   )
@@ -96,5 +97,29 @@ describe("the pigment menu, inside", () => {
     for (const [type, fn] of added) expect(remove).toHaveBeenCalledWith(type, fn)
     add.mockRestore()
     remove.mockRestore()
+  })
+})
+
+
+// 27 Nov, a user's notes ("Friday Notes-3"): Settings said "No pigment" for a calendar whose events were green, the
+// calendar's own green in Google, which events wear when you choose none.
+describe("none chosen, said as its events wear it", () => {
+  // what the button says: the choice shown, not the others it keeps hidden to size itself (MenuChoice)
+  const [first, second] = PIGMENTS
+  it("is the calendar's own color when it has one", async () => {
+    const { user, button } = open(null, vi.fn(), vi.fn(), first.id)
+    expect(button.querySelector("[data-chosen]")?.textContent).toContain(`Its own: ${first.name}`)
+    await user.click(button)
+    expect(screen.getAllByRole("option")[0].textContent).toContain(`Its own: ${first.name}`)
+    expect(screen.queryByText("No pigment")).toBeNull()
+  })
+  it("is No pigment when the calendar has no color of its own", () => {
+    const { button } = open(null, vi.fn(), vi.fn(), null)
+    expect(button.querySelector("[data-chosen]")?.textContent).toContain("No pigment")
+  })
+  it("is the pigment you chose when you chose one, whatever the calendar's own", () => {
+    const { button } = open(second.id, vi.fn(), vi.fn(), first.id)
+    expect(button.querySelector("[data-chosen]")?.textContent).toContain(second.name)
+    expect(button.querySelector("[data-chosen]")?.textContent).not.toContain("Its own")
   })
 })

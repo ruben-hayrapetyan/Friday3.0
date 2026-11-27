@@ -143,7 +143,7 @@ export function CalendarsSection() {
                   <div key={c.id} className="fr-row" style={{ display: "flex", flexWrap: "wrap", gap: "8px 14px", alignItems: "center", padding: "8px 0" }}>
                     <span style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", minWidth: 0 }}>
                       <span style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0 }}>
-                        <span style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: swatchOf(look.colors[c.name]) }} />
+                        <span style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: swatchOf(look.colors[c.name] ?? c.color) }} />
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
                       </span>
                       <span className="fr-kicker">
@@ -157,7 +157,7 @@ export function CalendarsSection() {
                       </span>
                     </span>
                     <CalendarChoice name={c.name} shown={shown} busy={busyNow} onPick={pick} />
-                    <PigmentMenu value={look.colors[c.name] ?? null} onPick={(color) => setLook({ colors: color ? { ...look.colors, [c.name]: color } : omit(look.colors, c.name) })} />
+                    <PigmentMenu value={look.colors[c.name] ?? null} own={c.color ?? null} onPick={(color) => setLook({ colors: color ? { ...look.colors, [c.name]: color } : omit(look.colors, c.name) })} />
                   </div>
                 )
               })}
@@ -216,7 +216,7 @@ function omit(colors: Record<string, string>, name: string): Record<string, stri
 }
 
 /** A pigment from personal's palette, or none; Escape or a press beside it closes the list, as Friday's other menus. */
-export function PigmentMenu({ value, onPick }: { value: string | null; onPick: (id: string | null) => void }) {
+export function PigmentMenu({ value, onPick, own = null }: { value: string | null; onPick: (id: string | null) => void; own?: string | null }) {
   const { light } = useLook()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
@@ -225,14 +225,14 @@ export function PigmentMenu({ value, onPick }: { value: string | null; onPick: (
   return (
     <span ref={box} style={{ position: "relative" }} onKeyDown={escape}>
       <button ref={button} className="fr-menu-button" onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open}>
-        <MenuChoice options={[null, ...PIGMENTS.map((p) => p.id)].map((id) => ({ value: id ?? "", label: <Pigment id={id} light={light} gap={6} /> }))} value={value ?? ""} />
+        <MenuChoice options={[null, ...PIGMENTS.map((p) => p.id)].map((id) => ({ value: id ?? "", label: <Pigment id={id} own={own} light={light} gap={6} /> }))} value={value ?? ""} />
         <Icon name="caret-down" size={12} />
       </button>
       {open && (
         <div className="fr-menu-list fr-float" role="listbox" style={{ minWidth: 170 }}>
           {[null, ...PIGMENTS.map((p) => p.id)].map((id) => (
             <button key={id ?? "none"} role="option" aria-selected={id === value} onClick={() => (onPick(id), setOpen(false), button.current?.focus())}>
-              <Pigment id={id} light={light} gap={8} />
+              <Pigment id={id} own={own} light={light} gap={8} />
             </button>
           ))}
         </div>
@@ -241,12 +241,15 @@ export function PigmentMenu({ value, onPick }: { value: string | null; onPick: (
   )
 }
 
-/** A pigment's swatch and name. */
-function Pigment({ id, light, gap }: { id: string | null; light: boolean; gap: number }) {
+/** A pigment's swatch and name. None chosen is the calendar's own color when it has one, as its events wear it (27
+ * Nov, a user's notes: "No pigment" in Settings, and its events green, the calendar's own green in Google). */
+function Pigment({ id, own = null, light, gap }: { id: string | null; own?: string | null; light: boolean; gap: number }) {
+  const shown = id ?? own
+  const name = PIGMENTS.find((p) => p.id === shown)?.name
   return (
     <span style={{ display: "flex", gap, alignItems: "center" }}>
-      <span style={{ width: 10, height: 10, flex: "none", borderRadius: "50%", background: pigment(id, light) ?? "transparent", boxShadow: "inset 0 0 0 1px var(--fr-rule)" }} />
-      {PIGMENTS.find((p) => p.id === id)?.name ?? "No pigment"}
+      <span style={{ width: 10, height: 10, flex: "none", borderRadius: "50%", background: pigment(shown, light) ?? "transparent", boxShadow: "inset 0 0 0 1px var(--fr-rule)" }} />
+      {id ? name : name ? `Its own: ${name}` : "No pigment"}
     </span>
   )
 }
