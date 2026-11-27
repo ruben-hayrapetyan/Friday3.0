@@ -82,3 +82,48 @@ def test_once_the_stuck_step_is_done_the_rest_are_planned(app: App) -> None:
     replan(app.conn, app.now_utc)
     steps = shown(app, ids)
     assert steps["Partial first draft"][0] and steps["Partial first draft"][2] is None
+
+
+def chain(app: App, steps: tuple[tuple[str, str, int], ...], stuck: str) -> dict[str, int]:
+    made = app.do("add", title="Essay", preset="Project", due="2026-12-18T17:00", duration_min=60)
+    out = {"project": made["item"]["id"]}
+    for name, due, minutes in steps:
+        out[name] = app.do("add", title=name, parent_id=out["project"], due=due, duration_min=minutes,
+                           firmness="hard")["item"]["id"]  # fmt: skip
+    app.do("edit", id=out[stuck], expires=True)
+    replan(app.conn, app.now_utc)
+    return out
+
+
+# 27 Nov, the user's notes again ("Friday Notes-3": a step "No room before its due" while the later ones read "Tue 1 Dec
+# 13:30" and "Later, by Wed 16 Dec"): the other ways it could come back.
+
+
+def test_a_stuck_first_step_holds_every_step_after_it(app: App) -> None:
+    ids = chain(app, (("Outline", "2026-10-19T20:00", 300), ("Draft", "2026-10-23T17:00", 240),
+                      ("Revise", "2026-10-26T17:00", 120)), stuck="Outline")  # fmt: skip
+    steps = shown(app, ids)
+    assert steps["Outline"] == (False, None, None)
+    assert steps["Draft"] == (False, None, ids["Outline"])
+    assert steps["Revise"] == (False, None, ids["Outline"])  # behind the draft, behind the outline: named the root
+
+
+FAR = (("Thesis", "2026-10-19T21:00", 300), ("Draft", "2026-11-25T17:00", 240), ("Rubric", "2026-12-14T17:00", 60),
+       ("Final", "2026-12-16T17:00", 120))  # fmt: skip
+
+
+def test_steps_due_past_the_plans_two_weeks_behind_a_stuck_one_have_no_later_day(app: App) -> None:
+    """ "Later, by Wed 16 Dec" is the forecast past the plan's days: a step held back has none."""
+    ids = chain(app, FAR, stuck="Thesis")
+    steps = shown(app, ids)
+    for name in ("Draft", "Rubric", "Final"):
+        assert steps[name] == (False, None, ids["Thesis"]), name
+
+
+def test_without_a_stuck_step_the_far_steps_have_their_later_day(app: App) -> None:
+    """The same project with the thesis done: the forecast is back, so the test above isn't passing by having none."""
+    ids = chain(app, FAR, stuck="Thesis")
+    app.do("done", id=ids["Thesis"])
+    replan(app.conn, app.now_utc)
+    steps = shown(app, ids)
+    assert steps["Final"][1] is not None and steps["Final"][2] is None
