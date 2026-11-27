@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { likelyTask, likeness, ranked } from "./holds"
+import { likelyTask, likeness, ranked, openAt, wholeDay } from "./holds"
 
 const tasks = [
   { id: 55, title: "CS A4 Design Doc" },
@@ -29,5 +29,28 @@ describe("which task an event's time is for", () => {
   it("offers every task, the likeliest first", () => {
     expect(ranked("A4dd", tasks).map((t) => t.id).slice(0, 2)).toEqual([55, 56])
     expect(ranked("A4dd", tasks)).toHaveLength(tasks.length)
+  })
+})
+
+// 27 Nov, a user's notes ("Friday Notes-3"): a birthday, all day, asked "Is this time for TC/HS Detection?", a task due
+// before it at that.
+describe("a whole day isn't a task's time", () => {
+  it("is midnight to midnight, one day or several; never a timed event, one at midnight included", () => {
+    expect(wholeDay({ start: "2026-11-24T00:00", end: "2026-11-25T00:00" })).toBe(true)
+    expect(wholeDay({ start: "2026-11-24T00:00", end: "2026-11-27T00:00" })).toBe(true) // a trip, several days
+    expect(wholeDay({ start: "2026-11-24T09:00", end: "2026-11-24T10:00" })).toBe(false)
+    expect(wholeDay({ start: "2026-11-24T00:00", end: "2026-11-24T01:00" })).toBe(false) // starts at midnight, an hour
+    expect(wholeDay({ start: "2026-11-24T00:00", end: "2026-11-24T00:00" })).toBe(false) // no length
+    expect(wholeDay({ start: null, end: null })).toBe(false)
+  })
+  it("offers only tasks still to do when it starts: no due, or due at it or later", () => {
+    const tasks = [
+      { id: 1, due: null },
+      { id: 2, due: "2026-11-20T23:59" }, // due before: its time would only make it late
+      { id: 3, due: "2026-11-24T09:00" }, // due as it starts
+      { id: 4, due: "2026-12-01T17:00" },
+    ]
+    expect(openAt(tasks, "2026-11-24T09:00").map((t) => t.id)).toEqual([1, 3, 4])
+    expect(openAt(tasks, null).map((t) => t.id)).toEqual([1, 2, 3, 4]) // no start: none left out
   })
 })

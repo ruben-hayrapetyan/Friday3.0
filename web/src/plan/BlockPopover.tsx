@@ -15,7 +15,7 @@ import { useCommand } from "@/hooks/useCommand"
 import { useItem, useItems, useSettings, useStatus, useWhy } from "@/hooks/queries"
 import { whose } from "@/lib/aiName"
 import { spanOn } from "@/lib/ampm"
-import { likelyTask, ranked } from "@/lib/holds"
+import { likelyTask, openAt, ranked, wholeDay } from "@/lib/holds"
 import { clock, dur, sittings, weekday, when } from "@/lib/format"
 import { eventPaint, PIGMENTS, pigment, UNMARKED } from "@/lib/pigments"
 import { useAi } from "@/settings/AiConnect"
@@ -317,7 +317,11 @@ export function BlockPopover() {
         {item?.series_id != null ? (
           <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
             <Icon name="repeat" size={13} />
-            {pattern ? `Repeats ${pattern.replace(/^Every/, "every")}.` : "Repeats."} Skipping leaves the others as they are.
+            {/* how it repeats, and what a change here does: one from a calendar changes this time only, as its editor
+                says (27 Nov, a user's notes: "Skipping leaves the others as they are" under a birthday, with nothing to
+                skip; a yearly birthday read "every Tuesday", fixed in the rule the server keeps: commands/series.py) */}
+            {pattern ? `Repeats ${pattern.replace(/^Every/, "every").replace(/^Yearly/, "yearly").replace(/^Monthly/, "monthly")}` : "Repeats"}
+            {item.calendar ? ` in ${item.calendar}: changes here are to this time only.` : "."}
           </div>
         ) : (
           // One click to make it repeat, the choices named with its own day, as a calendar app's event card has
@@ -461,10 +465,11 @@ function HeldFor({ event, only, open = event.left_out === "skipped" || event.lef
   }
   const held = (picked !== undefined ? picked : event.holds) as { id: number; title: string; due_before?: boolean; loose?: boolean; here?: [string, string]; elsewhere?: string | null } | null | undefined
   const { today } = useShell()
-  const likely = held ? null : likelyTask(event.title, tasks)
+  const likely = held ? null : likelyTask(event.title, openAt(tasks, event.start))
   const found = ranked(event.title, tasks.filter((t) => t.title.toLowerCase().includes(text.trim().toLowerCase()))).slice(0, 6)
   const box = { display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: "var(--radius-md)", background: "var(--color-bg)" } as const
   // `open`: worked through, so any work may have what the to-do doesn't use
+  if (wholeDay(event) && !held) return null // a whole day isn't a task's time
   if (only === "likely" && (held || !likely)) return null
   if (choosing)
     return (

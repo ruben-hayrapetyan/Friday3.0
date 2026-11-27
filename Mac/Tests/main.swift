@@ -143,6 +143,19 @@ test("calendar payload: one id per occurrence") {
     check(MacPayload.occurrenceID("abc", at: monday) == MacPayload.occurrenceID("abc", at: monday), "stable")
 }
 
+// 27 Nov, a user's notes: every birthday read "Repeats every Tuesday": the Mac sent no rule, and Friday took a yearly
+// event seen once for a weekly one. Each repeat goes with its rule, as Google's do.
+test("calendar payload: a repeat's rule as an RRULE") {
+    check(MacPayload.rrule(EKRecurrenceRule(recurrenceWith: .yearly, interval: 1, end: nil)) == "FREQ=YEARLY", "a birthday: yearly")
+    check(MacPayload.rrule(EKRecurrenceRule(recurrenceWith: .monthly, interval: 1, end: nil)) == "FREQ=MONTHLY", "monthly")
+    check(MacPayload.rrule(EKRecurrenceRule(recurrenceWith: .daily, interval: 3, end: nil)) == "FREQ=DAILY;INTERVAL=3", "every 3 days")
+    let days = [EKRecurrenceDayOfWeek(.monday), EKRecurrenceDayOfWeek(.wednesday), EKRecurrenceDayOfWeek(.sunday)]
+    let weekly = EKRecurrenceRule(recurrenceWith: .weekly, interval: 2, daysOfTheWeek: days, daysOfTheMonth: nil,
+                                  monthsOfTheYear: nil, weeksOfTheYear: nil, daysOfTheYear: nil, setPositions: nil, end: nil)
+    check(MacPayload.rrule(weekly) == "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,SU", "every other week on its days, Sunday too")
+    check(MacPayload.rrule(EKRecurrenceRule(recurrenceWith: .weekly, interval: 1, end: nil)) == "FREQ=WEEKLY", "plain weekly")
+}
+
 test("calendar payload: times with the Mac's offset") {
     let monday = Date(timeIntervalSince1970: 1_792_504_800)
     let york = TimeZone(identifier: "America/New_York")!

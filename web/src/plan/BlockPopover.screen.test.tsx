@@ -484,3 +484,68 @@ describe("the past's cards", () => {
     await waitFor(() => expect(card()).toBeNull())
   })
 })
+
+// 27 Nov, a user's notes ("Friday Notes-3"), a birthday's card: "Is this time for TC/HS Detection?" on a whole-day
+// event (a task due before it at that); "Repeats every Tuesday, all day. Skipping leaves the others as they are." for
+// a yearly one, with nothing to skip.
+describe("a whole-day event's card", () => {
+  async function wholeDay(title: string, daysAhead = 1, extra: Record<string, unknown> = {}) { // in the week shown
+    const day = addDays(await today(), daysAhead)
+    await friday.c("add", { title, when: "fixed", start: `${day}T00:00`, end: `${addDays(day, 1)}T00:00`, ...extra })
+    cleanup()
+    const opened = await openFriday("/")
+    const bar = await screen.findByRole("button", { name: title }, { timeout: 15_000 })
+    await opened.user.click(bar)
+    await waitFor(() => expect(card()).not.toBeNull(), { timeout: 10_000 })
+    return opened
+  }
+
+  it("never asks which task its time is for, though its name is a task's", async () => {
+    await wholeDay("CHEM 2090 lab report 6 day")
+    await detailed()
+    expect(inCard().queryByText(/^Is this time for/)).toBeNull()
+    expect(inCard().queryByRole("button", { name: "Another task" })).toBeNull()
+  })
+
+  it("a timed event with the same name still asks (only whole days don't)", async () => {
+    const day = addDays(await today(), 5)
+    await friday.c("add", { title: "CHEM 2090 lab report 6 hour", when: "fixed", start: `${day}T15:00`, end: `${day}T16:00` })
+    const event = (await nextWeek()).fixed.find((f) => f.title === "CHEM 2090 lab report 6 hour") as Item
+    await openCard(ofEvent(event))
+    expect(await inCard().findByText(/^Is this time for CHEM 2090 lab report 6\?/)).toBeTruthy()
+  })
+})
+
+describe("a repeating event's card", () => {
+  it("says how it repeats, and nothing about skipping", async () => {
+    const day = addDays(await today(), 4)
+    await friday.c("add", { title: "Notes repeat check", when: "fixed", start: `${day}T08:00`, end: `${day}T08:30`, every: "rrule:FREQ=WEEKLY" })
+    const event = (await nextWeek()).fixed.find((f) => f.title === "Notes repeat check") as Item
+    await openCard(ofEvent(event))
+    expect(await inCard().findByText(/^Repeats every/)).toBeTruthy()
+    expect(inCard().queryByText(/Skipping/)).toBeNull()
+  })
+})
+
+describe("a calendar's yearly birthday, on its card", () => {
+  it("repeats yearly, from its calendar, changed here this time only; no task asked for, no skipping", async () => {
+    // whole-day events read in, as a new user's settings have it (the sample says otherwise: plan/AllDayIn.screen.test)
+    const { gcal } = await friday.q<{ gcal: Record<string, unknown> }>("settings")
+    const { include_all_day: _said, ...defaults } = gcal
+    await friday.c("settings_set", { key: "gcal", value: defaults })
+    const day = addDays(await today(), 1)
+    const calendars = [{ id: "notes-birthdays", name: "Birthdays", account: "iCloud", type: "subscription", color: "#c2185b" }]
+    const event = { id: "logan@1", calendar: "notes-birthdays", title: "CHEM 2090 lab report 6 Birthday", start: day, end: addDays(day, 1), all_day: true, series: "logan", rule: "FREQ=YEARLY" }
+    const offset = (d: string) => `${d}T00:00:00-05:00`
+    await friday.c("mac_sync", { calendars, events: [event], since: offset(addDays(day, -2)), until: offset(addDays(day, 30)) })
+    await friday.c("calendar_set", { id: "notes-birthdays", mac: true, on: true, trusted: true })
+    await waitFor(async () => expect((await friday.q<Plan>("plan", { start: `${day}T00:00`, end: `${addDays(day, 1)}T00:00` })).fixed.map((f) => f.title)).toContain(event.title), { timeout: 80_000, interval: 1000 }) // the next minute's sync reads it
+    cleanup()
+    const { user } = await openFriday("/")
+    await user.click(await screen.findByRole("button", { name: event.title }, { timeout: 15_000 }))
+    await waitFor(() => expect(card()).not.toBeNull(), { timeout: 10_000 })
+    expect(await inCard().findByText(/^Repeats yearly, all day in Birthdays: changes here are to this time only\.$/, {}, { timeout: 10_000 })).toBeTruthy()
+    expect(inCard().queryByText(/Skipping|every Tuesday|every Wednesday/i)).toBeNull()
+    expect(inCard().queryByText(/^Is this time for/)).toBeNull()
+  }, 120_000)
+})

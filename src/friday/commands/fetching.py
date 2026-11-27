@@ -192,7 +192,7 @@ def read_mac(conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: in
         def read(calendar_id: str | None = config.get("calendar"), way: ics.Reading = way) -> list[Found]:
             if calendar_id not in listed:
                 raise LookupError("no longer on your Mac")
-            found = (ics.google_event(e, tz, way) for e in events.get(calendar_id, []))
+            found = (ics.google_event(e, tz, way, e.get("recurrence")) for e in events.get(calendar_id, []))
             return [f for f in found if f is not None]
 
         made += take(conn, source, read, settings, now_utc, user_id, window["until"], client)

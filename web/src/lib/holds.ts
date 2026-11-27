@@ -38,3 +38,14 @@ export function likelyTask<T extends Task>(event: string, tasks: T[]): T | null 
 export function ranked<T extends Task>(event: string, tasks: T[]): T[] {
   return [...tasks].sort((a, b) => likeness(event, b.title) - likeness(event, a.title))
 }
+
+/** Whether an event takes whole days (a birthday, a holiday): midnight to midnight. Its time isn't a task's (27 Nov, a
+ * user's notes: a birthday asked "Is this time for TC/HS Detection?"; planning a task over a whole day reads as
+ * doing it all day). */
+export const wholeDay = (e: { start?: string | null; end?: string | null }) =>
+  !!e.start && !!e.end && e.start.endsWith("T00:00") && e.end.endsWith("T00:00") && e.end > e.start
+
+/** The tasks an event's time could be for: still to do when it starts (27 Nov: a birthday offered a task due before
+ * it, which its time would only make late). */
+export const openAt = <T extends { due?: string | null }>(tasks: T[], start: string | null | undefined): T[] =>
+  start ? tasks.filter((t) => !t.due || t.due >= start) : tasks

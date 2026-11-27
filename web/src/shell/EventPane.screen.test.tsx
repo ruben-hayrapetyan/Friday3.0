@@ -334,3 +334,25 @@ describe("a repeating event", () => {
     await waitFor(async () => expect((await events("Reading group")).filter((i) => i.title === "Reading group" && i.status === "todo")).toHaveLength(0))
   })
 })
+
+// 27 Nov, a user's notes ("Friday Notes-3"): a birthday's editor offered "Optional: No · If work needs it · If I'm
+// ahead" with "Work keeps off it.", read as no tasks that day; a whole-day event never keeps work off its day.
+describe("an all-day event's editor", () => {
+  for (const [name, days] of [["one day", 1], ["several days", 3]] as const)
+    it(`says it doesn't keep work off its day, with nothing to choose: ${name}`, async () => {
+      const day = dayOn(4 + days)
+      const title = `Notes all-day ${name}`
+      await friday.c("add", { title, when: "fixed", start: `${day}T00:00`, end: `${addDaysTo(day, days)}T00:00` })
+      const { user } = await openFriday("/")
+      await openEvent(user, title)
+      expect(await screen.findByText("An all-day event doesn't keep work off its day.")).toBeTruthy()
+      expect(screen.queryByRole("group", { name: `Can work take ${title}'s time?` })).toBeNull()
+      expect(screen.queryByText("Work keeps off it.")).toBeNull()
+    })
+})
+
+function addDaysTo(day: string, n: number): string {
+  const d = new Date(`${day}T12:00:00`)
+  d.setDate(d.getDate() + n)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}

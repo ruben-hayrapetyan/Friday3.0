@@ -307,6 +307,8 @@ def google_shape(e: MacEvent) -> dict[str, Any]:
     shaped: dict[str, Any] = {"id": event_id(e), "summary": e.title, "start": {when: e.start}, "end": {when: e.end}}
     if e.series:
         shaped["recurringEventId"] = e.series
+    if e.series and e.rule:
+        shaped["recurrence"] = e.rule  # kept with the event, read as Google's is (commands/fetching.py)
     if e.free:
         shaped["transparency"] = "transparent"
     if e.declined:

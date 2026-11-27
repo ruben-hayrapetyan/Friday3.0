@@ -287,7 +287,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
         <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>To repeat it, make it repeat in {draft.calendar}.</span>
       ) : null}
       <EventFit draft={draft} onTime={(start, end) => set({ start, end })} />
-      {!isNew && staged === null && <WorkMayTake title={(draft.was?.title ?? draft.title).trim()} />}
+      {!isNew && staged === null && <WorkMayTake title={(draft.was?.title ?? draft.title).trim()} allDay={draft.allDay} />}
       <Row label="Where">
         {/* Where it is (27 Oct): the calendar's, read with it, and saved back with it when it saves there. */}
         <input className="input" value={draft.location} onChange={(e) => set({ location: e.target.value })} placeholder="Add a place" aria-label="Where" style={{ ...field, maxWidth: 260 }} />
@@ -498,11 +498,19 @@ const MODES = [
 /** Whether work may take this event's time (8 Nov: everything about an event in its editor, a rule naming it shown
  * and changed here): never, only when work would be late otherwise, or only when you're ahead. A broader rule that
  * still reaches it ("gym is optional" for "Gym with Sam") is said, with the way to it. */
-function WorkMayTake({ title }: { title: string }) {
+function WorkMayTake({ title, allDay = false }: { title: string; allDay?: boolean }) {
   const navigate = useNavigate()
   const { setEvent } = useShell()
-  const mode = useQuery({ queryKey: ["event_mode", title], queryFn: () => query("event_mode", { title }), enabled: !!title }).data
+  const mode = useQuery({ queryKey: ["event_mode", title], queryFn: () => query("event_mode", { title }), enabled: !!title && !allDay }).data
   const choose = useCommand("event_optional", { label: (o) => o.result.message ?? "Saved" })
+  // a whole-day event never keeps work off its day (it doesn't take its hours), so there's nothing to make optional
+  // (27 Nov, a user's notes: a birthday's "No: Work keeps off it" read as no tasks that day)
+  if (allDay)
+    return (
+      <Row label="Optional" stack>
+        <span className="fr-kicker">An all-day event doesn't keep work off its day.</span>
+      </Row>
+    )
   if (!title || !mode) return null
   return (
     <Row label="Optional" stack>

@@ -679,6 +679,18 @@ def attach_to_series(ctx: Ctx, item_id: int, batch: str) -> None:
     )
     n = (taken["n"] or 0) + 1 if taken else 1
     ctx.db.update("items", {"id": item_id}, {"series_id": series_id, "occurrence_date": on, "occurrence_n": n})
+    if series and not calendar_rule(ctx, batch):
+        # its calendar gave no rule (a Mac app from before they were sent): read again from all its times so far, as
+        # the first alone was all `mirror` had (27 Nov: a weekly class seen once read as yearly)
+        starts = [
+            r[0]
+            for r in ctx.conn.execute(
+                "SELECT COALESCE(start_utc, due_utc) FROM items WHERE series_id = ? AND status != 'deleted'",
+                [series_id],
+            )
+        ]
+        rule = weekdays_rule([format_local(to_local(parse_utc(t), ctx.tz)) for t in starts if t])
+        ctx.db.update("series", {"id": series_id}, {"rrule": rule})
 
 
 def calendar_rule(ctx: Ctx, batch: str) -> str | None:
@@ -695,9 +707,26 @@ def calendar_rule(ctx: Ctx, batch: str) -> str | None:
 
 
 def weekdays_rule(starts: list[str]) -> str:
-    """A weekly rule on the days seen, for a calendar event whose own rule is unknown."""
-    days = sorted({date.fromisoformat(s[:10]).weekday() for s in starts if s})
-    return "FREQ=WEEKLY;BYDAY=" + ",".join(DAYS[d] for d in days) if days else "FREQ=WEEKLY"
+    """A calendar event's repeat when its own rule is unknown (a Mac app from before it sent them), from the times
+    seen: a day apart daily, weeks apart weekly on the days seen, a month apart monthly, a whole day seen once
+    yearly (27 Nov, a user's notes: every birthday read "Repeats every Tuesday": seen once in the six weeks the Mac
+    app sends, a yearly event was taken for a weekly one)."""
+    dates = sorted({date.fromisoformat(s[:10]) for s in starts if s})
+    if len(dates) < 2:
+        # seen once: a whole-day one is a birthday, a holiday, an anniversary; a timed one is taken to be weekly on
+        # its day, as a club read over a short window may be seen just once
+        all_day = bool(starts) and all(s.endswith("T00:00") for s in starts if s)
+        if all_day or not dates:
+            return "FREQ=YEARLY"
+        return f"FREQ=WEEKLY;BYDAY={DAYS[dates[0].weekday()]}"
+    gap = min((b - a).days for a, b in zip(dates, dates[1:], strict=False))
+    days = sorted({d.weekday() for d in dates})
+    if len(days) == 7:
+        return "FREQ=DAILY"  # every day of the week seen (weekdays only stay weekly, on those days)
+    if gap >= 28:
+        return "FREQ=MONTHLY" if gap <= 31 else "FREQ=YEARLY"
+    every = f";INTERVAL={gap // 7}" if len(days) == 1 and gap % 7 == 0 and gap > 7 else ""  # every other week
+    return "FREQ=WEEKLY" + every + ";BYDAY=" + ",".join(DAYS[d] for d in days)
 
 
 def mirror(ctx: Ctx, item: dict[str, Any], batch: str, external: str, rule: str | None = None) -> int:

@@ -357,7 +357,30 @@ enum MacPayload {
             out["start"] = timestamp(start)
             out["end"] = timestamp(end)
         }
-        if e.hasRecurrenceRules { out["series"] = identifier }
+        if e.hasRecurrenceRules {
+            out["series"] = identifier
+            // its repeat, as Google gives one with its events (27 Nov, a user's notes: every birthday read "Repeats
+            // every Tuesday": without it, Friday took a yearly event seen once for a weekly one)
+            if let rule = e.recurrenceRules?.first { out["rule"] = Self.rrule(rule) }
+        }
+        return out
+    }
+
+    /// A repeat as an RRULE: how often, every how many, and on which weekdays ("FREQ=WEEKLY;BYDAY=MO,WE").
+    static func rrule(_ rule: EKRecurrenceRule) -> String {
+        let frequency: String
+        switch rule.frequency {
+        case .daily: frequency = "DAILY"
+        case .weekly: frequency = "WEEKLY"
+        case .monthly: frequency = "MONTHLY"
+        case .yearly: frequency = "YEARLY"
+        @unknown default: frequency = "WEEKLY"
+        }
+        var out = "FREQ=\(frequency)"
+        if rule.interval > 1 { out += ";INTERVAL=\(rule.interval)" }
+        let names = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"]  // EKWeekday: Sunday is 1
+        let days = (rule.daysOfTheWeek ?? []).map { names[($0.dayOfTheWeek.rawValue - 1) % 7] }
+        if !days.isEmpty { out += ";BYDAY=" + days.joined(separator: ",") }
         return out
     }
 
