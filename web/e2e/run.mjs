@@ -124,10 +124,11 @@ function tools(page, base, folder, answer = async () => {}) {
            } }
 }
 
-/** Minutes from now to `hour` o'clock of today in this process's zone (TZ). */
+/** Minutes from now to `hour` o'clock on this week's Tuesday in this process's zone (TZ). */
 function shiftToHour(hour) {
   const now = new Date()
-  return Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0).getTime() - now.getTime()) / 60_000)
+  const tuesday = now.getDate() - ((now.getDay() + 6) % 7) + 1 // Monday's date, plus one
+  return Math.round((new Date(now.getFullYear(), now.getMonth(), tuesday, hour, 0).getTime() - now.getTime()) / 60_000)
 }
 
 /** Node's clock, `minutes` on: what the tests read as now is the sample's now. */
@@ -154,8 +155,10 @@ async function main() {
   // 26 Nov: at one hour of the day, 2pm unless FRIDAY_TEST_HOUR says, as the server and screen tests are. Run past
   // midnight, Friday's day was still yesterday's until 4am and the tests' "yesterday" (day(-1), "3 days back") one day
   // off: a nap logged yesterday was looked for the day after, meals days back weren't found, a token "last used today"
-  // read yesterday. The sample runs at that hour of today (--shift-minutes), Node's clock with it, and the page follows
-  // Friday's clock (hooks/useClock.ts). Alex lives in New York (sim/sample.py); --url: the Friday given, as it is.
+  // read yesterday. 27 Nov: and on this week's Tuesday: Alex's term is laid out around the week (sim/sample.py), and
+  // run on a Friday its events and mail were past, the Inbox nearly empty. The sample runs then (--shift-minutes),
+  // Node's clock with it, and the page follows Friday's clock (hooks/useClock.ts). Alex lives in New York; --url: the
+  // Friday given, as it is.
   const shift = given ? 0 : (process.env.TZ = process.env.TZ ?? "America/New_York", shiftToHour(Number(process.env.FRIDAY_TEST_HOUR ?? 14)))
   if (shift) shiftClock(shift)
   const sampleFor = async () =>

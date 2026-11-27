@@ -60,7 +60,8 @@ The web tests write Friday's local times from their own clock, so that clock rea
 the machine's zone: the page follows Friday's clock itself.
 
 They run at one hour of Friday's day too: the screen tests at Alex's Thursday 2pm (`SCREEN_HOUR`), the browser tests at
-2pm of today, the sample's server shifted there and Node's clock with it (`FRIDAY_TEST_HOUR=H` for another hour; not
+2pm on this week's Tuesday (Alex's term is laid out around the week: on a Friday its events and mail were past),
+the sample's server shifted there and Node's clock with it (`FRIDAY_TEST_HOUR=H` for another hour; not
 with `--url`, which tests the Friday given as it is). Run past midnight, Friday's day is still yesterday's until 4am,
 and every "yesterday" and "3 days back" in the browser tests was a day off (26 Nov). A test that needs free time sets it
 up where the calendar has it (decisions.e2e.mjs finds two free hours tomorrow), not in the next hours, whatever they hold.
